@@ -1,183 +1,177 @@
 # worldcup2026-model
 
-**Elite-calibrated 2026 FIFA World Cup predictive model.**
+**2026 FIFA World Cup — Joint Final-Score PMF Engine.**
 
-Produces full scoreline probability distributions — P(home=i, away=j) for every possible final score — for both pre-game and live in-game predictions.
+Produces the calibrated joint probability mass function `P(home=h, away=a)` for every
+possible regulation-time final score for every 2026 World Cup match, every day.
+All other markets (1X2, totals, BTTS, spreads, exact score) are derived from this single PMF.
 
----
-
-## Model Architecture
-
-### Core Ensemble (4 component models)
-
-| Model | Description | Ensemble weight (RPS-derived) |
-|---|---|---|
-| **Dixon-Coles** | Classic MLE Poisson with low-score correction (τ), time-decay weights, neutral-venue flag | ~40 % |
-| **Bayesian Dixon-Coles** | Full MCMC posterior via `emcee`; propagates parameter uncertainty into predictions | ~30 % |
-| **Bivariate Poisson** | Allows positive correlation between home and away goals | ~15 % |
-| **Weibull Copula** | Heavy-tail goal distribution; best for matches with extreme outcomes | ~15 % |
-
-Ensemble weights are calibrated at runtime via leave-one-out RPS (Ranked Probability Score) on the most recent 20% of training matches and re-derived each time the model is trained.
-
-### Calibration
-
-- **Brier Score** — overall and per 1X2 outcome
-- **Log Loss** — both outcome and exact-score
-- **RPS** — ordered 1X2 market
-- **ECE** — Expected Calibration Error (reliability / over/under confidence)
-- Reliability diagrams for all three 1X2 outcomes
-
-### Live Engine
-
-At minute *t* with current score (*g_h*, *g_a*):
-
-1. **Time scaling** — remaining λ = pre-game λ × (90 − t)/90
-2. **xG blend** — live accumulated xG is blended in with weight α = min(t/45, 1), so by minute 45 the model fully trusts the in-game xG rate
-3. **Momentum adjustment** — per-minute BDL momentum signal (last 5 min avg) adjusts the λ ratio ±20% max
-4. **Conditional shift** — P(final) = P(remaining goals shifted by current score)
+> **Current status**: Real BDL data pipeline active. `market_reconciled` is the publish
+> champion for all matches with BDL odds. The statistical models serve as a prior only;
+> the BDL 6-vendor no-vig consensus anchors the published probabilities.
+> Live in-game predictions are **not yet implemented** — see [`limitations.md`](docs/limitations.md).
 
 ---
 
-## Data Source
+## Core product
 
-All data is pulled from the **[BallDontLie FIFA World Cup API](https://fifa.balldontlie.io)** (2018, 2022, 2026 seasons). A GOAT-tier subscription ($39.99/mo) is required for full access to match stats, xG, shots, and live endpoints.
+For each scheduled 2026 World Cup match, the system produces:
 
-Endpoints used:
+| Output | Description |
+|--------|-------------|
+| `regulation_score_pmf_grid[h][a]` | Full 15×15 probability grid for regulation time |
+| `tail_mass` | Explicit probability mass for scores beyond max_goals=15 |
+| `top_scorelines` | Top 20 scorelines by probability |
+| `derived_markets` | 1X2, totals (0.5–6.5), BTTS, from the single PMF |
+| `market_implied_markets` | Direct BDL no-vig consensus (separate from model) |
+| `model_vs_market_differences` | Comparison for auditability |
 
-- `matches` — fixture list, scores, stage info
-- `team_match_stats` — per-team xG, shots, possession
-- `match_shots` — shot-level xG (2022+)
-- `match_momentum` — per-minute attack momentum
-- `match_events` — goals, cards, substitutions
-- `odds` — bookmaker lines for validation
+All probabilities are **regulation-time only** (90 minutes + stoppage time).
+Extra time and penalty shootouts are explicitly excluded.
+
+---
+
+## Publish modes
+
+Three modes are computed for every match:
+
+| Mode | Description | Publish? |
+|------|-------------|---------|
+| `pure_model` | Best statistical model (negative_binomial for known teams, elo_prior_blend for new teams). No odds. | Diagnostics only |
+| `market_implied` | Direct BDL no-vig PMF via `goal_expectancy_extended`. | Fallback |
+| `market_reconciled` | Market-implied prior + minimum-KL reconciliation using all available BDL constraints (1X2, totals, BTTS, correct-score, spread, DNB). | **Default publish** |
+
+**`publish_champion` = `market_reconciled` when BDL odds are available.**
+
+---
+
+## Champion policy
+
+| Champion | Model | Use |
+|----------|-------|-----|
+| `diagnostic_champion` | `equal_probability` (Poisson λ=1.35) | Audit only. NOT used for publish. |
+| `parametric_champion` | `negative_binomial` | Prior for reconciliation |
+| `elo_champion` | `elo` | New-team fallback |
+| `market_implied_champion` | market PMF | Direct market inference |
+| **`publish_champion`** | **`market_reconciled`** | **Published prediction** |
+
+**Why `equal_probability` wins on diagnostic NLL (3.02)**: it is Poisson(λ=1.35, λ=1.35) —
+the WC average — not a uniform distribution. It wins on 128-match OOF NLL due to
+James-Stein shrinkage (small-sample overfitting of team-specific parameters). It assigns
+**identical predictions to all teams** and is useless as a published forecast.
+
+---
+
+## Current real-data metrics (walk-forward OOF on 2018+2022, 128 matches)
+
+| Model | N OOF | NLL | Use |
+|-------|-------|-----|-----|
+| equal_probability (Poisson λ=1.35) | 118 | 3.0219 | Diagnostic baseline only |
+| elo | 118 | 3.1493 | New-team fallback |
+| historical_base_rate | 118 | 4.0844 | Diagnostic baseline only |
+| **negative_binomial** | 106 | **4.5159** | **Parametric prior** |
+| dixon_coles | 86 | 4.8898 | Candidate model |
+| zero_inflated_poisson | 106 | 5.1683 | Candidate model |
+| poisson | 106 | 5.1734 | Candidate model |
+
+The parametric models (NLL 4.5–7.3) underperform the WC average prior on 128-match OOF
+because WC sample size is too small for reliable team-parameter estimation. This is expected
+and well-documented. Market odds from 6 BDL vendors subsume this uncertainty.
+
+---
+
+## Data
+
+All data from **[BallDontLie FIFA World Cup API](https://fifa.balldontlie.io)** (2018, 2022, 2026).
+GOAT-tier subscription required.
+
+| Table | Rows |
+|-------|------|
+| matches | 232 (128 completed, 104 scheduled 2026) |
+| odds | 315 (6 vendors: fanduel, draftkings, betmgm, betrivers, caesars, fanatics) |
+| markets | 37,262 (correct_score, BTTS, total, spread, DNB, double_chance) |
+| correct_score_odds | 5,047 rows → used in PMF reconciliation |
 
 ---
 
 ## Quickstart
 
 ```bash
-# 1. Clone and install
 git clone https://github.com/Risky-Scout/worldcup2026-model
 cd worldcup2026-model
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# 2. Set your BDL API key
 cp .env.example .env
-# Edit .env and add your BDL_API_KEY
+# Add: BDL_API_KEY=your_key_here
 
-# 3. Fetch data (cached to ~/.cache/wc2026/)
-wc2026 fetch
+# Run full pipeline: fetch → backtest → predict → reports
+python scripts/run_real_pipeline.py
 
-# 4. Train the model (saves model.pkl)
-wc2026 train
-
-# 5. Pre-game prediction
-wc2026 predict "Brazil" "France"
-
-# 6. Live prediction
-wc2026 live 42 "Brazil" "France"
-
-# 7. Calibration report
-wc2026 calibrate --plot
+# Outputs:
+#   data/published/2026-06-11.json         (opening day: Mexico+SA, Korea+Czechia)
+#   data/published/all_scheduled_2026.json (72 named matches)
+#   reports/                               (all audit reports)
 ```
 
 ---
 
-## Python API
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from wc2026.data import DataFetcher, build_match_dataframe
-from wc2026.models import EnsembleModel
-from wc2026.predictions import pregame_predict, LivePredictor
-from wc2026.calibration import CalibrationReport
-
-# Load data
-fetcher = DataFetcher()
-matches = fetcher.completed_matches(seasons=[2018, 2022, 2026])
-match_ids = [m["id"] for m in matches]
-stats = fetcher.team_match_stats(match_ids=match_ids)
-shots = fetcher.match_shots(match_ids=match_ids)
-
-df = build_match_dataframe(matches, team_stats=stats, shots=shots)
-
-# Train
-model = EnsembleModel.from_dataframe(df, bayesian=True)
-model.save("model.pkl")
-
-# Pre-game prediction
-grid = model.predict("Brazil", "France")
-print(f"Brazil win: {grid.home_win:.1%}")
-print(f"Draw:       {grid.draw:.1%}")
-print(f"France win: {grid.away_win:.1%}")
-print(f"Over 2.5:   {grid.total_goals('over', 2.5):.1%}")
-print(f"1-0:        {grid.exact_score(1, 0):.2%}")
-
-# Full scoreline table
-print(model.score_probability_table("Brazil", "France"))
-
-# Calibration
-report = CalibrationReport(model, holdout_df)
-report.evaluate()
-print(report)
-```
-
-### Live prediction
-
-```python
-from wc2026.predictions import LivePredictor
-
-predictor = LivePredictor(model, fetcher)
-result = predictor.predict(match_id=42, home_team="Brazil", away_team="France")
-
-print(f"Min {result['minute']}  Score: {result['home_score']}-{result['away_score']}")
-print(f"Brazil win now: {result['home_win']:.1%}")
-for s in result["top_scores"][:5]:
-    print(f"  {s['home_goals']}-{s['away_goals']}: {s['probability']:.2%}")
-```
-
----
-
-## Project Structure
+## Project structure
 
 ```
 worldcup2026-model/
 ├── src/wc2026/
 │   ├── data/
-│   │   ├── bdl_client.py       BDL API client (rate-limited, paginated)
-│   │   ├── fetcher.py          Disk-cached data layer
-│   │   └── preprocessor.py     Match DataFrame + xG feature builder
+│   │   ├── providers/bdl.py          BDL API client (rate-limited, paginated, snapshot)
+│   │   ├── dataset.py                Normalized parquet tables + markets parsing
+│   │   └── storage.py                Versioned data storage
 │   ├── models/
-│   │   ├── trainer.py          Fits all 4 component models + weight calibration
-│   │   └── ensemble.py         Public prediction interface
-│   ├── calibration/
-│   │   ├── metrics.py          Brier, RPS, log-loss, ECE
-│   │   └── plots.py            Reliability diagrams, score heatmaps
-│   ├── predictions/
-│   │   ├── pregame.py          Full pre-game prediction dict
-│   │   └── live.py             Live in-game prediction engine
-│   ├── utils/helpers.py        Odds conversion utilities
-│   └── cli.py                  `wc2026` CLI
-├── notebooks/                  Exploration & analysis notebooks
-├── pyproject.toml
-└── .env.example
+│   │   ├── joint_pmf.py              JointScorePMF, FiniteGridPMF, tail handling
+│   │   ├── baselines.py              equal_probability, historical_base_rate, elo
+│   │   ├── ladder.py                 All 6 penaltyblog goal models
+│   │   └── prediction.py             ScorePMFPrediction schema
+│   ├── markets/
+│   │   ├── exact_score_reconcile.py  THREE PUBLISH MODES + min-KL reconciliation
+│   │   ├── no_vig.py                 Vig removal (multiplicative, additive, Shin)
+│   │   ├── consensus.py              Multi-vendor aggregation
+│   │   └── market_pmf.py             goal_expectancy_extended wrapper
+│   ├── backtest/
+│   │   └── walkforward.py            Strict time-ordered OOF with temperature fitting
+│   └── calibration/
+│       └── score_pmf.py              Temperature scaling on exact-score NLL
+├── scripts/
+│   └── run_real_pipeline.py          Full pipeline: fetch→backtest→predict→reports
+├── reports/
+│   ├── champion_selection.md         5 champion types defined
+│   ├── equal_prob_baseline_audit.md  Explains why Poisson(1.35) beats parametric
+│   ├── score_pmf_calibration.md      Temperature calibration (T fitted on OOF)
+│   ├── walkforward_backtest.md       OOF NLL table
+│   ├── model_benchmark_table.md      All models ranked
+│   ├── market_calibration.md         3-mode comparison per match
+│   ├── june11_analysis.md            Opening day: Mexico/SA + Korea/Czechia
+│   ├── team_prior_table.md           Priors for all 48 teams
+│   ├── schedule_validation.md        104 total, 72 named, 32 TBD
+│   └── bdl_endpoint_coverage.md      Raw data coverage
+├── data/
+│   ├── published/2026-06-11.json     Opening day PMFs (market_reconciled)
+│   └── published/all_scheduled_2026.json
+└── docs/
+    ├── model_card.md
+    └── limitations.md
 ```
 
 ---
 
-## Calibration Notes
+## Limitations
 
-World Cup data has a very small sample size (64 matches in 2018/2022, 104 in 2026). To maximise calibration:
+See [`docs/limitations.md`](docs/limitations.md) for full detail.
 
-- **Time-decay weights** (half-life 180 days) down-weight 2018 data relative to 2022 and 2026
-- **Neutral venue flag** is applied to all matches (all WC games are at neutral sites from both teams' perspectives, except host nations USA/CAN/MEX get a soft home advantage)
-- **Bayesian posterior** averages over parameter uncertainty — critical when n is small
-- **Ensemble weights** are derived from RPS rather than AIC/BIC to directly optimise predictive accuracy
-
-For ongoing tournament calibration, re-run `wc2026 train` after each matchday to incorporate the latest results.
+Key current limitations:
+- WC-only historical data (128 matches) is too small for reliable team-specific parameter estimation
+- Parametric champion (negative_binomial) loses to Poisson(1.35) on OOF NLL; market odds subsume this
+- No live in-game model (architecture ready, but not validated)
+- New-team priors use confederation averages (no FIFA ranking integration yet)
+- Temperature calibration is near T=1.0 for all models (expected with 128 OOF matches)
 
 ---
 

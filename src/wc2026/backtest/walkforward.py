@@ -274,6 +274,13 @@ class WalkForwardEngine:
 
             metrics = evaluate_pmf_predictions(preds, actuals_list, model_name)
 
+            # Fit temperature on OOF predictions (must happen after, never on training data)
+            if len(preds) >= 10:
+                from wc2026.calibration.score_pmf import ScorePMFCalibrator
+                cal = ScorePMFCalibrator()
+                cal.fit(preds, actuals_list)
+                metrics.temperature = cal.temperature
+
             # Clean rows for serialization
             clean_rows = [{k: v for k, v in r.items() if k != "_pred_obj"} for r in rows]
             for r in clean_rows:

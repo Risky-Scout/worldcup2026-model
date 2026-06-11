@@ -1,31 +1,53 @@
-# Champion Model Selection (Real BDL Data)
+# Champion Policy (Real BDL Data)
 
-**Generated**: 2026-06-11T16:08:25Z
-**Selection criterion**: Lowest OOF exact-score negative log-likelihood
+**Generated**: 2026-06-11T17:09:36Z
 
-## OOF ranking
+## Five champion tiers
 
-| Rank | Model | OOF NLL | vs. Equal-Prob | vs. Dixon-Coles | RPS | Brier |
-|------|-------|---------|---------------|----------------|-----|-------|
-| 1 | elo | 3.1493 | N/A | -1.7405 | 0.1782 | 0.7073 |
-| 2 | negative_binomial | 4.5159 | N/A | -0.3740 | 0.1967 | 0.7914 |
-| 3 | dixon_coles | 4.8898 | N/A | +0.0000 | 0.2000 | 0.8257 |
-| 4 | zero_inflated_poisson | 5.1683 | N/A | +0.2785 | 0.2057 | 0.8407 |
-| 5 | poisson | 5.1734 | N/A | +0.2836 | 0.2058 | 0.8440 |
-| 6 | bivariate_poisson | 5.2690 | N/A | +0.3792 | 0.2237 | 0.8959 |
-| 7 | weibull_copula | 7.1012 | N/A | +2.2113 | 0.2217 | 0.8691 |
+| Champion Type | Model | NLL | Use Case |
+|--------------|-------|-----|----------|
+| diagnostic_champion | equal_probability | 3.0219 | Audit only — NOT used for publish |
+| parametric_champion | negative_binomial | 4.5159 | Model prior for reconciliation |
+| elo_champion | elo | 3.1493 | Fallback for new teams |
+| market_implied_champion | market_implied | N/A | Pure-market PMF, no model |
+| **publish_champion** | **market_reconciled** | **N/A** | **Default publish when BDL odds exist** |
 
-## ✅ Champion: **elo**
+## Why diagnostic_champion ≠ publish_champion
 
-- OOF exact-score NLL: **3.1493**
-- OOF 1X2 RPS: 0.1782
-- Beats Dixon-Coles: ✅ Yes (-1.7405)
-- Temperature: 1.000
-- N OOF predictions: 118
+**equal_probability** wins on exact-score NLL (3.0219) because:
+- It is **Poisson(λ=1.35, λ=1.35)** — the WC average goals prior — NOT uniform over all cells
+- With only 128 historical WC matches and 32+ teams, James-Stein shrinkage toward the mean
+  outperforms team-specific parameter estimation (classic small-sample overfitting)
+- It CAN predict any score (never assigns zero probability)
+- However, it assigns **identical probabilities** to all teams (no team discrimination)
+- It is useless as a published prediction: Brazil = South Africa = every team
 
-## Note on market-implied baseline
+**publish_champion = market_reconciled** because:
+- BDL provides 6-vendor odds with correct-score markets
+- Market probabilities incorporate team quality, current form, injuries, etc.
+- The model provides the PMF shape and structural constraints
+- market_reconciled is the most calibrated PMF available for each match
 
-Full market-implied baseline benchmarking requires historical closing odds for
-2018+2022 matches. BDL provides live odds for 2026 only. Market-implied NLL
-on 2018+2022 is not computable from BDL. Recommend using CLV (closing-line
-value) as market-comparison metric on 2026 live matches as results come in.
+## Publish mode selection
+
+| BDL data available | Publish mode |
+|-------------------|-------------|
+| 6 vendors + correct score | market_reconciled (α≈0.82) |
+| 6 vendors, no correct score | market_reconciled (α≈0.62) |
+| Partial odds (< min_quality) | market_implied |
+| No odds | pure_model (parametric_champion) |
+| New teams, no odds | elo_prior_blend |
+
+## OOF ranking (all models)
+
+| Rank | Model | N OOF | NLL | RPS | Brier | ECE | T | Publish-eligible? |
+|------|-------|-------|-----|-----|-------|-----|---|------------------|
+| 1 | equal_probability | 118 | 3.0219 | 0.1588 | 0.6497 | 0.0698 | 1.077 | diagnostic only |
+| 2 | elo | 118 | 3.1493 | 0.1782 | 0.7073 | 0.1969 | 1.255 | diagnostic only |
+| 3 | historical_base_rate | 118 | 4.0844 | 0.1615 | 0.6734 | 0.0260 | 0.492 | diagnostic only |
+| 4 | negative_binomial | 106 | 4.5159 | 0.1967 | 0.7914 | 0.2418 | 2.997 | parametric prior |
+| 5 | dixon_coles | 86 | 4.8898 | 0.2000 | 0.8257 | 0.2690 | 3.000 | parametric prior |
+| 6 | zero_inflated_poisson | 106 | 5.1683 | 0.2057 | 0.8407 | 0.2706 | 3.000 | parametric prior |
+| 7 | poisson | 106 | 5.1734 | 0.2058 | 0.8440 | 0.2974 | 3.000 | parametric prior |
+| 8 | bivariate_poisson | 106 | 5.2690 | 0.2237 | 0.8959 | 0.3447 | 3.000 | parametric prior |
+| 9 | weibull_copula | 106 | 7.2643 | 0.2213 | 0.8777 | 0.3368 | 3.000 | parametric prior |

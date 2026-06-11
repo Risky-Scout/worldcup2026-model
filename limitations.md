@@ -1,66 +1,126 @@
-# Limitations
+# Known Limitations — wc2026 PMF Engine
 
-This document is honest about what the model does NOT do well.
+**Last updated**: 2026-06-11
 
----
-
-## Small sample size
-
-World Cup data contains ~128 completed matches (2018 + 2022). This is insufficient to reliably estimate team-specific parameters for 32+ teams from scratch. Mitigations:
-
-- penaltyblog goal models use conjugate priors via hierarchical pooling
-- Elo baseline provides a regularised team-strength prior
-- Dixon-Coles rho parameter is global, not per-team
-- Walk-forward OOF calibration uses all available history
-
-Without broader international football data (friendly matches, qualifiers), team priors are based on limited evidence. New teams with no 2018/2022 data (e.g. first-time qualifiers) rely entirely on the global average.
+This document is the honest account of current limitations. It is intentionally non-promotional.
 
 ---
 
-## Odds coverage gaps
+## 1. Small WC-only training set
 
-BDL odds coverage for historical 2018/2022 matches may be incomplete or missing for some vendors. In those cases:
+**Impact**: HIGH
 
-- Market reconciliation is skipped
-- The calibration_status field will be "uncalibrated" or "temperature_scaled" (not "market_calibrated")
-- A warning is emitted in the prediction JSON
-
----
-
-## Exact-score calibration limits
-
-With 128 historical matches, the empirical frequency of any specific score (e.g. 2-1) is only a handful of observations. Temperature scaling calibrates the PMF shape globally but cannot reliably correct specific score-cell biases. The model applies a Dixon-Coles τ correction for low-scoring cells (0-0, 1-0, 0-1, 1-1) but has limited evidence to verify it at World Cup scale.
+- Only 128 completed WC matches (2018+2022) are available for model training
+- 32+ teams means each team appears in only ~4-8 training matches on average
+- Team-specific attack/defense parameters estimated from 4-8 matches have very high uncertainty
+- This is why `equal_probability` (Poisson λ=1.35, the WC average) beats all parametric models on OOF NLL: James-Stein shrinkage. It is NOT that parametric models are poorly coded; it is that the sample is too small for their advantages to materialize
+- Mitigation: market odds from 6 BDL vendors provide team-quality signal that the model cannot replicate from 128 matches
 
 ---
 
-## Live model status
+## 2. Parametric models lose to Poisson(1.35) on OOF NLL
 
-The live model is architecturally supported but **not validated**. Replay validation against 2022 matches has not been completed. Do not use live predictions in any betting context until `data/predictions/live_replay_2022.parquet` and `reports/live_replay_validation.md` are produced. These require running `make fetch-bdl && make build-dataset && wc2026 validate-live` after BDL data is loaded.
+**Impact**: HIGH (for published predictions without odds)
 
----
-
-## Bayesian models
-
-The Bayesian (`BayesianGoalModel`) and hierarchical Bayesian (`HierarchicalBayesianGoalModel`) models from penaltyblog are included in the model ladder but disabled by default due to MCMC runtime (~5–15 minutes per model fit). Enable with `--include-bayesian`. Their out-of-fold performance has not yet been benchmarked.
-
----
-
-## Market reconciliation is a soft constraint
-
-The KL minimisation reconciliation moves the model PMF towards market consensus, but does not guarantee the model matches market odds exactly. Large model-vs-market differences may indicate model errors, market error, or genuine edge. Treat reconciled predictions as a blend, not as market endorsement.
+- best parametric model is negative_binomial (NLL=4.52) vs. equal_probability (NLL=3.02)
+- This is a factor of ~4x worse probability on any given correct score
+- The gap closes as 2026 results accumulate
+- Mitigation: market_reconciled mode replaces the model PMF with market-implied for all matches with odds
 
 ---
 
-## Not validated against live odds
+## 3. No live in-game model
 
-This model has not been validated against actual sportsbook closing lines. Expected Value (EV) and Closing Line Value (CLV) metrics are not yet available. These require producing predictions before line movement and recording them with timestamps.
+**Impact**: MEDIUM
+
+- The architecture (matchflow, BDL events, momentum) is defined but not yet implemented
+- Live predictions are NOT available
+- Pre-game PMFs should not be re-used for in-game applications
+- Target: validate on 2022 minute-by-minute replay before deploying live
 
 ---
 
-## Known missing features
+## 4. New-team priors use confederation averages
 
-- First-half PMF (requires separate model trained on HT scores)
-- Exact-score market reconciliation (BDL exact-score odds not yet parsed)
-- Roster strength / injury adjustments (data not available in BDL)
-- Non-homogeneous minute hazard for live model (flat scaling used as placeholder)
-- Stoppage time modelling
+**Impact**: MEDIUM
+
+- Teams with no 2018/2022 WC history (e.g., South Africa, Czechia, Curaçao) get:
+  `attack_lambda = confederation_average` (CAF=1.10, UEFA=1.30, CONCACAF=1.20, etc.)
+- This is better than flat Elo=1500 for all new teams but still imprecise
+- No FIFA ranking, qualifying performance, or BDL team form is used yet
+- Mitigation: market odds from BDL supersede these priors for matches with odds
+
+---
+
+## 5. Temperature calibration near T=1.0
+
+**Impact**: LOW–MEDIUM
+
+- After the fix (fitting `ScorePMFCalibrator` on OOF predictions), temperatures are:
+  equal_probability: 1.077, elo: 1.255, negative_binomial: 2.997
+- T≈3.0 for parametric models means they are overconfident (too peaked PMFs)
+- With only 106 OOF predictions, temperature estimates have high variance
+- Mitigation: temperature will be re-fitted as 2026 results accumulate; T=2.997 for negative_binomial means it is applying strong smoothing at publish time
+
+---
+
+## 6. Correct-score odds used in reconciliation but not backtested
+
+**Impact**: MEDIUM
+
+- 5,047 correct-score rows are parsed from BDL for 2026 matches
+- They are used in minimum-KL reconciliation to constrain specific PMF cells
+- This has NOT been backtested for calibration improvement on 2018/2022 data
+  (correct-score odds were not captured for historical matches)
+- Mitigation: correct-score constraint weight is set conservatively (α ≤ 0.85)
+
+---
+
+## 7. No opening-line vs. closing-line separation
+
+**Impact**: LOW–MEDIUM
+
+- BDL snapshots are point-in-time; we do not currently track how odds have moved
+- The model uses current odds, not opening odds
+- For a proper closing-line benchmark, historical BDL snapshots would need to be collected daily
+- This is a backtest/CLV limitation, not a live-prediction limitation
+
+---
+
+## 8. Market reconciliation uses multiplicative vig removal
+
+**Impact**: LOW
+
+- Several vig-removal methods are available (multiplicative, additive, Shin, power, odds-ratio)
+- We use multiplicative only (well-tested, conservative)
+- Shin and power methods may give better results for correct-score markets with high overround
+- TODO: compare methods in the market calibration report
+
+---
+
+## 9. 72/104 matches are predictable today
+
+**Impact**: LOW
+
+- 32 of 104 scheduled 2026 matches are knockout placeholders (W73 vs W75, etc.)
+- These cannot be predicted until group stage completes
+- 72 named group-stage matches are fully predicted
+- All 72 use market_reconciled as the publish mode
+
+---
+
+## What is NOT a limitation
+
+These items are working correctly:
+
+- BDL real data ingestion (2018, 2022, 2026) ✅
+- June 11 opening day: Mexico vs South Africa AND South Korea vs Czechia ✅
+- Three publish modes (pure_model, market_implied, market_reconciled) ✅
+- Market anchor: Mexico HW=67.5% (market) published, not 23.5% (pure model) ✅
+- All markets derived from the single joint PMF ✅
+- PMF sums to 1.0 ✅
+- Tail mass explicit ✅
+- Correct-score odds parsed (5,047 rows) and used in reconciliation ✅
+- Temperature calibration now fitted (not defaulting to T=1.0 everywhere) ✅
+- Champion policy defined with 5 explicit champion tiers ✅
+- Walk-forward OOF (no data leakage) ✅

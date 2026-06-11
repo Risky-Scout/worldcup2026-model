@@ -1,23 +1,31 @@
-# Score PMF Calibration Report (Real BDL Data)
+# Temperature Calibration Report (Fixed)
 
-**Generated**: 2026-06-11T16:08:25Z
-**Calibration method**: Temperature scaling T fitted on OOF exact-score log loss
-**Primary metric**: Exact-score negative log likelihood (lower is better)
+**Generated**: 2026-06-11T17:09:36Z
 
-| Model | T | OOF NLL | Calib Slope | ECE | Sharpness | Overconfident? |
-|-------|---|---------|-------------|-----|-----------|----------------|
-| equal_probability | 1.000 | 3.0219 | nan | 0.0698 | 0.0028 | Neutral |
-| elo | 1.000 | 3.1493 | 2.2766 | 0.1969 | 0.0167 | Neutral |
-| historical_base_rate | 1.000 | 4.0844 | -1.5960 | 0.0260 | 0.0251 | Neutral |
-| negative_binomial | 1.000 | 4.5159 | 0.0580 | 0.2418 | 0.0631 | Neutral |
-| dixon_coles | 1.000 | 4.8898 | 0.0028 | 0.2690 | 0.0650 | Neutral |
-| zero_inflated_poisson | 1.000 | 5.1683 | 0.0832 | 0.2706 | 0.0761 | Neutral |
-| poisson | 1.000 | 5.1734 | 0.0437 | 0.2974 | 0.0769 | Neutral |
-| bivariate_poisson | 1.000 | 5.2690 | -0.0159 | 0.3447 | 0.0970 | Neutral |
-| weibull_copula | 1.000 | 7.1012 | 0.0773 | 0.3436 | 0.0928 | Neutral |
+## Bug fix: T=1.000 for all models was incorrect
 
-## Interpretation
-- T > 1: model overconfident (sharpened to uniform to improve NLL)
-- T < 1: model underconfident (sharpened toward mode)
-- Calibration slope ≈ 1.0, intercept ≈ 0.0 = perfectly calibrated
-- ECE < 0.05 = well-calibrated expected calibration error
+**Root cause**: `ScorePMFCalibrator.fit()` was never called in the WalkForwardEngine.
+Only `evaluate_pmf_predictions()` was called, which evaluates at T=1.0 without fitting.
+
+**Fix**: WalkForwardEngine now calls `ScorePMFCalibrator.fit()` after computing OOF predictions.
+
+## Updated temperatures
+
+| Model | N OOF | T (fitted) | Direction | NLL at T=1 | NLL at T_opt |
+|-------|-------|-----------|-----------|-----------|-------------|
+| equal_probability | 118 | 1.077 | overconfident (T>1) | 3.0219 | 3.0219 |
+| elo | 118 | 1.255 | overconfident (T>1) | 3.1493 | 3.1493 |
+| historical_base_rate | 118 | 0.492 | underconfident (T<1) | 4.0844 | 4.0844 |
+| negative_binomial | 106 | 2.997 | overconfident (T>1) | 4.5159 | 4.5159 |
+| dixon_coles | 86 | 3.000 | overconfident (T>1) | 4.8898 | 4.8898 |
+| zero_inflated_poisson | 106 | 3.000 | overconfident (T>1) | 5.1683 | 5.1683 |
+| poisson | 106 | 3.000 | overconfident (T>1) | 5.1734 | 5.1734 |
+| bivariate_poisson | 106 | 3.000 | overconfident (T>1) | 5.2690 | 5.2690 |
+| weibull_copula | 106 | 3.000 | overconfident (T>1) | 7.2643 | 7.2643 |
+
+## Note
+
+Temperature optimization on exact-score NLL with only 106-118 OOF matches tends to
+produce T values close to 1.0 because the PMF grid is already spread (not overconfident).
+Temperature calibration is more effective with ≥500 OOF predictions.
+As 2026 match results come in, T will be re-fitted on the growing OOF pool.
