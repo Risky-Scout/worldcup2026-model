@@ -106,6 +106,14 @@ class DatasetBuilder:
         odds_df = self._flatten_odds(odds)
         write_table("odds", odds_df, self._data_version)
 
+        # ── 6b. Markets sub-array (correct_score, BTTS, spread, DC, DNB, totals) ──
+        markets_df = self._flatten_markets(raw_odds)
+        write_table("markets", markets_df, self._data_version)
+        correct_score_df = markets_df[markets_df["market_type"] == "correct_score"].copy() if not markets_df.empty else pd.DataFrame()
+        write_table("correct_score_odds", correct_score_df, self._data_version)
+        n_cs = len(correct_score_df)
+        log.info("Markets table: %d rows. Correct-score rows: %d", len(markets_df), n_cs)
+
         # ── 7. Group standings ──────────────────────────────────────────
         raw_gs = self._provider.fetch_group_standings(seasons)
         gs_df = pd.DataFrame(raw_gs) if raw_gs else pd.DataFrame()
@@ -124,6 +132,8 @@ class DatasetBuilder:
             "events": events_df,
             "momentum": mom_df,
             "odds": odds_df,
+            "markets": markets_df,
+            "correct_score_odds": correct_score_df,
             "group_standings": gs_df,
             "team_form": form_df,
         }
@@ -270,6 +280,70 @@ class DatasetBuilder:
                 "updated_at": o.updated_at,
             })
         return pd.DataFrame(rows)
+
+    def _flatten_markets(self, raw_odds: list[dict]) -> pd.DataFrame:
+        """
+        Parse the nested markets[] sub-array from BDL odds records.
+
+        Produces one row per (match_id, vendor, market_type, period, outcome).
+        Captures: correct_score (type=correct_score), btts, spread, double_chance,
+        draw_no_bet, and per-line totals.
+        """
+        rows = []
+        for raw in raw_odds:
+            match_id = raw.get("match_id")
+            vendor = raw.get("vendor", "unknown")
+            updated_at = raw.get("updated_at")
+            for mkt in raw.get("markets", []):
+                mkt_type = mkt.get("type", "")
+                mkt_name = mkt.get("name", "")
+                mkt_period = mkt.get("period", "match")
+                mkt_scope = mkt.get("scope", "match")
+                line_value = mkt.get("line_value")
+
+                if mkt_period != "match":
+                    continue  # Skip first-half, second-half markets for now
+
+                for oc in mkt.get("outcomes", []):
+                    oc_name = oc.get("name", "")
+                    oc_type = oc.get("type", "")
+                    american = oc.get("american_odds")
+                    decimal = oc.get("decimal_odds")
+                    oc_line = oc.get("line_value")
+
+                    # Parse correct score: name like "1-0", "2-1"
+                    h_goals, a_goals = None, None
+                    if mkt_type == "correct_score" and oc_type == "score":
+                        parts = oc_name.strip().split("-")
+                        if len(parts) == 2:
+                            try:
+                                h_goals = int(parts[0])
+                                a_goals = int(parts[1])
+                            except (ValueError, TypeError):
+                                pass
+
+                    rows.append({
+                        "match_id": match_id,
+                        "vendor": vendor,
+                        "market_type": mkt_type,
+                        "market_name": mkt_name,
+                        "period": mkt_period,
+                        "scope": mkt_scope,
+                        "line_value": line_value,
+                        "outcome_name": oc_name,
+                        "outcome_type": oc_type,
+                        "outcome_line": oc_line,
+                        "american_odds": american,
+                        "decimal_odds": decimal,
+                        "h_goals": h_goals,
+                        "a_goals": a_goals,
+                        "updated_at": updated_at,
+                    })
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows)
+        df["match_id"] = pd.to_numeric(df["match_id"], errors="coerce").astype("Int64")
+        return df
 
 
 # ---------------------------------------------------------------------------

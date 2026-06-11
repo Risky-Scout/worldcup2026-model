@@ -1,19 +1,16 @@
-# Model Benchmark Table
+# Model Benchmark Table (Real BDL Data)
 
-**Source**: Walk-forward OOF backtest on synthetic WC-scale data (128 matches, 2018+2022 structure)
-**Note**: Replace with `make backtest` on real BDL data for production metrics.
+**Generated**: 2026-06-11T16:08:25Z
+**Source**: Walk-forward OOF on 2018+2022 BDL data
 
-| Model | N OOF | Exact-Score NLL | 1X2 RPS | 1X2 Brier | ECE | Calib Slope |
-|-------|-------|----------------|---------|-----------|-----|-------------|
-| equal_probability              |   113 |         3.3452 |  0.1565 |    0.6559 | 0.0096 |         nan |
-| elo                            |   113 |         3.4529 |  0.1673 |    0.6878 | 0.1391 |      1.7895 |
-| historical_base_rate           |   113 |         4.3856 |  0.1602 |    0.6876 | 0.0749 |     -6.3169 |
-| negative_binomial              |   102 |         4.5707 |  0.1851 |    0.7554 | 0.1994 |      0.3320 |
-| dixon_coles                    |    60 |         4.8106 |  0.2047 |    0.8067 | 0.2566 |      0.0898 |
-| poisson                        |   102 |         5.2134 |  0.2059 |    0.8275 | 0.2629 |      0.1938 |
-
-## Notes
-- Metrics are computed on OUT-OF-FOLD predictions only (no training data)
-- Champion model selected by lowest Exact-Score NLL
-- Bayesian models excluded from this run (use `--include-bayesian` to include)
-- Market-implied model not run (requires BDL_API_KEY)
+| Rank | Model | N | NLL | vs. Baseline | RPS | Brier | ECE | Calib Slope |
+|------|-------|---|-----|-------------|-----|-------|-----|-------------|
+| 1 | equal_probability | 118 | 3.0219 |  | 0.1588 | 0.6497 | 0.0698 | nan |
+| 2 | elo | 118 | 3.1493 | +0.1275 | 0.1782 | 0.7073 | 0.1969 | 2.2766 |
+| 3 | historical_base_rate | 118 | 4.0844 |  | 0.1615 | 0.6734 | 0.0260 | -1.5960 |
+| 4 | negative_binomial | 106 | 4.5159 | +1.4940 | 0.1967 | 0.7914 | 0.2418 | 0.0580 |
+| 5 | dixon_coles | 86 | 4.8898 | +1.8679 | 0.2000 | 0.8257 | 0.2690 | 0.0028 |
+| 6 | zero_inflated_poisson | 106 | 5.1683 | +2.1465 | 0.2057 | 0.8407 | 0.2706 | 0.0832 |
+| 7 | poisson | 106 | 5.1734 | +2.1515 | 0.2058 | 0.8440 | 0.2974 | 0.0437 |
+| 8 | bivariate_poisson | 106 | 5.2690 | +2.2471 | 0.2237 | 0.8959 | 0.3447 | -0.0159 |
+| 9 | weibull_copula | 106 | 7.1012 | +4.0793 | 0.2217 | 0.8691 | 0.3436 | 0.0773 |

@@ -798,3 +798,20 @@ def from_lambdas(
                                    max_goals=max_goals - 1)
     return FiniteGridPMF(fpg, model_name=model_name, rho=rho,
                          published_max_goals=max_goals)
+
+
+def from_numpy_grid(
+    grid: np.ndarray,
+    lambda_home: float,
+    lambda_away: float,
+    model_name: str = "elo_fallback",
+    max_goals: int = PMF_MAX_GOALS,
+) -> FiniteGridPMF:
+    """Build a FiniteGridPMF from a numpy probability grid + expected goals."""
+    fpg = FootballProbabilityGrid(
+        goal_matrix=grid,
+        home_goal_expectation=lambda_home,
+        away_goal_expectation=lambda_away,
+        normalize=True,
+    )
+    return FiniteGridPMF(fpg, model_name=model_name, published_max_goals=max_goals)

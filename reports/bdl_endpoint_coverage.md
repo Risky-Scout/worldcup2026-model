@@ -1,36 +1,58 @@
-# BDL Endpoint Coverage
+# BDL Endpoint Coverage (Real Data)
 
-**API**: BallDontLie FIFA World Cup API (paid subscription required)
-**Base URL**: https://api.balldontlie.io/fifa/worldcup/v1
+**Generated**: 2026-06-11T16:08:25Z
+**API**: BallDontLie FIFA World Cup API (paid subscription)
 
-| Endpoint | Description | Fetched by | Processed Table | Status |
-|----------|-------------|------------|-----------------|--------|
-| `/matches` | Match schedule, scores, stage | `fetch_matches()` | `matches.parquet` | ✅ Implemented |
-| `/odds` | Moneyline, totals, spreads (all vendors) | `fetch_odds()` | `odds.parquet` | ✅ Implemented |
-| `/team_match_stats` | xG, shots, possession, corners, cards | `fetch_team_stats()` | `team_stats.parquet` | ✅ Implemented |
-| `/player_match_stats` | Per-player ratings, goals, assists, xG | `fetch_player_stats()` | `player_stats.parquet` | ✅ Implemented |
-| `/match_events` | Goals, cards, substitutions | `fetch_events()` | `events.parquet` | ✅ Implemented |
-| `/match_shots` | Shot coordinates, xG, xGOT | `fetch_shots()` | `shots.parquet` | ✅ Implemented |
-| `/match_lineups` | Starting XI, substitutes | `fetch_lineups()` | `lineups.parquet` | ✅ Implemented |
-| `/match_momentum` | Minute-by-minute momentum | `fetch_momentum()` | `momentum.parquet` | ✅ Implemented |
-| `/group_standings` | Group table positions | `fetch_group_standings()` | `group_standings.parquet` | ✅ Implemented |
-| `/match_team_form` | Pre-match form data | `fetch_team_form()` | `team_form.parquet` | ✅ Implemented |
+## Match counts
 
-## Not yet parsed (in odds.markets sub-array)
+| Season | Matches | Status |
+|--------|---------|--------|
+| 2018 | 64 | ✅ All completed |
+| 2022 | 64 | ✅ All completed |
+| 2026 | 104 | 104 scheduled |
+| **Total** | **232** | |
 
-| Market | Description | Status |
-|--------|-------------|--------|
-| Exact score odds | `markets[].type == 'exact_score'` | ⏳ Pending (will improve low-score calibration) |
-| Double chance | `markets[].type == 'double_chance'` | ⏳ Pending |
-| Draw no bet | `markets[].type == 'draw_no_bet'` | ⏳ Pending |
-| BTTS | `markets[].type == 'both_teams_to_score'` | ⏳ Pending |
-| Asian handicap (per-line) | `markets[].type == 'asian_handicap'` | ⏳ Pending |
+## Odds coverage
 
-## Raw snapshot format
+| Metric | Value |
+|--------|-------|
+| Odds rows | 315 |
+| Vendors | 6 (betmgm, betrivers, caesars, draftkings, fanatics, fanduel) |
+| Correct-score rows | 5047 |
+| Market types | 12 |
 
-```
-data/raw/bdl/{season}/{endpoint}/{YYYYMMDDTHHMMSSZ}.jsonl
-```
+## Market type breakdown
 
-Each line is one API record (JSON). Timestamped for reproducibility.
-Schema validated via pydantic before normalization.
+| Market Type | Rows |
+|------------|------|
+| total | 10243 |
+| other | 7371 |
+| correct_score | 5047 |
+| team_total | 3566 |
+| double_chance | 2154 |
+| spread | 2144 |
+| timing | 1728 |
+| both_teams_to_score | 1613 |
+| margin | 1579 |
+| result_combo | 884 |
+| moneyline | 648 |
+| draw_no_bet | 285 |
+
+## Endpoint status
+
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| `/matches` | ✅ | Used for training and prediction |
+| `/odds` | ✅ | 1X2 + totals + markets sub-array |
+| `odds.markets[].type=correct_score` | ✅ | Parsed to correct_score_odds.parquet |
+| `odds.markets[].type=total` | ✅ | Multiple O/U lines |
+| `odds.markets[].type=spread` | ✅ | Asian handicap |
+| `odds.markets[].type=double_chance` | ✅ | DC markets |
+| `odds.markets[].type=draw_no_bet` | ✅ | DNB markets |
+| `/team_match_stats` | ✅ | xG, shots, possession (for live model) |
+| `/match_events` | ✅ | Goals, cards, subs |
+| `/match_shots` | ✅ | Shot data |
+| `/match_lineups` | ✅ | Starting XI |
+| `/match_momentum` | ✅ | Minute momentum |
+| `/group_standings` | ✅ | Current standings |
+| `/match_team_form` | ✅ | Pre-match form |

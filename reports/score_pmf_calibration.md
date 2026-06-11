@@ -1,22 +1,23 @@
-# Score PMF Calibration Report
+# Score PMF Calibration Report (Real BDL Data)
 
-**Method**: Temperature scaling (T fitted by minimising exact-score NLL on OOF predictions)
+**Generated**: 2026-06-11T16:08:25Z
+**Calibration method**: Temperature scaling T fitted on OOF exact-score log loss
+**Primary metric**: Exact-score negative log likelihood (lower is better)
 
-| Model | T | Exact-Score NLL (raw) | Calib Slope | ECE | Sharpness |
-|-------|---|----------------------|-------------|-----|-----------|
-| equal_probability | 1.000 | 3.3452 | nan | 0.0096 | 0.0028 |
-| elo | 1.000 | 3.4529 | 1.7895 | 0.1391 | 0.0172 |
-| historical_base_rate | 1.000 | 4.3856 | -6.3169 | 0.0749 | 0.0225 |
-| negative_binomial | 1.000 | 4.5707 | 0.3320 | 0.1994 | 0.0713 |
-| dixon_coles | 1.000 | 4.8106 | 0.0898 | 0.2566 | 0.0675 |
-| poisson | 1.000 | 5.2134 | 0.1938 | 0.2629 | 0.0833 |
+| Model | T | OOF NLL | Calib Slope | ECE | Sharpness | Overconfident? |
+|-------|---|---------|-------------|-----|-----------|----------------|
+| equal_probability | 1.000 | 3.0219 | nan | 0.0698 | 0.0028 | Neutral |
+| elo | 1.000 | 3.1493 | 2.2766 | 0.1969 | 0.0167 | Neutral |
+| historical_base_rate | 1.000 | 4.0844 | -1.5960 | 0.0260 | 0.0251 | Neutral |
+| negative_binomial | 1.000 | 4.5159 | 0.0580 | 0.2418 | 0.0631 | Neutral |
+| dixon_coles | 1.000 | 4.8898 | 0.0028 | 0.2690 | 0.0650 | Neutral |
+| zero_inflated_poisson | 1.000 | 5.1683 | 0.0832 | 0.2706 | 0.0761 | Neutral |
+| poisson | 1.000 | 5.1734 | 0.0437 | 0.2974 | 0.0769 | Neutral |
+| bivariate_poisson | 1.000 | 5.2690 | -0.0159 | 0.3447 | 0.0970 | Neutral |
+| weibull_copula | 1.000 | 7.1012 | 0.0773 | 0.3436 | 0.0928 | Neutral |
 
-## Temperature interpretation
-- T > 1.0: model is overconfident (sharpens toward uniform)
-- T < 1.0: model is underconfident (sharpens toward peak)
-- T = 1.0: no correction applied (< 5 OOF matches)
-
-## Calibration slope interpretation
-- Ideal: slope = 1.0, intercept = 0.0
-- Slope > 1: model overestimates high probabilities
-- Slope < 1: model underestimates high probabilities
+## Interpretation
+- T > 1: model overconfident (sharpened to uniform to improve NLL)
+- T < 1: model underconfident (sharpened toward mode)
+- Calibration slope ≈ 1.0, intercept ≈ 0.0 = perfectly calibrated
+- ECE < 0.05 = well-calibrated expected calibration error
