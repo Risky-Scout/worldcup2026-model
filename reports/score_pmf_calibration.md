@@ -1,6 +1,6 @@
 # Temperature Calibration Report (Fixed)
 
-**Generated**: 2026-06-11T17:09:36Z
+**Generated**: 2026-06-11T20:06:56Z
 
 ## Bug fix: T=1.000 for all models was incorrect
 
@@ -21,7 +21,7 @@ Only `evaluate_pmf_predictions()` was called, which evaluates at T=1.0 without f
 | zero_inflated_poisson | 106 | 3.000 | overconfident (T>1) | 5.1683 | 5.1683 |
 | poisson | 106 | 3.000 | overconfident (T>1) | 5.1734 | 5.1734 |
 | bivariate_poisson | 106 | 3.000 | overconfident (T>1) | 5.2690 | 5.2690 |
-| weibull_copula | 106 | 3.000 | overconfident (T>1) | 7.2643 | 7.2643 |
+| weibull_copula | 106 | 3.000 | overconfident (T>1) | 7.1914 | 7.1914 |
 
 ## Note
 

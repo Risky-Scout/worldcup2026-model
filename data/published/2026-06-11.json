@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-11T17:09:36Z",
+  "generated_at": "2026-06-11T20:06:56Z",
   "date": "2026-06-11",
   "date_timezone": "US/Eastern (UTC-4)",
   "data_source": "balldontlie_api_v1",
@@ -20,10 +20,38 @@
       "match_date_et": "2026-06-11",
       "status": "scheduled",
       "publish_mode": "market_reconciled",
-      "publish_champion": "market_reconciled(elo_prior_blend)",
-      "pure_model_used": "elo_prior_blend",
+      "composite_model_used": "composite_rating_pmf",
+      "composite_sources": "market_implied+penaltyblog_pi+penaltyblog_elo",
+      "pure_parametric_model": null,
       "market_blend_alpha": 0.85,
       "market_quality": 0.829,
+      "home_prior": {
+        "final_attack": 1.6299,
+        "final_defense": 0.8635,
+        "market_implied_attack": 1.6578,
+        "n_market_matches": 3,
+        "uncertainty": "LOW",
+        "sources": [
+          "market_implied",
+          "penaltyblog_pi",
+          "penaltyblog_elo",
+          "massey",
+          "confederation",
+          "host_bonus"
+        ]
+      },
+      "away_prior": {
+        "final_attack": 0.9181,
+        "final_defense": 1.5046,
+        "market_implied_attack": 0.8144,
+        "n_market_matches": 3,
+        "uncertainty": "MEDIUM",
+        "sources": [
+          "market_implied",
+          "penaltyblog_elo",
+          "confederation"
+        ]
+      },
       "n_vendors_1x2": 6,
       "n_correct_score_outcomes": 24,
       "n_cs_vendors": 1,
@@ -33,7 +61,9 @@
         "extra_time_excluded": true,
         "penalty_shootout_excluded": true,
         "prediction_mode": "market_reconciled",
-        "pure_model": "elo_prior_blend",
+        "composite_model": "composite_rating_pmf",
+        "composite_sources": "market_implied+penaltyblog_pi+penaltyblog_elo",
+        "pure_parametric_model": null,
         "odds_used": true,
         "odds_timestamp": "2026-06-11T16:00:07.994Z",
         "lineups_known": false,
@@ -423,29 +453,52 @@
             "probability": 0.0
           }
         ],
-        "pure_model_markets": {
-          "home_win": 0.23358,
-          "draw": 0.28798,
-          "away_win": 0.47844,
-          "btts_yes": 0.44348,
-          "btts_no": 0.55652,
-          "over_0.5": 0.88886,
-          "under_0.5": 0.11114,
-          "over_1.5": 0.66634,
-          "under_1.5": 0.33366,
-          "over_2.5": 0.39306,
-          "under_2.5": 0.60694,
-          "over_3.5": 0.19223,
-          "under_3.5": 0.80777,
-          "over_4.5": 0.07891,
-          "under_4.5": 0.92109,
-          "over_5.5": 0.02776,
-          "under_5.5": 0.97224,
-          "over_6.5": 0.00852,
-          "under_6.5": 0.99148
+        "composite_rating_markets": {
+          "home_win": 0.37319,
+          "draw": 0.26523,
+          "away_win": 0.36158,
+          "btts_yes": 0.57178,
+          "btts_no": 0.42822,
+          "over_0.5": 0.93263,
+          "under_0.5": 0.06737,
+          "over_1.5": 0.77327,
+          "under_1.5": 0.22673,
+          "over_2.5": 0.52827,
+          "under_2.5": 0.47173,
+          "over_3.5": 0.30594,
+          "under_3.5": 0.69406,
+          "over_4.5": 0.15084,
+          "under_4.5": 0.84916,
+          "over_5.5": 0.06428,
+          "under_5.5": 0.93572,
+          "over_6.5": 0.02402,
+          "under_6.5": 0.97598
         },
-        "pure_model_expected_home_goals": 0.8739,
-        "pure_model_expected_away_goals": 1.3831,
+        "composite_expected_home_goals": 1.4083,
+        "composite_expected_away_goals": 1.3822,
+        "pure_model_markets": {
+          "home_win": 0.37319,
+          "draw": 0.26523,
+          "away_win": 0.36158,
+          "btts_yes": 0.57178,
+          "btts_no": 0.42822,
+          "over_0.5": 0.93263,
+          "under_0.5": 0.06737,
+          "over_1.5": 0.77327,
+          "under_1.5": 0.22673,
+          "over_2.5": 0.52827,
+          "under_2.5": 0.47173,
+          "over_3.5": 0.30594,
+          "under_3.5": 0.69406,
+          "over_4.5": 0.15084,
+          "under_4.5": 0.84916,
+          "over_5.5": 0.06428,
+          "under_5.5": 0.93572,
+          "over_6.5": 0.02402,
+          "under_6.5": 0.97598
+        },
+        "pure_model_expected_home_goals": 1.4083,
+        "pure_model_expected_away_goals": 1.3822,
         "market_implied_markets": {
           "home_win": 0.67508,
           "draw": 0.21113,
@@ -495,14 +548,17 @@
           "3-3": 0.004624,
           "0-3": 0.004624
         },
-        "model_vs_market_differences": {
-          "home_win": -0.4415,
-          "draw": 0.0768,
-          "away_win": 0.3647
+        "composite_vs_market_differences": {
+          "home_win": -0.3019,
+          "draw": 0.0541,
+          "away_win": 0.2478
         },
-        "warnings": [
-          "new_team_prior_blend(home=Mexico,away=South Africa)"
-        ],
+        "model_vs_market_differences": {
+          "home_win": -0.3019,
+          "draw": 0.0541,
+          "away_win": 0.2478
+        },
+        "warnings": [],
         "consistency_errors": []
       }
     },
@@ -516,10 +572,37 @@
       "match_date_et": "2026-06-11",
       "status": "scheduled",
       "publish_mode": "market_reconciled",
-      "publish_champion": "market_reconciled(elo_prior_blend)",
-      "pure_model_used": "elo_prior_blend",
+      "composite_model_used": "composite_rating_pmf",
+      "composite_sources": "market_implied+penaltyblog_pi+penaltyblog_elo",
+      "pure_parametric_model": null,
       "market_blend_alpha": 0.85,
       "market_quality": 0.829,
+      "home_prior": {
+        "final_attack": 1.2399,
+        "final_defense": 1.2468,
+        "market_implied_attack": 1.1907,
+        "n_market_matches": 3,
+        "uncertainty": "LOW",
+        "sources": [
+          "market_implied",
+          "penaltyblog_pi",
+          "penaltyblog_elo",
+          "massey",
+          "confederation"
+        ]
+      },
+      "away_prior": {
+        "final_attack": 1.2096,
+        "final_defense": 1.2409,
+        "market_implied_attack": 1.1558,
+        "n_market_matches": 3,
+        "uncertainty": "MEDIUM",
+        "sources": [
+          "market_implied",
+          "penaltyblog_elo",
+          "confederation"
+        ]
+      },
       "n_vendors_1x2": 6,
       "n_correct_score_outcomes": 24,
       "n_cs_vendors": 1,
@@ -529,7 +612,9 @@
         "extra_time_excluded": true,
         "penalty_shootout_excluded": true,
         "prediction_mode": "market_reconciled",
-        "pure_model": "elo_prior_blend",
+        "composite_model": "composite_rating_pmf",
+        "composite_sources": "market_implied+penaltyblog_pi+penaltyblog_elo",
+        "pure_parametric_model": null,
         "odds_used": true,
         "odds_timestamp": "2026-06-11T16:00:07.994Z",
         "lineups_known": false,
@@ -919,29 +1004,52 @@
             "probability": 0.0
           }
         ],
-        "pure_model_markets": {
-          "home_win": 0.26488,
-          "draw": 0.27056,
-          "away_win": 0.46457,
-          "btts_yes": 0.51683,
-          "btts_no": 0.48317,
-          "over_0.5": 0.91738,
-          "under_0.5": 0.08262,
-          "over_1.5": 0.73373,
-          "under_1.5": 0.26627,
-          "over_2.5": 0.47474,
-          "under_2.5": 0.52526,
-          "over_3.5": 0.258,
-          "under_3.5": 0.742,
-          "over_4.5": 0.11866,
-          "under_4.5": 0.88134,
-          "over_5.5": 0.047,
-          "under_5.5": 0.953,
-          "over_6.5": 0.01629,
-          "under_6.5": 0.98371
+        "composite_rating_markets": {
+          "home_win": 0.36926,
+          "draw": 0.27891,
+          "away_win": 0.35183,
+          "btts_yes": 0.5275,
+          "btts_no": 0.4725,
+          "over_0.5": 0.91638,
+          "under_0.5": 0.08362,
+          "over_1.5": 0.73116,
+          "under_1.5": 0.26884,
+          "over_2.5": 0.47153,
+          "under_2.5": 0.52847,
+          "over_3.5": 0.25536,
+          "under_3.5": 0.74464,
+          "over_4.5": 0.117,
+          "under_4.5": 0.883,
+          "over_5.5": 0.04616,
+          "under_5.5": 0.95384,
+          "over_6.5": 0.01593,
+          "under_6.5": 0.98407
         },
-        "pure_model_expected_home_goals": 1.0675,
-        "pure_model_expected_away_goals": 1.504,
+        "composite_expected_home_goals": 1.299,
+        "composite_expected_away_goals": 1.2612,
+        "pure_model_markets": {
+          "home_win": 0.36926,
+          "draw": 0.27891,
+          "away_win": 0.35183,
+          "btts_yes": 0.5275,
+          "btts_no": 0.4725,
+          "over_0.5": 0.91638,
+          "under_0.5": 0.08362,
+          "over_1.5": 0.73116,
+          "under_1.5": 0.26884,
+          "over_2.5": 0.47153,
+          "under_2.5": 0.52847,
+          "over_3.5": 0.25536,
+          "under_3.5": 0.74464,
+          "over_4.5": 0.117,
+          "under_4.5": 0.883,
+          "over_5.5": 0.04616,
+          "under_5.5": 0.95384,
+          "over_6.5": 0.01593,
+          "under_6.5": 0.98407
+        },
+        "pure_model_expected_home_goals": 1.299,
+        "pure_model_expected_away_goals": 1.2612,
         "market_implied_markets": {
           "home_win": 0.36171,
           "draw": 0.31403,
@@ -991,14 +1099,17 @@
           "4-3": 0.004019,
           "3-4": 0.004019
         },
-        "model_vs_market_differences": {
-          "home_win": -0.0968,
-          "draw": -0.0435,
-          "away_win": 0.1403
+        "composite_vs_market_differences": {
+          "home_win": 0.0075,
+          "draw": -0.0351,
+          "away_win": 0.0276
         },
-        "warnings": [
-          "new_team_prior_blend(home=South Korea,away=Czechia)"
-        ],
+        "model_vs_market_differences": {
+          "home_win": 0.0075,
+          "draw": -0.0351,
+          "away_win": 0.0276
+        },
+        "warnings": [],
         "consistency_errors": []
       }
     }

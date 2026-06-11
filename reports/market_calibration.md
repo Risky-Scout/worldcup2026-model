@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-06-11T17:09:36Z
+**Generated**: 2026-06-11T20:06:56Z
 
 ## Publish mode distribution
 
@@ -34,7 +34,7 @@ fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| pure_model (elo_prior_blend) | 0.23358 | 0.28798 | 0.47844 | 0.39306 | 0.8739 | 1.3831 |
+| composite (composite_rating_pmf) | 0.37319 | 0.26523 | 0.36158 | ? | 1.4083 | 1.3822 |
 | market_implied | 0.67508 | 0.21113 | 0.11378 | 0.44026 | 1.8413 | 0.5973 |
 | **market_reconciled (PUBLISHED)** | **0.67508** | **0.21113** | **0.11378** | **?** | **1.8987** | **0.781** |
 
@@ -42,6 +42,6 @@ fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| pure_model (elo_prior_blend) | 0.26488 | 0.27056 | 0.46457 | 0.47474 | 1.0675 | 1.504 |
+| composite (composite_rating_pmf) | 0.36926 | 0.27891 | 0.35183 | ? | 1.299 | 1.2612 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | 0.42274 | 1.2253 | 1.1459 |
 | **market_reconciled (PUBLISHED)** | **0.36172** | **0.31401** | **0.32426** | **?** | **1.1356** | **1.4235** |
