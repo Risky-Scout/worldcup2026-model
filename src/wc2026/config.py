@@ -42,9 +42,9 @@ BDL_REQ_DELAY = 0.15  # seconds between requests (400 req/min < 600 GOAT limit)
 # --------------------------------------------------------------------------
 # Model defaults
 # --------------------------------------------------------------------------
-DC_WEIGHT_XI: float = 0.0038  # ≈ log(2)/180 days half-life
-PMF_MAX_GOALS: int = 10       # default grid size; explicit tail mass beyond this
-TAIL_WARN_THRESHOLD: float = 0.02  # warn if tail mass exceeds 2%
+DC_WEIGHT_XI: float = 0.0018  # penaltyblog default xi (≈ 1-year half-life for WC data)
+PMF_MAX_GOALS: int = 15       # penaltyblog default grid size; tail mass is tiny at 15
+TAIL_WARN_THRESHOLD: float = 0.005  # warn if tail mass exceeds 0.5% (at max_goals=15)
 
 # --------------------------------------------------------------------------
 # Calibration
