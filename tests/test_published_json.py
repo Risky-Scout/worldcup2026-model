@@ -297,6 +297,150 @@ class TestPublishedMatchPMF:
         )
 
 
+class TestKnownArtifactRegression:
+    """
+    Hard regression tests for specific artifacts that appeared in commit 311bfb2.
+
+    These exact values must never reappear in any committed artifact.
+    The tests load the actual data/published/*.json files.
+    """
+
+    def _find_match(self, matches: list, home: str, away: str) -> dict | None:
+        for m in matches:
+            if m.get("home_team") == home and m.get("away_team") == away:
+                return m
+        return None
+
+    def _june11_matches(self) -> list:
+        p = PUBLISHED_DIR / "2026-06-11.json"
+        if not p.exists():
+            return []
+        with open(p) as f:
+            d = json.load(f)
+        return d.get("matches", []) if isinstance(d, dict) else d
+
+    def _all_matches(self) -> list:
+        p = PUBLISHED_DIR / "all_scheduled_2026.json"
+        if not p.exists():
+            return []
+        with open(p) as f:
+            d = json.load(f)
+        return d.get("matches", []) if isinstance(d, dict) else d
+
+    def test_mexico_sa_no_4_9_artifact(self):
+        """Regression: commit 311bfb2 had Mexico vs SA P(4-9)=0.025611. Must be gone."""
+        matches = self._june11_matches() or self._all_matches()
+        m = self._find_match(matches, "Mexico", "South Africa")
+        if not m:
+            pytest.skip("Mexico vs South Africa not found in published JSON")
+        pmf = _pmf_from_match(m.get("prediction", {}))
+        if pmf is None or pmf.shape[0] <= 9:
+            pytest.skip("PMF grid too small")
+        p_4_9 = float(pmf[4, 9])
+        assert p_4_9 < 1e-6, (
+            f"REGRESSION: Mexico vs SA P(4-9)={p_4_9:.8f} (was 0.025611 in 311bfb2). "
+            "This is an impossible score — SLSQP or reconciler artifact."
+        )
+
+    def test_mexico_sa_no_11_5_artifact(self):
+        """Regression: commit 311bfb2 had Mexico vs SA P(11-5)=0.016652. Must be gone."""
+        matches = self._june11_matches() or self._all_matches()
+        m = self._find_match(matches, "Mexico", "South Africa")
+        if not m:
+            pytest.skip("Mexico vs South Africa not found")
+        pmf = _pmf_from_match(m.get("prediction", {}))
+        if pmf is None or pmf.shape[0] <= 11:
+            pytest.skip("PMF grid too small")
+        p_11_5 = float(pmf[11, 5])
+        assert p_11_5 < 1e-6, (
+            f"REGRESSION: Mexico vs SA P(11-5)={p_11_5:.8f} (was 0.016652 in 311bfb2)."
+        )
+
+    def test_south_korea_czechia_no_1_12_artifact(self):
+        """Regression: commit 311bfb2 had South Korea vs Czechia P(1-12)=0.039826. Must be gone."""
+        matches = self._june11_matches() or self._all_matches()
+        m = self._find_match(matches, "South Korea", "Czechia")
+        if not m:
+            pytest.skip("South Korea vs Czechia not found")
+        pmf = _pmf_from_match(m.get("prediction", {}))
+        if pmf is None or pmf.shape[0] <= 12:
+            pytest.skip("PMF grid too small")
+        p_1_12 = float(pmf[1, 12])
+        assert p_1_12 < 1e-6, (
+            f"REGRESSION: South Korea vs Czechia P(1-12)={p_1_12:.8f} (was 0.039826 in 311bfb2)."
+        )
+
+    def test_tail_mass_exact_present_in_june11(self):
+        """tail_mass_exact must exist and be non-negative in June 11 predictions."""
+        matches = self._june11_matches()
+        if not matches:
+            pytest.skip("2026-06-11.json not found")
+        for m in matches:
+            pred = m.get("prediction", {})
+            home = m.get("home_team", "?")
+            away = m.get("away_team", "?")
+            assert "tail_mass_exact" in pred, (
+                f"{home} vs {away}: tail_mass_exact is MISSING from prediction. "
+                "Commit 311bfb2 had tail_mass=0.0 (old field name)."
+            )
+            val = pred["tail_mass_exact"]
+            assert val is not None and float(val) >= 0, (
+                f"{home} vs {away}: tail_mass_exact={val} is invalid"
+            )
+
+    def test_tail_mass_display_present_in_june11(self):
+        """tail_mass_display must be present."""
+        matches = self._june11_matches()
+        if not matches:
+            pytest.skip("2026-06-11.json not found")
+        for m in matches:
+            pred = m.get("prediction", {})
+            home = m.get("home_team", "?")
+            away = m.get("away_team", "?")
+            assert "tail_mass_display" in pred, (
+                f"{home} vs {away}: tail_mass_display is MISSING"
+            )
+
+    def test_no_stale_tail_mass_field(self):
+        """
+        The old field 'tail_mass: 0.0' (flat zero) must no longer appear.
+        The new correct fields are tail_mass_exact and tail_mass_display.
+        """
+        matches = self._june11_matches()
+        if not matches:
+            pytest.skip("2026-06-11.json not found")
+        for m in matches:
+            pred = m.get("prediction", {})
+            home = m.get("home_team", "?")
+            away = m.get("away_team", "?")
+            old_tail = pred.get("tail_mass")
+            # Old field must not exist OR not be exactly 0.0 (stale default)
+            if old_tail is not None:
+                assert old_tail != 0.0 or "tail_mass_exact" in pred, (
+                    f"{home} vs {away}: stale 'tail_mass=0.0' found with no tail_mass_exact. "
+                    "This is the old broken format from commit 311bfb2."
+                )
+
+    def test_reconciliation_method_in_june11(self):
+        """reconciliation_method must be present (proves new code path ran)."""
+        matches = self._june11_matches()
+        if not matches:
+            pytest.skip("2026-06-11.json not found")
+        for m in matches:
+            pred = m.get("prediction", {})
+            home = m.get("home_team", "?")
+            away = m.get("away_team", "?")
+            method = pred.get("reconciliation_method")
+            assert method is not None, (
+                f"{home} vs {away}: reconciliation_method is MISSING. "
+                "This field was added in 759c0ff. Its absence means the JSON "
+                "was generated by the old pipeline (311bfb2 or earlier)."
+            )
+            assert method in ("blend", "slsqp_core", "market_implied"), (
+                f"{home} vs {away}: unexpected reconciliation_method='{method}'"
+            )
+
+
 class TestCoreGridSLSQP:
     """Unit tests for CoreGridSLSQPReconciler."""
 

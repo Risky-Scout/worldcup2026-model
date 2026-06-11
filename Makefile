@@ -13,6 +13,7 @@ DATA_VERSION ?= v1
 .PHONY: help install install-dev test lint typecheck \
         fetch-bdl build-dataset train backtest calibrate \
         predict-date predict-match publish-today audit \
+        validate-published validate-live \
         clean all
 
 ##@@ Help
@@ -71,6 +72,18 @@ publish-today: ## Write today's predictions to data/published/
 ##@@ Quality / Audit
 audit: ## Run consistency and quality checks
 	$(WC2026) audit --data-version $(DATA_VERSION)
+
+validate-published: ## Validate all committed published JSON artifacts for PMF integrity
+	@echo "Running artifact validation tests against data/published/*.json ..."
+	$(PYTEST) tests/test_published_json.py -v --tb=short --no-cov \
+	    -k "TestPublishedMatchPMF" \
+	    && echo "✓ All published artifact tests PASSED" \
+	    || (echo "✗ ARTIFACT VALIDATION FAILED — published JSON has integrity violations" && exit 1)
+
+validate-live: ## Validate live replay (stub — live engine not yet implemented)
+	@echo "Live replay validation: NOT YET IMPLEMENTED"
+	@echo "Required: src/wc2026/live/ modules and data/predictions/live_replay_2022.parquet"
+	@exit 1
 
 ##@@ Cleanup
 clean: ## Remove compiled files and caches
