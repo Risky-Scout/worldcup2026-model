@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-06-11T22:04:47Z
+**Generated**: 2026-06-11T23:17:19Z
 
 ## Publish mode distribution
 
@@ -51,4 +51,4 @@ fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
 |------|----|----|-----|---------|----------|----------|
 | composite (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | 0.42274 | 1.2253 | 1.1459 |
-| **market_reconciled (PUBLISHED)** | **0.36949** | **0.29927** | **0.33124** | **?** | **1.2696** | **1.199** |
+| **market_reconciled (PUBLISHED)** | **0.36245** | **0.31256** | **0.32499** | **?** | **1.205** | **1.1288** |

@@ -693,38 +693,35 @@ def reconcile(
         result.publish_mode = "pure_model"
         return result
 
-    # ── 3. Stable linear blend ───────────────────────────────────────────
+    # ── 3. Run all reconciliation methods and select best ─────────────────
     try:
-        n = min(max_goals, pure_model_pmf.shape[0], mip.shape[0])
+        from .core_grid_reconcile import compare_reconciliation_methods
 
-        pm = pure_model_pmf[:n, :n].copy()
-        pm = np.clip(pm, 0, None)
-        pm_sum = pm.sum()
-        if pm_sum > _EPS:
-            pm /= pm_sum
+        comparison = compare_reconciliation_methods(
+            prior_pmf=pure_model_pmf,
+            mc=mc,
+            max_goals=max_goals,
+            blend_alpha=alpha,
+            cs_n_vendors=mc.n_cs_vendors,
+        )
 
-        mi = mip[:n, :n].copy()
-        mi = np.clip(mi, 0, None)
-        mi_sum = mi.sum()
-        if mi_sum > _EPS:
-            mi /= mi_sum
+        reconciled = comparison["best_pmf"]
+        best_method = comparison["best_method"]
+        method_scores = comparison["method_scores"]
 
-        reconciled = alpha * mi + (1.0 - alpha) * pm
-        reconciled = np.clip(reconciled, 0, None)
-        reconciled /= reconciled.sum()
+        # Attach comparison metadata for reporting
+        result._comparison = comparison
+        result._best_reconciliation_method = best_method
 
-        # ── 4. Gentle IPF for correct-score cells ────────────────────────
-        # CS alpha: 0.30 for single-vendor (low confidence), 0.50 for 2+ vendors
-        if mc.has_correct_score and mc.n_cs_outcomes >= 3:
-            cs_alpha = 0.30 if mc.n_cs_vendors <= 1 else 0.50
-            reconciled = apply_correct_score_adjustment(
-                reconciled, mc.correct_score,
-                alpha=cs_alpha,
-                max_goals=n,
+        if best_method != "blend":
+            log.info(
+                "CoreGrid SLSQP selected for %s v %s (slsqp_score=%.4f blend_score=%.4f)",
+                home_team, away_team,
+                method_scores.get("slsqp_core", float("inf")),
+                method_scores.get("blend", float("inf")),
             )
 
-        # ── 5. Sanity guard ──────────────────────────────────────────────
-        # Cap impossible cells before publishing
+        # ── Final sanity guard ────────────────────────────────────────────
         reconciled = _sanitize_pmf(reconciled, max_plausible_goals=8)
 
         result.market_reconciled_pmf = reconciled
@@ -733,7 +730,19 @@ def reconcile(
     except Exception as exc:
         log.warning("market_reconciled failed for %s v %s: %s", home_team, away_team, exc)
         result.warnings.append(f"reconciliation_failed: {exc}")
-        result.market_reconciled_pmf = mip
-        result.publish_mode = "market_implied"
+        # Fallback to safe blend
+        try:
+            n = min(max_goals, pure_model_pmf.shape[0], mip.shape[0])
+            pm = np.clip(pure_model_pmf[:n, :n], 0, None); pm /= pm.sum()
+            mi = np.clip(mip[:n, :n], 0, None); mi /= mi.sum()
+            reconciled = alpha * mi + (1.0 - alpha) * pm
+            reconciled /= reconciled.sum()
+            reconciled = _sanitize_pmf(reconciled)
+            result.market_reconciled_pmf = reconciled
+            result.publish_mode = "market_reconciled"
+            result.warnings.append("used_fallback_blend")
+        except Exception:
+            result.market_reconciled_pmf = mip
+            result.publish_mode = "market_implied"
 
     return result

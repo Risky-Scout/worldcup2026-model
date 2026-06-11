@@ -1,6 +1,6 @@
 # June 11, 2026 Opening Day Predictions
 
-**Generated**: 2026-06-11T22:04:47Z
+**Generated**: 2026-06-11T23:17:19Z
 **Date**: June 11, 2026 (US Eastern time)
 
 Both opening-day matches identified: Mexico vs South Africa AND South Korea vs Czechia.
@@ -49,14 +49,14 @@ Both opening-day matches identified: Mexico vs South Africa AND South Korea vs C
 |------|----------|------|----------|----------|-----------|-----------|
 | composite_rating (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | ? | 1.2253 | 1.1459 |
-| **PUBLISHED (reconciled)** | **0.36949** | **0.29927** | **0.33124** | **?** | **1.2696** | **1.199** |
+| **PUBLISHED (reconciled)** | **0.36245** | **0.31256** | **0.32499** | **?** | **1.205** | **1.1288** |
 
 ### Top scorelines (published PMF)
-- 1-1: 0.1410
-- 1-0: 0.1047
-- 0-1: 0.0984
-- 0-0: 0.0920
-- 2-1: 0.0832
+- 1-1: 0.1440
+- 0-0: 0.1075
+- 1-0: 0.1018
+- 0-1: 0.0961
+- 2-1: 0.0814
 
 ### Market correct-score probs (BDL no-vig)
 - 1-1: 0.1417
