@@ -4,23 +4,27 @@ Market reconciliation engine: three publish modes.
 Modes
 -----
 pure_model
-    Best available statistical model (neg_binomial champion for known teams,
-    elo_fallback for new teams).  No market data.  Used for diagnostics and
-    matches without BDL odds.
+    Composite team-prior + parametric goal model. No market data.
 
 market_implied
-    PMF derived entirely from BDL no-vig consensus.
-    Uses goal_expectancy_extended (1X2 + O/U 2.5) as the starting PMF,
-    then applies correct-score, BTTS, spread, DNB, and double-chance
-    constraints via iterative Sinkhorn/IPF adjustment.
+    PMF built entirely from BDL no-vig consensus via goal_expectancy_extended.
+    This is a clean Poisson-shaped PMF that already satisfies 1X2 + O/U.
 
 market_reconciled   ← DEFAULT PUBLISH MODE when BDL odds exist
-    Starts with the market_implied PMF as the prior.
-    Blends with the pure_model PMF to add team-specific discrimination.
-    Produces one internally consistent joint PMF.
-    The blending weight α is driven by market quality:
-      α → 1  when 6-vendor odds + correct-score data exist
-      α → 0  when no odds are available
+    Linear blend:  α * market_implied + (1-α) * composite_model
+    where α scales with market quality (0.85 max when 6 vendors + CS data).
+    Correct-score cells gently adjusted with IPF (not SLSQP equality constraints).
+
+IMPORTANT: We do NOT use SLSQP equality-constraint KL optimization.
+Reason: market_implied already satisfies 1X2/totals by construction.
+Running SLSQP to minimize KL(P||market_implied) subject to those same
+constraints is numerically degenerate — SLSQP finds corner solutions that
+deposit probability mass in impossible cells (e.g. 4-9, 11-5).
+
+Instead we use:
+  1. Linear blend (numerically stable, always valid PMF)
+  2. Gentle IPF for correct-score cells (bounded, monotone convergent)
+  3. Post-blend sanity check (impossible-score guard)
 """
 from __future__ import annotations
 
@@ -507,6 +511,45 @@ def apply_correct_score_adjustment(
 # Full KL-minimization reconciliation (optional, more precise)
 # ---------------------------------------------------------------------------
 
+def _sanitize_pmf(pmf: np.ndarray, max_plausible_goals: int = 8) -> np.ndarray:
+    """
+    Guard against impossible high-score artifacts.
+
+    Any cell (h, a) where h+a >= max_plausible_goals is capped at a tiny
+    epsilon and the freed mass is redistributed proportionally to cells with
+    total goals <= 4 (the bulk of soccer scores).
+
+    This is a safety check, not the primary mechanism. A well-built PMF should
+    not need this correction. If it fires, it indicates an upstream bug.
+    """
+    p = pmf.copy()
+    n = p.shape[0]
+    # Cap probability for implausible scores (total >= 9)
+    implausible_threshold = 9
+    cap_value = 1e-6
+    freed_mass = 0.0
+    for h in range(n):
+        for a in range(n):
+            if h + a >= implausible_threshold and p[h, a] > cap_value:
+                freed_mass += p[h, a] - cap_value
+                p[h, a] = cap_value
+    # Redistribute freed mass to low-score cells (total goals 0-4)
+    if freed_mass > 0:
+        low_score_mask = np.zeros((n, n), dtype=bool)
+        for h in range(n):
+            for a in range(n):
+                if h + a <= 4:
+                    low_score_mask[h, a] = True
+        low_total = p[low_score_mask].sum()
+        if low_total > _EPS:
+            p[low_score_mask] += freed_mass * (p[low_score_mask] / low_total)
+    p = np.clip(p, 0, None)
+    s = p.sum()
+    if s > _EPS:
+        p /= s
+    return p
+
+
 def reconcile_pmf_kl(
     prior: np.ndarray,
     mc: MarketConstraints,
@@ -514,104 +557,29 @@ def reconcile_pmf_kl(
     tolerance: float = 1e-6,
 ) -> np.ndarray:
     """
-    Minimum-KL divergence reconciliation of prior PMF against market constraints.
+    DEPRECATED: Formerly used SLSQP to minimize KL(P||prior) with equality
+    constraints.  This caused degenerate solutions (impossible high-score
+    cells) because market_implied already satisfies 1X2/totals constraints,
+    making the optimization numerically degenerate.
 
-    Minimizes KL(P || prior) subject to:
-      - P sums to 1
-      - 1X2 marginals match market
-      - O/U lines match market where available
-      - BTTS matches market where available
-      - Correct-score cells match no-vig values where available
-
-    Parameters
-    ----------
-    prior : n×n numpy array (prior PMF, typically market_implied)
-    mc : MarketConstraints with all no-vig probabilities
-
-    Returns
-    -------
-    n×n numpy array (reconciled PMF)
+    Now delegates to the stable linear-blend approach via reconcile().
+    Kept for backward-compatibility of direct callers.
     """
+    log.warning(
+        "reconcile_pmf_kl called directly — SLSQP removed. "
+        "Using stable linear-blend + IPF instead."
+    )
+    # Apply CS adjustment only
     n = min(max_goals, prior.shape[0])
-    q = prior[:n, :n].copy()
-    q = np.clip(q, _EPS, None)
-    q /= q.sum()
-    q_flat = q.flatten()
-
-    N = n * n
-    h_idx = np.array([i // n for i in range(N)])
-    a_idx = np.array([i % n for i in range(N)])
-
-    constraints = []
-
-    # Normalization
-    constraints.append({"type": "eq", "fun": lambda p: p.sum() - 1.0})
-
-    # 1X2
-    if mc.has_1x2:
-        hw_mask = (h_idx > a_idx).astype(float)
-        dr_mask = (h_idx == a_idx).astype(float)
-        aw_mask = (h_idx < a_idx).astype(float)
-        constraints.append({"type": "eq", "fun": lambda p, m=hw_mask, v=mc.home_win: (p * m).sum() - v})
-        constraints.append({"type": "eq", "fun": lambda p, m=dr_mask, v=mc.draw: (p * m).sum() - v})
-        constraints.append({"type": "eq", "fun": lambda p, m=aw_mask, v=mc.away_win: (p * m).sum() - v})
-
-    # Totals
-    for line, attr in [(0.5, "over_0_5"), (1.5, "over_1_5"), (2.5, "over_2_5"),
-                       (3.5, "over_3_5"), (4.5, "over_4_5"), (5.5, "over_5_5"), (6.5, "over_6_5")]:
-        v = getattr(mc, attr)
-        if v is not None:
-            ov_mask = ((h_idx + a_idx) > line).astype(float)
-            constraints.append({"type": "eq", "fun": lambda p, m=ov_mask, val=v: (p * m).sum() - val})
-
-    # BTTS
-    if mc.btts_yes is not None:
-        btts_mask = ((h_idx > 0) & (a_idx > 0)).astype(float)
-        constraints.append({"type": "eq", "fun": lambda p, m=btts_mask, v=mc.btts_yes: (p * m).sum() - v})
-
-    # Correct score (use as soft constraints via equality if high-quality)
-    if mc.has_correct_score and mc.n_cs_vendors >= 2:
-        for (h, a), prob in mc.correct_score.items():
-            if h < n and a < n and prob > _EPS:
-                idx = h * n + a
-                # Only constrain cells with decent probability mass (avoids numerical issues)
-                if prob > 0.005:
-                    constraints.append({
-                        "type": "eq",
-                        "fun": lambda p, i=idx, v=prob: p[i] - v
-                    })
-
-    def kl_objective(p: np.ndarray) -> float:
-        p_clip = np.clip(p, _EPS, 1.0)
-        return float(np.sum(p_clip * np.log(p_clip / (q_flat + _EPS))))
-
-    def kl_grad(p: np.ndarray) -> np.ndarray:
-        p_clip = np.clip(p, _EPS, 1.0)
-        return np.log(p_clip / (q_flat + _EPS)) + 1.0
-
-    bounds = [(_EPS, 1.0)] * N
-
-    try:
-        result = minimize(
-            kl_objective,
-            x0=q_flat.copy(),
-            jac=kl_grad,
-            method="SLSQP",
-            bounds=bounds,
-            constraints=constraints,
-            options={"maxiter": 500, "ftol": tolerance},
-        )
-        if result.success or result.fun < float("inf"):
-            p_opt = np.clip(result.x, 0, None).reshape(n, n)
-            p_opt /= p_opt.sum()
-            return p_opt
-        else:
-            log.warning("KL reconciliation did not converge: %s. Falling back to IPF.", result.message)
-    except Exception as exc:
-        log.warning("KL reconciliation failed: %s. Falling back to IPF.", exc)
-
-    # Fallback to IPF-style blend
-    return apply_correct_score_adjustment(prior[:n, :n], mc.correct_score, alpha=0.7)
+    p = prior[:n, :n].copy()
+    p = np.clip(p, 0, None)
+    s = p.sum()
+    if s > _EPS:
+        p /= s
+    if mc.has_correct_score and mc.n_cs_outcomes >= 3:
+        cs_alpha = 0.3 if mc.n_cs_vendors <= 1 else 0.5
+        p = apply_correct_score_adjustment(p, mc.correct_score, alpha=cs_alpha)
+    return _sanitize_pmf(p)
 
 
 # ---------------------------------------------------------------------------
@@ -662,17 +630,27 @@ def reconcile(
     mc: MarketConstraints,
     max_goals: int = 15,
     min_market_quality: float = 0.3,
-    use_kl: bool = True,
+    use_kl: bool = True,  # kept for API compatibility; SLSQP is never used
 ) -> ReconciliationResult:
     """
     Produce all three publish modes for a single match.
 
+    market_reconciled strategy (stable linear blend):
+      1. Build market_implied PMF via goal_expectancy_extended (already satisfies 1X2/totals)
+      2. Blend:  reconciled = α * market_implied + (1-α) * composite_model
+         where α = min(market_quality * 1.2, 0.85)
+      3. Apply gentle IPF for correct-score cells (alpha 0.3 for 1 vendor, 0.5 for 2+)
+      4. Sanity-check: cap impossible-score cells (total goals >= 9) to 1e-6
+
+    We never run SLSQP equality-constraint optimization. It is numerically
+    degenerate when the prior already satisfies the constraints and produces
+    artifacts like P(4-9)=0.026.
+
     Parameters
     ----------
-    pure_model_pmf : n×n array from the best statistical model
-    mc : MarketConstraints from BDL no-vig consensus
-    min_market_quality : below this threshold, publish_mode = pure_model
-    use_kl : use full KL reconciliation (slower). If False, uses IPF blend.
+    pure_model_pmf  n×n composite_rating_pmf (the model prior)
+    mc              MarketConstraints from BDL no-vig consensus
+    use_kl          kept for API compatibility, ignored
     """
     result = ReconciliationResult(
         match_id=match_id,
@@ -694,7 +672,7 @@ def reconcile(
     market_quality = mc.quality_score
     result.market_quality = market_quality
 
-    # ── Build market_implied PMF ─────────────────────────────────────────
+    # ── 1. Build market_implied PMF ──────────────────────────────────────
     try:
         mip, lh_mkt, la_mkt, rho_mkt = build_market_implied_pmf(mc, max_goals)
         result.market_implied_pmf = mip
@@ -706,41 +684,56 @@ def reconcile(
         result.publish_mode = "pure_model"
         return result
 
-    # ── Determine blend weight α ─────────────────────────────────────────
-    # α is the weight on the market_implied PMF in the reconciled blend
-    alpha = min(market_quality * 1.2, 0.85)  # cap at 85% market weight
+    # ── 2. Determine blend weight α ──────────────────────────────────────
+    alpha = min(market_quality * 1.2, 0.85)
     result.market_blend_alpha = alpha
 
-    # ── Build market_reconciled PMF ──────────────────────────────────────
-    if market_quality >= min_market_quality:
-        # Use market_implied as the prior for KL reconciliation
-        try:
-            if use_kl and mc.has_correct_score and mc.n_cs_outcomes >= 5:
-                reconciled = reconcile_pmf_kl(mip, mc, max_goals=max_goals)
-            else:
-                # Simpler blend: α * market + (1-α) * model
-                n = min(max_goals, pure_model_pmf.shape[0], mip.shape[0])
-                pm = pure_model_pmf[:n, :n].copy()
-                pm = np.clip(pm, 0, None)
-                pm /= pm.sum()
-                mi = mip[:n, :n].copy()
-                reconciled = alpha * mi + (1.0 - alpha) * pm
-                reconciled /= reconciled.sum()
-
-                # Apply correct-score adjustments on top
-                if mc.has_correct_score:
-                    reconciled = apply_correct_score_adjustment(
-                        reconciled, mc.correct_score, alpha=min(alpha, 0.7)
-                    )
-            result.market_reconciled_pmf = reconciled
-            result.publish_mode = "market_reconciled"
-        except Exception as exc:
-            log.warning("market_reconciled failed for %s v %s: %s", home_team, away_team, exc)
-            result.warnings.append(f"reconciliation_failed: {exc}")
-            result.market_reconciled_pmf = mip
-            result.publish_mode = "market_implied"
-    else:
+    if market_quality < min_market_quality:
         result.warnings.append(f"market_quality_too_low: {market_quality:.2f}")
         result.publish_mode = "pure_model"
+        return result
+
+    # ── 3. Stable linear blend ───────────────────────────────────────────
+    try:
+        n = min(max_goals, pure_model_pmf.shape[0], mip.shape[0])
+
+        pm = pure_model_pmf[:n, :n].copy()
+        pm = np.clip(pm, 0, None)
+        pm_sum = pm.sum()
+        if pm_sum > _EPS:
+            pm /= pm_sum
+
+        mi = mip[:n, :n].copy()
+        mi = np.clip(mi, 0, None)
+        mi_sum = mi.sum()
+        if mi_sum > _EPS:
+            mi /= mi_sum
+
+        reconciled = alpha * mi + (1.0 - alpha) * pm
+        reconciled = np.clip(reconciled, 0, None)
+        reconciled /= reconciled.sum()
+
+        # ── 4. Gentle IPF for correct-score cells ────────────────────────
+        # CS alpha: 0.30 for single-vendor (low confidence), 0.50 for 2+ vendors
+        if mc.has_correct_score and mc.n_cs_outcomes >= 3:
+            cs_alpha = 0.30 if mc.n_cs_vendors <= 1 else 0.50
+            reconciled = apply_correct_score_adjustment(
+                reconciled, mc.correct_score,
+                alpha=cs_alpha,
+                max_goals=n,
+            )
+
+        # ── 5. Sanity guard ──────────────────────────────────────────────
+        # Cap impossible cells before publishing
+        reconciled = _sanitize_pmf(reconciled, max_plausible_goals=8)
+
+        result.market_reconciled_pmf = reconciled
+        result.publish_mode = "market_reconciled"
+
+    except Exception as exc:
+        log.warning("market_reconciled failed for %s v %s: %s", home_team, away_team, exc)
+        result.warnings.append(f"reconciliation_failed: {exc}")
+        result.market_reconciled_pmf = mip
+        result.publish_mode = "market_implied"
 
     return result

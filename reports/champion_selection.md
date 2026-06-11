@@ -1,16 +1,20 @@
 # Champion Policy (Real BDL Data)
 
-**Generated**: 2026-06-11T20:06:56Z
+**Generated**: 2026-06-11T22:04:47Z
 
-## Five champion tiers
+## Six champion tiers
 
 | Champion Type | Model | NLL | Use Case |
 |--------------|-------|-----|----------|
-| diagnostic_champion | equal_probability | 3.0219 | Audit only — NOT used for publish |
-| parametric_champion | negative_binomial | 4.5159 | Model prior for reconciliation |
-| elo_champion | elo | 3.1493 | Fallback for new teams |
-| market_implied_champion | market_implied | N/A | Pure-market PMF, no model |
+| diagnostic_champion | equal_probability | 3.0219 | Audit only — NEVER published |
+| pure_model_champion | negative_binomial | 4.515852072380328 | Parametric model for matches without odds |
+| rating_champion | negative_binomial | composite_rating_pmf | Market-implied priors for all 48 teams |
+| parametric_champion | negative_binomial | 4.5159 | Alias for pure_model — parametric prior |
+| market_champion | market_implied | N/A | Pure-market PMF from BDL consensus |
 | **publish_champion** | **market_reconciled** | **N/A** | **Default publish when BDL odds exist** |
+
+**Note**: Plain Elo is NOT a champion tier. It is a diagnostic baseline only.
+New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 
 ## Why diagnostic_champion ≠ publish_champion
 
@@ -35,8 +39,8 @@
 | 6 vendors + correct score | market_reconciled (α≈0.82) |
 | 6 vendors, no correct score | market_reconciled (α≈0.62) |
 | Partial odds (< min_quality) | market_implied |
-| No odds | pure_model (parametric_champion) |
-| New teams, no odds | elo_prior_blend |
+| No odds | composite_rating_pmf (market-implied priors for all 48 teams) |
+| New teams, no WC history | composite_rating_pmf (NOT elo_prior_blend) |
 
 ## OOF ranking (all models)
 
@@ -50,4 +54,4 @@
 | 6 | zero_inflated_poisson | 106 | 5.1683 | 0.2057 | 0.8407 | 0.2706 | 3.000 | parametric prior |
 | 7 | poisson | 106 | 5.1734 | 0.2058 | 0.8440 | 0.2974 | 3.000 | parametric prior |
 | 8 | bivariate_poisson | 106 | 5.2690 | 0.2237 | 0.8959 | 0.3447 | 3.000 | parametric prior |
-| 9 | weibull_copula | 106 | 7.1914 | 0.2272 | 0.8923 | 0.3548 | 3.000 | parametric prior |
+| 9 | weibull_copula | 106 | 7.3008 | 0.2204 | 0.8677 | 0.3400 | 3.000 | parametric prior |

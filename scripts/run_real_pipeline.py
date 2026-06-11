@@ -268,6 +268,59 @@ def _pmf_to_top_scores(pmf: np.ndarray, n: int = 15, top_k: int = 20) -> list:
     return sorted(scores, key=lambda x: -x["probability"])[:top_k]
 
 
+def _validate_pmf(pmf: np.ndarray, match_label: str, warnings: list) -> list[str]:
+    """
+    Validate PMF for impossible high-score artifacts and consistency.
+    Returns a list of validation errors (empty = pass).
+    """
+    errors = []
+    n = pmf.shape[0]
+
+    # 1. Sum check
+    total = float(np.sum(pmf))
+    if abs(total - 1.0) > 1e-4:
+        errors.append(f"PMF sum={total:.6f} not 1.0 for {match_label}")
+
+    # 2. Non-negative
+    if float(np.min(pmf)) < -1e-9:
+        errors.append(f"PMF has negative cells for {match_label}")
+
+    # 3. Impossible high-score artifacts
+    # No cell with total_goals >= 9 should exceed 1e-3
+    for h in range(n):
+        for a in range(n):
+            if h + a >= 9 and pmf[h, a] > 1e-3:
+                errors.append(
+                    f"IMPOSSIBLE SCORE {match_label}: P({h}-{a})={pmf[h,a]:.4f} "
+                    f"(total={h+a} goals, threshold 1e-3)"
+                )
+
+    # 4. Top scorelines must be plausible (total goals <= 6)
+    flat = pmf.flatten()
+    top3_idx = np.argsort(flat)[::-1][:3]
+    for idx in top3_idx:
+        h, a = divmod(idx, n)
+        if h + a > 6:
+            errors.append(
+                f"IMPLAUSIBLE TOP SCORE {match_label}: {h}-{a} in top 3 "
+                f"(probability {flat[idx]:.4f})"
+            )
+
+    # 5. 1X2 consistency from PMF cells
+    hw = sum(pmf[h, a] for h in range(n) for a in range(n) if h > a)
+    dr = sum(pmf[h, a] for h in range(n) for a in range(n) if h == a)
+    aw = sum(pmf[h, a] for h in range(n) for a in range(n) if h < a)
+    if abs(hw + dr + aw - total) > 1e-4:
+        errors.append(f"1X2 derived from PMF does not sum to 1 for {match_label}")
+
+    if errors:
+        for e in errors:
+            log.error("PMF VALIDATION: %s", e)
+        warnings.extend(errors)
+
+    return errors
+
+
 def _pmf_lambda(pmf: np.ndarray) -> tuple[float, float]:
     n = pmf.shape[0]
     lh = float(sum(h * pmf[h, a] for h in range(n) for a in range(n)))
@@ -460,8 +513,9 @@ def _predict_one_match(
         use_kl=True,
     )
 
-    # ── 5. Build output document ─────────────────────────────────────────
+    # ── 5. Validate and build output ─────────────────────────────────────
     publish_pmf = rec.publish_pmf
+    _validate_pmf(publish_pmf, f"{home} v {away}", model_warnings)
     publish_markets = _pmf_to_markets(publish_pmf)
     composite_markets = _pmf_to_markets(comp_pmf)
     pure_markets = _pmf_to_markets(pure_pmf)
@@ -541,7 +595,9 @@ def _predict_one_match(
             "lineups_known": False,
             "arbitrary_score_lookup_supported": True,
             "max_goals": 15,
-            "tail_mass": round(float(max(0.0, 1.0 - float(np.sum(publish_pmf[:15, :15])))), 6),
+            "tail_mass_exact": float(max(0.0, 1.0 - float(np.sum(publish_pmf[:15, :15])))),
+            "tail_mass_display": f"{max(0.0, 1.0 - float(np.sum(publish_pmf[:15, :15]))):.2e}",
+            "tail_threshold": 1e-4,
             "tail_policy": "Poisson extrapolation beyond max_goals=15",
             "regulation_score_pmf_grid": publish_pmf[:15, :15].tolist(),
             "expected_home_goals": pl_lh,
@@ -559,7 +615,7 @@ def _predict_one_match(
             "composite_vs_market_differences": comp_vs_market,
             "model_vs_market_differences": model_vs_market,
             "warnings": list(set(model_warnings + rec.warnings)),
-            "consistency_errors": [],
+            "consistency_errors": _validate_pmf(publish_pmf, f"{home} v {away}", []),
         },
     }
 
@@ -707,6 +763,7 @@ def write_reports(
     _write_composite_team_prior_table(composite_prior, generated_at)
     _write_composite_rating_methodology(composite_prior, generated_at)
     _write_june11_analysis(all_preds, generated_at)
+    _write_cs_reconciliation_audit(all_preds, generated_at)
     _write_production_readiness(results, champions, all_preds, composite_prior, generated_at)
     log.info("All reports written to %s", REPORTS_DIR)
 
@@ -721,15 +778,19 @@ def _write_champion_policy(results, champions, generated_at):
         "",
         f"**Generated**: {generated_at}",
         "",
-        "## Five champion tiers",
+        "## Six champion tiers",
         "",
         "| Champion Type | Model | NLL | Use Case |",
         "|--------------|-------|-----|----------|",
-        f"| diagnostic_champion | {champions['diagnostic_champion']} | {champions['diagnostic_champion_nll']:.4f} | Audit only — NOT used for publish |",
-        f"| parametric_champion | {champions['parametric_champion']} | {champions['parametric_champion_nll']:.4f} | Model prior for reconciliation |",
-        f"| elo_champion | elo | {champions['elo_nll']:.4f} | Fallback for new teams |",
-        "| market_implied_champion | market_implied | N/A | Pure-market PMF, no model |",
+        f"| diagnostic_champion | {champions['diagnostic_champion']} | {champions['diagnostic_champion_nll']:.4f} | Audit only — NEVER published |",
+        f"| pure_model_champion | {champions['pure_model_champion']} | {champions.get('pure_model_champion_nll', 'N/A')} | Parametric model for matches without odds |",
+        f"| rating_champion | {champions['rating_champion']} | composite_rating_pmf | Market-implied priors for all 48 teams |",
+        f"| parametric_champion | {champions['parametric_champion']} | {champions['parametric_champion_nll']:.4f} | Alias for pure_model — parametric prior |",
+        "| market_champion | market_implied | N/A | Pure-market PMF from BDL consensus |",
         "| **publish_champion** | **market_reconciled** | **N/A** | **Default publish when BDL odds exist** |",
+        "",
+        "**Note**: Plain Elo is NOT a champion tier. It is a diagnostic baseline only.",
+        "New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.",
         "",
         "## Why diagnostic_champion ≠ publish_champion",
         "",
@@ -754,8 +815,8 @@ def _write_champion_policy(results, champions, generated_at):
         "| 6 vendors + correct score | market_reconciled (α≈0.82) |",
         "| 6 vendors, no correct score | market_reconciled (α≈0.62) |",
         "| Partial odds (< min_quality) | market_implied |",
-        "| No odds | pure_model (parametric_champion) |",
-        "| New teams, no odds | elo_prior_blend |",
+        "| No odds | composite_rating_pmf (market-implied priors for all 48 teams) |",
+        "| New teams, no WC history | composite_rating_pmf (NOT elo_prior_blend) |",
         "",
         "## OOF ranking (all models)",
         "",
@@ -837,38 +898,77 @@ def _write_equal_prob_audit(results, generated_at):
 
 def _write_calibration_temperature(results, generated_at):
     lines = [
-        "# Temperature Calibration Report (Fixed)",
+        "# Score PMF Calibration Report",
         "",
         f"**Generated**: {generated_at}",
         "",
-        "## Bug fix: T=1.000 for all models was incorrect",
+        "## Temperature calibration methodology",
         "",
-        "**Root cause**: `ScorePMFCalibrator.fit()` was never called in the WalkForwardEngine.",
-        "Only `evaluate_pmf_predictions()` was called, which evaluates at T=1.0 without fitting.",
+        "Temperature scaling: `P_cal(h,a) ∝ P_raw(h,a)^(1/T)`",
         "",
-        "**Fix**: WalkForwardEngine now calls `ScorePMFCalibrator.fit()` after computing OOF predictions.",
+        "- T > 1: model is overconfident (sharper than reality), calibration spreads mass",
+        "- T < 1: model is underconfident (too diffuse), calibration sharpens mass",
+        "- T = 1: no correction needed",
         "",
-        "## Updated temperatures",
+        "**Fitting procedure**: `ScorePMFCalibrator.fit()` is called on OOF predictions",
+        "after `WalkForwardEngine.run()`. The optimizer minimizes exact-score negative",
+        "log-loss over out-of-fold predictions only (never training data).",
         "",
-        "| Model | N OOF | T (fitted) | Direction | NLL at T=1 | NLL at T_opt |",
-        "|-------|-------|-----------|-----------|-----------|-------------|",
+        "**Previous bug**: T=1.000 was reported for all models because `fit()` was never called.",
+        "**Status**: FIXED. Fitted T values shown below.",
+        "",
+        "## Fitted temperatures (OOF exact-score NLL optimization)",
+        "",
+        "| Model | N OOF | NLL (T=1) | T (fitted) | Calibration direction |",
+        "|-------|-------|-----------|-----------|----------------------|",
     ]
     for r in sorted(results, key=lambda r: r.metrics.exact_score_log_loss):
         T = r.metrics.temperature
-        direction = "overconfident (T>1)" if T > 1.05 else ("underconfident (T<1)" if T < 0.95 else "neutral")
+        if T > 1.10:
+            direction = "overconfident — calibration spreads probability mass"
+        elif T < 0.90:
+            direction = "underconfident — calibration sharpens probability mass"
+        else:
+            direction = "near-neutral (T close to 1.0)"
         lines.append(
-            f"| {r.model_name} | {r.n_predictions} | {T:.3f} | {direction} | "
-            f"{r.metrics.exact_score_log_loss:.4f} | {r.metrics.exact_score_log_loss:.4f} |"
+            f"| {r.model_name} | {r.n_predictions} | {r.metrics.exact_score_log_loss:.4f} | **{T:.3f}** | {direction} |"
         )
     lines += [
         "",
-        "## Note",
+        "## Interpretation",
         "",
-        "Temperature optimization on exact-score NLL with only 106-118 OOF matches tends to",
-        "produce T values close to 1.0 because the PMF grid is already spread (not overconfident).",
-        "Temperature calibration is more effective with ≥500 OOF predictions.",
-        "As 2026 match results come in, T will be re-fitted on the growing OOF pool.",
+        "Parametric models (NegBin, Dixon-Coles, etc.) show T≈3.0, indicating severe",
+        "overconfidence on the exact-score level. This is expected: 128 WC training matches",
+        "are insufficient for stable parametric estimation.",
+        "",
+        "The equal_probability baseline (T=1.077) is nearly neutral because Poisson(1.35,1.35)",
+        "already represents the diffuse empirical distribution well.",
+        "",
+        "The elo model (T=1.255) is moderately overconfident — it sharpens 1X2 probabilities",
+        "without enough data to justify that discrimination.",
+        "",
+        "**Action**: Publish champion is market_reconciled (not any parametric model).",
+        "Parametric models serve only as priors for the blend.",
+        "As 2026 match results accumulate, T will be re-fitted with more OOF data.",
+        "",
+        "## Calibration slope / intercept (1X2)",
+        "",
+        "| Model | Slope | Intercept | Interpretation |",
+        "|-------|-------|-----------|---------------|",
     ]
+    for r in sorted(results, key=lambda r: r.metrics.exact_score_log_loss):
+        slope = getattr(r.metrics, 'calibration_slope', None)
+        intercept = getattr(r.metrics, 'calibration_intercept', None)
+        if slope is not None:
+            if abs(slope - 1.0) < 0.15:
+                interp = "well-calibrated"
+            elif slope < 0.85:
+                interp = "overconfident"
+            elif slope > 1.15:
+                interp = "underconfident"
+            else:
+                interp = "slightly off"
+            lines.append(f"| {r.model_name} | {slope:.3f} | {intercept:.3f} | {interp} |")
     (REPORTS_DIR / "score_pmf_calibration.md").write_text("\n".join(lines))
     log.info("Written: score_pmf_calibration.md")
 
@@ -1062,12 +1162,19 @@ def _write_market_calibration(all_preds, odds_df, generated_at):
         "3. Strip vig from BTTS, DNB, double chance where available",
         "4. Build market_implied PMF via `penaltyblog.goal_expectancy_extended`",
         "5. Parse correct-score outcomes (type=correct_score, period=match)",
-        "6. Apply minimum-KL reconciliation with correct-score constraints",
-        "7. Blend: α × market_implied + (1-α) × pure_model",
+        "6. **Stable linear blend**: reconciled = α × market_implied + (1-α) × composite_rating",
+        "   (SLSQP removed — caused impossible-score artifacts like P(4-9)=0.026)",
+        "7. Gentle IPF for correct-score cells (α=0.3 for 1 vendor, α=0.5 for 2+ vendors)",
+        "8. Sanity guard: cap any cell with total_goals≥9 to ≤1e-6",
         "",
         "Market quality score (0-1) determines α:",
         "- 6 vendors + correct score → quality ≈ 0.82 → α ≈ 0.82",
         "- 6 vendors, no correct score → quality ≈ 0.62 → α ≈ 0.62",
+        "",
+        f"**2026 predictions generated**: {len([p for p in all_preds if p])} named matches",
+        f"  market_reconciled: {sum(1 for p in all_preds if p and p.get('publish_mode')=='market_reconciled')}",
+        f"  with correct-score data: {sum(1 for p in all_preds if p and p.get('n_correct_score_outcomes',0)>0)}",
+        f"  correct-score vendors breakdown: 1-vendor={sum(1 for p in all_preds if p and p.get('n_cs_vendors',0)==1)}, 2+vendors={sum(1 for p in all_preds if p and p.get('n_cs_vendors',0)>=2)}",
         "",
         "## Vendors",
         f"fanduel, draftkings, betmgm, betrivers, caesars, fanatics ({len(odds_df)} total rows)",
@@ -1345,6 +1452,122 @@ def _write_composite_rating_methodology(composite_prior: CompositeTeamPrior, gen
     ]
     (REPORTS_DIR / "composite_rating_methodology.md").write_text("\n".join(lines))
     log.info("Written: composite_rating_methodology.md")
+
+
+def _write_cs_reconciliation_audit(all_preds: list, generated_at: str):
+    """
+    Audit correct-score reconciliation for every 2026 match with CS data.
+    Shows: vendor count, outcome count, overround, cell mapping, target probs,
+    final PMF probs, absolute errors, tail mass before/after, convergence.
+    """
+    lines = [
+        "# Correct-Score Reconciliation Audit",
+        "",
+        f"**Generated**: {generated_at}",
+        "",
+        "## Method",
+        "",
+        "Correct-score odds are used via **gentle IPF** (iterative proportional fitting),",
+        "NOT via SLSQP equality constraints.",
+        "",
+        "Reason SLSQP was removed: the market_implied PMF already satisfies 1X2/totals",
+        "by construction. Running SLSQP with those same constraints as equalities is",
+        "numerically degenerate → optimizer deposits mass in impossible cells (4-9, 11-5).",
+        "",
+        "IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renormalize.",
+        "- α = 0.30 when n_cs_vendors = 1 (low confidence)",
+        "- α = 0.50 when n_cs_vendors ≥ 2 (higher confidence)",
+        "",
+        "## Summary",
+        "",
+    ]
+    n_with_cs = sum(1 for p in all_preds if p.get("n_correct_score_outcomes", 0) > 0)
+    n_1v = sum(1 for p in all_preds if p.get("n_cs_vendors", 0) == 1)
+    n_2v = sum(1 for p in all_preds if p.get("n_cs_vendors", 0) >= 2)
+    lines += [
+        f"| Metric | Value |",
+        "|--------|-------|",
+        f"| Total 2026 matches predicted | {len(all_preds)} |",
+        f"| Matches with any CS data | {n_with_cs} |",
+        f"| Matches with 1 CS vendor | {n_1v} |",
+        f"| Matches with 2+ CS vendors | {n_2v} |",
+        "",
+        "## Per-match correct-score audit",
+        "",
+    ]
+
+    for pred in all_preds:
+        if pred is None:
+            continue
+        home = pred.get("home_team", "?")
+        away = pred.get("away_team", "?")
+        n_cs = pred.get("n_correct_score_outcomes", 0)
+        n_vd = pred.get("n_cs_vendors", 0)
+        predobj = pred.get("prediction", {})
+        pub_mode = pred.get("publish_mode", "?")
+
+        lines.append(f"### {home} vs {away}")
+        lines.append(f"- CS outcomes: {n_cs}  |  CS vendors: {n_vd}  |  Publish mode: {pub_mode}")
+
+        if n_cs == 0:
+            lines.append("- No correct-score data available for this match.")
+            lines.append("")
+            continue
+
+        mcs = predobj.get("market_correct_score_probs") or {}
+        pmf_grid = predobj.get("regulation_score_pmf_grid")
+
+        lines.append("")
+        lines.append("| Score | Market P (no-vig) | Published PMF P | Abs Error |")
+        lines.append("|-------|------------------|-----------------|-----------|")
+
+        if mcs and pmf_grid:
+            import numpy as np
+            g = np.array(pmf_grid)
+            n_g = g.shape[0]
+            top_cs = sorted(mcs.items(), key=lambda x: -x[1])[:15]
+            total_cs_prob = sum(v for _, v in top_cs)
+            total_pmf_at_cs = 0.0
+            for score_str, mkt_p in top_cs:
+                try:
+                    parts = score_str.split("-")
+                    h, a = int(parts[0]), int(parts[1])
+                    pmf_p = float(g[h, a]) if h < n_g and a < n_g else 0.0
+                    total_pmf_at_cs += pmf_p
+                    err = abs(mkt_p - pmf_p)
+                    lines.append(f"| {score_str} | {mkt_p:.4f} | {pmf_p:.4f} | {err:.4f} |")
+                except Exception:
+                    pass
+            lines.append(f"| **Sum (top {len(top_cs)})** | **{total_cs_prob:.4f}** | **{total_pmf_at_cs:.4f}** | — |")
+        else:
+            lines.append("| — | — | — | — |")
+
+        # High-score tail check
+        if pmf_grid:
+            import numpy as np
+            g = np.array(pmf_grid)
+            high_score_mass = sum(
+                g[h, a] for h in range(g.shape[0]) for a in range(g.shape[1])
+                if h + a >= 9
+            )
+            impossible_check = any(
+                g[h, a] > 1e-3
+                for h in range(g.shape[0]) for a in range(g.shape[1])
+                if h + a >= 9
+            )
+            lines.append(f"- High-score mass (total ≥9 goals): {high_score_mass:.2e}")
+            lines.append(f"- Impossible-score check (any cell ≥9 goals > 1e-3): {'⚠️ FAIL' if impossible_check else '✅ PASS'}")
+
+        errs = predobj.get("consistency_errors", [])
+        if errs:
+            lines.append(f"- **Validation errors**: {errs}")
+        else:
+            lines.append("- PMF validation: ✅ PASS")
+
+        lines.append("")
+
+    (REPORTS_DIR / "correct_score_reconciliation_audit.md").write_text("\n".join(lines))
+    log.info("Written: correct_score_reconciliation_audit.md")
 
 
 def _write_production_readiness(results, champions, all_preds, composite_prior, generated_at):

@@ -617,8 +617,21 @@ def predict_match_from_composite(
     """
     Produce a composite_rating_pmf from team priors.
 
-    Uses the composite attack/defense priors to parameterize a Dixon-Coles
-    Poisson model and returns the joint PMF grid.
+    Defense semantics: `final_defense_lambda` = goals CONCEDED per game vs
+    average opponent.  Higher = weaker defense.  This is consistent with
+    market_implied_defense extraction (we measure how many goals the team
+    concedes, not how strong they are defensively).
+
+    Expected-goals formula (multiplicative Poisson model):
+        lam_h = att_home * def_away / WC_avg
+        lam_a = att_away * def_home / WC_avg
+
+    Where WC_avg = 1.30 is the global average goals per team per game.
+
+    Example: Mexico (att=1.63, def=0.864) vs SA (att=0.918, def=1.505)
+        lam_h = 1.63 * 1.505 / 1.30 = 1.888  (Mexico scores)
+        lam_a = 0.918 * 0.864 / 1.30 = 0.610  (SA scores)
+    This gives Mexico ~65% home-win, close to the BDL 6-vendor market 67.5%.
 
     Returns
     -------
@@ -627,11 +640,13 @@ def predict_match_from_composite(
     home_prior = prior.get_prior(home)
     away_prior = prior.get_prior(away)
 
-    # Expected goals: home attack vs away defense (relative to global average)
-    # lam_h = att_home / def_away * global_avg  (Dixon-Coles style)
     global_avg = _WC_AVG_ATTACK
-    lam_h = (home_prior.final_attack_lambda / global_avg) * (global_avg / away_prior.final_defense_lambda) * global_avg
-    lam_a = (away_prior.final_attack_lambda / global_avg) * (global_avg / home_prior.final_defense_lambda) * global_avg
+
+    # att_i = how many goals team i scores vs avg opponent
+    # def_j = how many goals team j concedes vs avg opponent
+    # Multiplicative model: lam_h = att_h * def_a / avg
+    lam_h = home_prior.final_attack_lambda * away_prior.final_defense_lambda / global_avg
+    lam_a = away_prior.final_attack_lambda * home_prior.final_defense_lambda / global_avg
 
     # Cap to reasonable range
     lam_h = float(np.clip(lam_h, 0.3, 5.0))

@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-06-11T20:06:56Z
+**Generated**: 2026-06-11T22:04:47Z
 
 ## Publish mode distribution
 
@@ -20,12 +20,19 @@ For each match with BDL odds:
 3. Strip vig from BTTS, DNB, double chance where available
 4. Build market_implied PMF via `penaltyblog.goal_expectancy_extended`
 5. Parse correct-score outcomes (type=correct_score, period=match)
-6. Apply minimum-KL reconciliation with correct-score constraints
-7. Blend: α × market_implied + (1-α) × pure_model
+6. **Stable linear blend**: reconciled = α × market_implied + (1-α) × composite_rating
+   (SLSQP removed — caused impossible-score artifacts like P(4-9)=0.026)
+7. Gentle IPF for correct-score cells (α=0.3 for 1 vendor, α=0.5 for 2+ vendors)
+8. Sanity guard: cap any cell with total_goals≥9 to ≤1e-6
 
 Market quality score (0-1) determines α:
 - 6 vendors + correct score → quality ≈ 0.82 → α ≈ 0.82
 - 6 vendors, no correct score → quality ≈ 0.62 → α ≈ 0.62
+
+**2026 predictions generated**: 72 named matches
+  market_reconciled: 72
+  with correct-score data: 72
+  correct-score vendors breakdown: 1-vendor=72, 2+vendors=0
 
 ## Vendors
 fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
@@ -34,14 +41,14 @@ fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| composite (composite_rating_pmf) | 0.37319 | 0.26523 | 0.36158 | ? | 1.4083 | 1.3822 |
+| composite (composite_rating_pmf) | 0.6695 | 0.21913 | 0.11137 | ? | 1.8864 | 0.6098 |
 | market_implied | 0.67508 | 0.21113 | 0.11378 | 0.44026 | 1.8413 | 0.5973 |
-| **market_reconciled (PUBLISHED)** | **0.67508** | **0.21113** | **0.11378** | **?** | **1.8987** | **0.781** |
+| **market_reconciled (PUBLISHED)** | **0.67825** | **0.20505** | **0.1167** | **?** | **1.93** | **0.6205** |
 
 ## South Korea vs Czechia — Three modes
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| composite (composite_rating_pmf) | 0.36926 | 0.27891 | 0.35183 | ? | 1.299 | 1.2612 |
+| composite (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | 0.42274 | 1.2253 | 1.1459 |
-| **market_reconciled (PUBLISHED)** | **0.36172** | **0.31401** | **0.32426** | **?** | **1.1356** | **1.4235** |
+| **market_reconciled (PUBLISHED)** | **0.36949** | **0.29927** | **0.33124** | **?** | **1.2696** | **1.199** |

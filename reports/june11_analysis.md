@@ -1,6 +1,6 @@
 # June 11, 2026 Opening Day Predictions
 
-**Generated**: 2026-06-11T20:06:56Z
+**Generated**: 2026-06-11T22:04:47Z
 **Date**: June 11, 2026 (US Eastern time)
 
 Both opening-day matches identified: Mexico vs South Africa AND South Korea vs Czechia.
@@ -17,16 +17,16 @@ Both opening-day matches identified: Mexico vs South Africa AND South Korea vs C
 
 | Mode | Home Win | Draw | Away Win | Over 2.5 | exp G home | exp G away |
 |------|----------|------|----------|----------|-----------|-----------|
-| composite_rating (composite_rating_pmf) | 0.37319 | 0.26523 | 0.36158 | ? | 1.4083 | 1.3822 |
+| composite_rating (composite_rating_pmf) | 0.6695 | 0.21913 | 0.11137 | ? | 1.8864 | 0.6098 |
 | market_implied | 0.67508 | 0.21113 | 0.11378 | ? | 1.8413 | 0.5973 |
-| **PUBLISHED (reconciled)** | **0.67508** | **0.21113** | **0.11378** | **?** | **1.8987** | **0.781** |
+| **PUBLISHED (reconciled)** | **0.67825** | **0.20505** | **0.1167** | **?** | **1.93** | **0.6205** |
 
 ### Top scorelines (published PMF)
-- 1-0: 0.1576
-- 2-0: 0.1421
-- 3-0: 0.1260
-- 2-1: 0.1225
-- 1-1: 0.1085
+- 1-0: 0.1489
+- 2-0: 0.1447
+- 3-0: 0.0943
+- 1-1: 0.0868
+- 0-0: 0.0852
 
 ### Market correct-score probs (BDL no-vig)
 - 1-0: 0.1480
@@ -47,16 +47,16 @@ Both opening-day matches identified: Mexico vs South Africa AND South Korea vs C
 
 | Mode | Home Win | Draw | Away Win | Over 2.5 | exp G home | exp G away |
 |------|----------|------|----------|----------|-----------|-----------|
-| composite_rating (composite_rating_pmf) | 0.36926 | 0.27891 | 0.35183 | ? | 1.299 | 1.2612 |
+| composite_rating (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | ? | 1.2253 | 1.1459 |
-| **PUBLISHED (reconciled)** | **0.36172** | **0.31401** | **0.32426** | **?** | **1.1356** | **1.4235** |
+| **PUBLISHED (reconciled)** | **0.36949** | **0.29927** | **0.33124** | **?** | **1.2696** | **1.199** |
 
 ### Top scorelines (published PMF)
-- 1-1: 0.1517
-- 2-1: 0.1245
-- 1-2: 0.1062
-- 1-0: 0.0985
-- 0-0: 0.0973
+- 1-1: 0.1410
+- 1-0: 0.1047
+- 0-1: 0.0984
+- 0-0: 0.0920
+- 2-1: 0.0832
 
 ### Market correct-score probs (BDL no-vig)
 - 1-1: 0.1417
