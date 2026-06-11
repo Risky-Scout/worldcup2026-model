@@ -1,1 +1,5 @@
-"""wc2026 — Elite-calibrated 2026 FIFA World Cup predictive model."""
+"""wc2026 — Calibrated 2026 FIFA World Cup exact-score PMF engine."""
+__version__ = "0.2.0"
+DATA_VERSION = "v1"
+MODEL_VERSION = "v1"
+FEATURE_VERSION = "v1"

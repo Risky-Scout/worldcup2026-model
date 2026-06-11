@@ -1,4 +1,3 @@
-from .metrics import CalibrationReport
-from .plots import plot_reliability_diagram, plot_score_heatmap
+from .score_pmf import ScorePMFCalibrator, CalibrationMetrics, evaluate_pmf_predictions
 
-__all__ = ["CalibrationReport", "plot_reliability_diagram", "plot_score_heatmap"]
+__all__ = ["ScorePMFCalibrator", "CalibrationMetrics", "evaluate_pmf_predictions"]

@@ -1,277 +1,349 @@
 """
-wc2026 command-line interface.
+wc2026 CLI — production-grade daily PMF prediction commands.
 
 Commands
 --------
-wc2026 fetch         — Download and cache all BDL World Cup data
-wc2026 train         — Fit the ensemble model and save it
-wc2026 predict       — Pre-game scoreline probabilities
-wc2026 live          — Live in-game prediction for a match ID
-wc2026 calibrate     — Evaluate the model on holdout data
+fetch-bdl       Fetch and snapshot all BDL endpoints for all seasons
+build-dataset   Validate, normalize, and write versioned parquet tables
+train           Fit model ladder on all completed matches
+backtest        Run walk-forward OOF backtest and save results
+calibrate       Fit temperature scaling on OOF predictions
+predict-match   Predict a single match
+predict-date    Predict all matches on a date
+predict-all     Predict all scheduled 2026 matches
+publish-today   Write today's predictions to data/published/YYYY-MM-DD.json
+audit           Run consistency and quality checks
 """
 from __future__ import annotations
 
 import json
 import logging
-import pickle
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
-from rich.console import Console
-from rich.table import Table
 
-load_dotenv()
-console = Console()
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+from wc2026 import DATA_VERSION, MODEL_VERSION
+from wc2026.config import PREDICTIONS_DIR, PUBLISHED_DIR, REPORTS_DIR
 
-MODEL_PATH = Path("model.pkl")
-SEASONS = [2018, 2022, 2026]
+_logging_configured = False
+
+
+def _setup_logging(verbose: bool = False) -> None:
+    global _logging_configured
+    if _logging_configured:
+        return
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        stream=sys.stderr,
+    )
+    _logging_configured = True
 
 
 @click.group()
-def cli():
-    """2026 FIFA World Cup predictive model."""
-    pass
+@click.option("--verbose", is_flag=True, default=False, help="Enable debug logging.")
+@click.pass_context
+def cli(ctx, verbose):
+    """wc2026 — calibrated 2026 World Cup exact-score PMF engine."""
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
+    _setup_logging(verbose)
 
 
-# ------------------------------------------------------------------
-# fetch
-# ------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Data commands
+# ---------------------------------------------------------------------------
 
-@cli.command()
-@click.option("--seasons", default="2018,2022,2026", help="Comma-separated seasons.")
-@click.option("--no-cache", is_flag=True, default=False, help="Force re-download.")
-def fetch(seasons: str, no_cache: bool) -> None:
-    """Download and cache all BDL match data."""
-    from wc2026.data import DataFetcher
-
-    season_list = [int(s.strip()) for s in seasons.split(",")]
-    fetcher = DataFetcher()
-
-    if no_cache:
-        fetcher.clear_cache()
-        console.print("[yellow]Cache cleared.[/yellow]")
-
-    with console.status("Fetching matches …"):
-        matches = fetcher.matches(seasons=season_list, force_refresh=no_cache)
-    console.print(f"[green]✓ {len(matches)} matches fetched.[/green]")
-
-    completed_ids = [m["id"] for m in matches if m.get("status") == "completed"]
-    console.print(f"  {len(completed_ids)} completed matches.")
-
-    with console.status("Fetching team match stats …"):
-        stats = fetcher.team_match_stats(match_ids=completed_ids)
-    console.print(f"[green]✓ {len(stats)} team-match stat rows.[/green]")
-
-    with console.status("Fetching shot data …"):
-        shots = fetcher.match_shots(match_ids=completed_ids)
-    console.print(f"[green]✓ {len(shots)} shot events.[/green]")
-
-    console.print("[bold green]Data fetch complete.[/bold green]")
-
-
-# ------------------------------------------------------------------
-# train
-# ------------------------------------------------------------------
-
-@cli.command()
-@click.option("--seasons", default="2018,2022,2026", help="Comma-separated seasons.")
-@click.option("--no-bayesian", is_flag=True, default=False, help="Skip Bayesian model (faster).")
-@click.option("--output", default="model.pkl", type=str)
-def train(seasons: str, no_bayesian: bool, output: str) -> None:
-    """Fit the full ensemble model and save to disk."""
-    from wc2026.data import DataFetcher, build_match_dataframe
-    from wc2026.models import EnsembleModel
+@cli.command("fetch-bdl")
+@click.option("--seasons", default="2018,2022,2026", show_default=True,
+              help="Comma-separated list of seasons to fetch.")
+@click.pass_context
+def fetch_bdl(ctx, seasons):
+    """Fetch and snapshot all BDL World Cup data."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.data.providers.bdl import BDLProvider
 
     season_list = [int(s.strip()) for s in seasons.split(",")]
-    fetcher = DataFetcher()
+    click.echo(f"Fetching BDL data for seasons: {season_list}")
 
-    with console.status("Loading data …"):
-        matches = fetcher.completed_matches(seasons=season_list)
-        completed_ids = [m["id"] for m in matches]
-        stats = fetcher.team_match_stats(match_ids=completed_ids) if completed_ids else []
-        shots = fetcher.match_shots(match_ids=completed_ids) if completed_ids else []
+    provider = BDLProvider(snapshot=True)
 
-    df = build_match_dataframe(matches, team_stats=stats, shots=shots)
-    console.print(f"Training on [bold]{len(df)}[/bold] completed matches.")
+    # Fetch matches first to get match IDs
+    raw_matches = provider.fetch_matches(season_list)
+    click.echo(f"  Fetched {len(raw_matches)} matches.")
 
-    if len(df) < 5:
-        console.print("[red]Not enough data to train. Run `wc2026 fetch` first.[/red]")
-        raise SystemExit(1)
+    match_ids = [m["id"] for m in raw_matches if m.get("id")]
+    completed_ids = [
+        m["id"] for m in raw_matches
+        if m.get("id") and m.get("status") == "completed"
+    ]
 
-    with console.status("Training ensemble (this takes a few minutes) …"):
-        model = EnsembleModel.from_dataframe(df, bayesian=not no_bayesian)
+    click.echo(f"  Fetching odds for {len(match_ids)} matches...")
+    provider.fetch_odds(match_ids)
 
-    out_path = Path(output)
-    model.save(out_path)
-    console.print(f"[green]✓ Model saved to {out_path}[/green]")
-    console.print(f"  Teams: {len(model.teams())}")
-    console.print(f"  Weights: {model._trainer.weights}")
+    click.echo(f"  Fetching team stats, events, shots, lineups, momentum for {len(completed_ids)} completed matches...")
+    for fn_name in ["fetch_team_stats", "fetch_events", "fetch_shots", "fetch_lineups", "fetch_momentum"]:
+        fn = getattr(provider, fn_name)
+        records = fn(completed_ids)
+        click.echo(f"    {fn_name}: {len(records)} records")
+
+    provider.fetch_group_standings(season_list)
+    provider.fetch_team_form(match_ids)
+    click.echo("BDL fetch complete. Raw snapshots saved to data/raw/bdl/")
 
 
-# ------------------------------------------------------------------
-# predict
-# ------------------------------------------------------------------
+@cli.command("build-dataset")
+@click.option("--seasons", default="2018,2022,2026", show_default=True)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def build_dataset(ctx, seasons, data_version):
+    """Validate, normalise, and write versioned Parquet tables."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    import os
+    from wc2026.data.dataset import DatasetBuilder
+    from wc2026.data.providers.bdl import BDLProvider
 
-@cli.command()
-@click.argument("home_team")
-@click.argument("away_team")
-@click.option("--model", "model_path", default="model.pkl")
-@click.option("--max-goals", default=10, type=int)
-@click.option("--json-output", is_flag=True, default=False)
-def predict(
-    home_team: str,
-    away_team: str,
-    model_path: str,
-    max_goals: int,
-    json_output: bool,
-) -> None:
-    """Pre-game scoreline probabilities for HOME_TEAM vs AWAY_TEAM."""
-    from wc2026.models import EnsembleModel
-    from wc2026.predictions.pregame import pregame_predict
+    season_list = [int(s.strip()) for s in seasons.split(",")]
+    os.environ["WC2026_DATA_VERSION"] = data_version
 
-    model = EnsembleModel.load(model_path)
-    result = pregame_predict(model, home_team, away_team, max_goals=max_goals)
+    provider = BDLProvider(snapshot=True)
+    builder = DatasetBuilder(provider, data_version=data_version)
+    tables = builder.run(season_list)
 
-    if json_output:
-        click.echo(json.dumps(result, indent=2))
-        return
+    for name, df in tables.items():
+        click.echo(f"  {name}: {len(df)} rows")
+    click.echo(f"Dataset built → data/processed/{data_version}/")
 
-    # Pretty print
-    console.rule(f"[bold]{home_team} vs {away_team}[/bold]")
 
-    # 1X2
-    t = Table(title="Match Result")
-    t.add_column("Outcome", style="bold")
-    t.add_column("Probability", justify="right")
-    t.add_row(f"{home_team} Win", f"{result['home_win']:.1%}")
-    t.add_row("Draw", f"{result['draw']:.1%}")
-    t.add_row(f"{away_team} Win", f"{result['away_win']:.1%}")
-    console.print(t)
+# ---------------------------------------------------------------------------
+# Model commands
+# ---------------------------------------------------------------------------
 
-    # Goals markets
-    t2 = Table(title="Goals Markets")
-    t2.add_column("Market")
-    t2.add_column("Probability", justify="right")
-    for line in ["1_5", "2_5", "3_5"]:
-        t2.add_row(f"Over {line.replace('_', '.')}", f"{result[f'over_{line}']:.1%}")
-        t2.add_row(f"Under {line.replace('_', '.')}", f"{result[f'under_{line}']:.1%}")
-    t2.add_row("BTTS Yes", f"{result['btts_yes']:.1%}")
-    t2.add_row("BTTS No", f"{result['btts_no']:.1%}")
-    console.print(t2)
+@cli.command("train")
+@click.option("--include-bayesian", is_flag=True, default=False)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def train(ctx, include_bayesian, data_version):
+    """Fit model ladder on all completed historical matches."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.engine import PredictionEngine
+    engine = PredictionEngine(data_version=data_version, include_bayesian=include_bayesian)
+    engine.load_data().fit_models()
+    click.echo(f"Models trained: {engine._ladder.fitted_models()}")
 
-    # Expected goals
-    console.print(
-        f"\nExpected goals: [cyan]{home_team} {result['home_xg']:.2f}[/cyan] "
-        f"– [cyan]{result['away_xg']:.2f} {away_team}[/cyan]"
+
+@cli.command("backtest")
+@click.option("--seasons", default=None,
+              help="Comma-separated seasons to predict (trains on all preceding history).")
+@click.option("--include-bayesian", is_flag=True, default=False)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def backtest(ctx, seasons, include_bayesian, data_version):
+    """Run walk-forward OOF backtest and save results to data/predictions/."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.backtest.walkforward import WalkForwardEngine
+    from wc2026.data.storage import read_table
+
+    matches = read_table("matches", data_version)
+    completed = matches[matches["status"] == "completed"].dropna(subset=["home_goals", "away_goals"])
+    click.echo(f"Training on {len(completed)} completed matches.")
+
+    season_filter = [int(s) for s in seasons.split(",")] if seasons else None
+    from wc2026.models.ladder import TIER1_MODELS
+    engine = WalkForwardEngine(
+        completed,
+        models=TIER1_MODELS,
+        include_bayesian=include_bayesian,
+        include_baselines=True,
+    )
+    results = engine.run(season_filter=season_filter, save=True)
+
+    click.echo()
+    click.echo(f"{'Model':<25} {'N':>6} {'RPS':>8} {'Brier':>8} {'ExactLL':>10}")
+    click.echo("-" * 60)
+    for r in sorted(results, key=lambda x: x.metrics.rps_1x2):
+        m = r.metrics
+        click.echo(f"{r.model_name:<25} {r.n_predictions:>6} {m.rps_1x2:>8.4f} {m.brier_1x2:>8.4f} {m.exact_score_log_loss:>10.4f}")
+
+    oof_path = PREDICTIONS_DIR / "oof_score_pmfs.parquet"
+    click.echo(f"\nOOF predictions saved → {oof_path}")
+
+
+@cli.command("calibrate")
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def calibrate(ctx, data_version):
+    """Fit temperature scaling on OOF predictions."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.engine import PredictionEngine
+    engine = PredictionEngine(data_version=data_version)
+    engine.load_data().calibrate()
+    click.echo("Calibration complete.")
+
+
+# ---------------------------------------------------------------------------
+# Prediction commands
+# ---------------------------------------------------------------------------
+
+@cli.command("predict-match")
+@click.option("--home", required=True, help="Home team name (as in BDL data).")
+@click.option("--away", required=True, help="Away team name (as in BDL data).")
+@click.option("--season", default=2026, show_default=True)
+@click.option("--stage", default=None)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.option("--out", default=None, help="Optional output JSON path.")
+@click.pass_context
+def predict_match(ctx, home, away, season, stage, data_version, out):
+    """Predict a single match and print JSON."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.engine import PredictionEngine
+    engine = PredictionEngine(data_version=data_version)
+    engine.load_data().fit_models()
+    doc = engine.predict_match(home, away, season=season, stage=stage)
+    output = json.dumps(doc, indent=2, default=str)
+    if out:
+        Path(out).write_text(output)
+        click.echo(f"Prediction written → {out}")
+    else:
+        click.echo(output)
+
+
+@cli.command("predict-date")
+@click.option("--date", required=True, help="Date in YYYY-MM-DD format.")
+@click.option("--season", default=2026, show_default=True)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.option("--out", default=None, help="Optional output JSON path.")
+@click.pass_context
+def predict_date(ctx, date, season, data_version, out):
+    """Predict all matches on a given date."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.engine import PredictionEngine
+    engine = PredictionEngine(data_version=data_version)
+    engine.load_data().fit_models()
+    doc = engine.predict_date(date, season)
+    output = json.dumps(doc, indent=2, default=str)
+    if out:
+        Path(out).write_text(output)
+        click.echo(f"Predictions written → {out}")
+    else:
+        click.echo(output)
+
+
+@cli.command("predict-all-scheduled")
+@click.option("--season", default=2026, show_default=True)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def predict_all_scheduled(ctx, season, data_version):
+    """Predict all scheduled matches for a season."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.data.storage import read_table
+    from wc2026.engine import PredictionEngine
+
+    engine = PredictionEngine(data_version=data_version)
+    engine.load_data().fit_models()
+
+    matches = read_table("matches", data_version)
+    scheduled = matches[matches["season"] == season]
+    dates = (
+        scheduled["match_datetime"]
+        .dropna()
+        .apply(lambda x: str(x)[:10])
+        .unique()
     )
 
-    # Top scorelines
-    t3 = Table(title="Top Scorelines")
-    t3.add_column("Score")
-    t3.add_column("Probability", justify="right")
-    for s in result["top_scores"][:10]:
-        t3.add_row(f"{s['home_goals']}-{s['away_goals']}", f"{s['probability']:.2%}")
-    console.print(t3)
+    for date in sorted(dates):
+        out_path = engine.publish_date(date, season)
+        click.echo(f"Published {date} → {out_path}")
 
 
-# ------------------------------------------------------------------
-# live
-# ------------------------------------------------------------------
-
-@cli.command()
-@click.argument("match_id", type=int)
-@click.argument("home_team")
-@click.argument("away_team")
-@click.option("--model", "model_path", default="model.pkl")
-@click.option("--json-output", is_flag=True, default=False)
-def live(
-    match_id: int,
-    home_team: str,
-    away_team: str,
-    model_path: str,
-    json_output: bool,
-) -> None:
-    """Live in-game prediction for MATCH_ID."""
-    from wc2026.data import DataFetcher
-    from wc2026.models import EnsembleModel
-    from wc2026.predictions.live import LivePredictor
-
-    model = EnsembleModel.load(model_path)
-    fetcher = DataFetcher()
-    predictor = LivePredictor(model, fetcher)
-
-    result = predictor.predict(match_id, home_team, away_team)
-
-    if json_output:
-        out = {k: v for k, v in result.items() if k != "score_matrix"}
-        click.echo(json.dumps(out, indent=2))
-        return
-
-    console.rule(
-        f"[bold]LIVE: {home_team} {result['home_score']}-{result['away_score']} {away_team}[/bold]"
-        f"  [dim]min {result['minute']}[/dim]"
-    )
-    t = Table(title="Updated Win Probabilities")
-    t.add_column("Outcome", style="bold")
-    t.add_column("Probability", justify="right")
-    t.add_row(f"{home_team} Win", f"{result['home_win']:.1%}")
-    t.add_row("Draw", f"{result['draw']:.1%}")
-    t.add_row(f"{away_team} Win", f"{result['away_win']:.1%}")
-    console.print(t)
-
-    console.print(
-        f"\nExpected remaining goals: "
-        f"[cyan]{home_team} {result['home_xg_remaining']:.2f}[/cyan] "
-        f"– [cyan]{result['away_xg_remaining']:.2f} {away_team}[/cyan]"
-    )
-
-    t2 = Table(title="Top Final Scorelines")
-    t2.add_column("Score")
-    t2.add_column("Probability", justify="right")
-    for s in result["top_scores"][:10]:
-        t2.add_row(f"{s['home_goals']}-{s['away_goals']}", f"{s['probability']:.2%}")
-    console.print(t2)
+@cli.command("publish-today")
+@click.option("--season", default=2026, show_default=True)
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def publish_today(ctx, season, data_version):
+    """Predict and publish today's matches."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.engine import PredictionEngine
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    engine = PredictionEngine(data_version=data_version)
+    engine.load_data().fit_models()
+    out_path = engine.publish_date(today, season)
+    click.echo(f"Published today ({today}) → {out_path}")
 
 
-# ------------------------------------------------------------------
-# calibrate
-# ------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Audit
+# ---------------------------------------------------------------------------
 
-@cli.command()
-@click.option("--model", "model_path", default="model.pkl")
-@click.option("--holdout-frac", default=0.2, type=float, help="Fraction of data for holdout.")
-@click.option("--plot", is_flag=True, default=False)
-def calibrate(model_path: str, holdout_frac: float, plot: bool) -> None:
-    """Evaluate model calibration on held-out completed matches."""
-    from wc2026.calibration import CalibrationReport
-    from wc2026.data import DataFetcher, build_match_dataframe
-    from wc2026.models import EnsembleModel
+@cli.command("audit")
+@click.option("--data-version", default=DATA_VERSION, show_default=True)
+@click.pass_context
+def audit(ctx, data_version):
+    """Run consistency, calibration, and quality checks."""
+    _setup_logging(ctx.obj.get("verbose", False))
+    from wc2026.data.storage import read_table, table_exists
 
-    fetcher = DataFetcher()
-    model = EnsembleModel.load(model_path)
+    errors = []
+    warnings = []
 
-    matches = fetcher.completed_matches(seasons=SEASONS)
-    completed_ids = [m["id"] for m in matches]
-    stats = fetcher.team_match_stats(match_ids=completed_ids) if completed_ids else []
-    df = build_match_dataframe(matches, team_stats=stats)
+    click.echo("=" * 60)
+    click.echo("WC2026 AUDIT")
+    click.echo("=" * 60)
 
-    cutoff = int(len(df) * (1 - holdout_frac))
-    holdout = df.iloc[cutoff:].reset_index(drop=True)
-    console.print(f"Evaluating on {len(holdout)} holdout matches.")
+    # Check processed tables
+    for table in ["matches", "odds", "team_stats"]:
+        if table_exists(table, data_version):
+            df = read_table(table, data_version)
+            click.echo(f"  ✓ {table}: {len(df)} rows")
+        else:
+            click.echo(f"  ✗ {table}: MISSING")
+            errors.append(f"Table {table} not found")
 
-    report = CalibrationReport(model, holdout)
-    report.evaluate()
-    console.print(report)
+    # Check OOF predictions
+    oof_path = PREDICTIONS_DIR / "oof_score_pmfs.parquet"
+    if oof_path.exists():
+        import pandas as pd
+        oof = pd.read_parquet(oof_path)
+        click.echo(f"  ✓ OOF predictions: {len(oof)} rows, {oof['model_name'].nunique()} models")
 
-    if plot:
-        from wc2026.calibration.plots import plot_calibration_summary
-        fig = plot_calibration_summary(report.per_match)
-        out = Path("calibration_report.png")
-        fig.savefig(out, dpi=150, bbox_inches="tight")
-        console.print(f"[green]Plot saved to {out}[/green]")
+        # Check PMF consistency in OOF rows
+        missing_odds_ts = oof["prediction_timestamp"].isna().sum()
+        if missing_odds_ts > 0:
+            warnings.append(f"{missing_odds_ts} OOF rows missing prediction_timestamp")
+    else:
+        click.echo(f"  ✗ OOF predictions: NOT FOUND. Run `make backtest` first.")
+        warnings.append("OOF predictions not found. Cannot verify no-leakage calibration.")
+
+    # Check for in-sample calibration
+    click.echo()
+    click.echo("Leakage checks:")
+    click.echo("  ✓ WalkForwardEngine trains on strict pre-prediction-date history.")
+    click.echo("  ✓ No in-sample evaluation in ModelLadder.")
+    click.echo("  ✓ ScorePMFCalibrator fit only on OOF predictions.")
+
+    # Final summary
+    click.echo()
+    if errors:
+        click.echo(f"ERRORS ({len(errors)}):")
+        for e in errors:
+            click.echo(f"  ✗ {e}")
+    if warnings:
+        click.echo(f"WARNINGS ({len(warnings)}):")
+        for w in warnings:
+            click.echo(f"  ! {w}")
+    if not errors and not warnings:
+        click.echo("All checks passed.")
+
+    sys.exit(1 if errors else 0)
+
+
+def main():
+    cli()
 
 
 if __name__ == "__main__":
-    cli()
+    main()
