@@ -284,6 +284,41 @@ class TestPublishedMatchPMF:
                     f"(ratio={ratio:.2f}) — cells may be mapped incorrectly"
                 )
 
+    def test_over_probabilities_monotonic(self, match_record):
+        """
+        O/U probabilities must be monotonically decreasing:
+        P(over 0.5) ≥ P(over 1.5) ≥ P(over 2.5) ≥ ... ≥ P(over 6.5)
+        """
+        pred = match_record.get("prediction", {})
+        markets = pred.get("derived_markets", {})
+        if not markets:
+            pytest.skip("no derived_markets")
+        keys = ["over_0_5", "over_1_5", "over_2_5", "over_3_5", "over_4_5", "over_5_5", "over_6_5"]
+        vals = [float(markets[k]) for k in keys if k in markets]
+        for i in range(len(vals) - 1):
+            assert vals[i] >= vals[i + 1] - 1e-4, (
+                f"O/U not monotonic: over_{i+0.5}={vals[i]:.4f} < over_{i+1.5}={vals[i+1]:.4f}"
+            )
+
+    def test_no_single_team_score_9plus_in_top_scorelines(self, match_record):
+        """
+        No published top scoreline should have a single team scoring 9+ goals.
+        8-0 is statistically plausible for extreme mismatches (Germany vs Curaçao).
+        9+ goals is not plausible even in the most extreme WC mismatch.
+        """
+        pred = match_record.get("prediction", {})
+        top = pred.get("top_scorelines", [])
+        for entry in top[:25]:
+            h = int(entry.get("home_goals", 0))
+            a = int(entry.get("away_goals", 0))
+            prob = float(entry.get("probability", 0.0))
+            assert h < 9, (
+                f"Top scoreline {h}-{a} (P={prob:.5f}): home team scored 9+ in WC context"
+            )
+            assert a < 9, (
+                f"Top scoreline {h}-{a} (P={prob:.5f}): away team scored 9+ in WC context"
+            )
+
     def test_pmf_dimensions_consistent(self, match_record):
         pred = match_record.get("prediction", {})
         pmf = _pmf_from_match(pred)

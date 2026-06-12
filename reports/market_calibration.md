@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-06-12T00:17:01Z
+**Generated**: 2026-06-12T00:28:25Z
 
 ## Publish mode distribution
 
@@ -41,14 +41,14 @@ fanduel, draftkings, betmgm, betrivers, caesars, fanatics (315 total rows)
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| composite (composite_rating_pmf) | 0.6695 | 0.21913 | 0.11137 | ? | 1.8864 | 0.6098 |
+| composite (composite_rating_pmf) | 0.624 | 0.23559 | 0.14042 | ? | 1.7937 | 0.7064 |
 | market_implied | 0.67508 | 0.21113 | 0.11378 | 0.44026 | 1.8413 | 0.5973 |
-| **market_reconciled (PUBLISHED)** | **0.67825** | **0.20505** | **0.1167** | **?** | **1.93** | **0.6205** |
+| **market_reconciled (PUBLISHED)** | **0.67692** | **0.20542** | **0.11766** | **?** | **1.9272** | **0.6241** |
 
 ## South Korea vs Czechia — Three modes
 
 | Mode | HW | D | AW | Over2.5 | expG home | expG away |
 |------|----|----|-----|---------|----------|----------|
-| composite (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
+| composite (composite_rating_pmf) | 0.37739 | 0.29183 | 0.33078 | ? | 1.2307 | 1.133 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | 0.42274 | 1.2253 | 1.1459 |
 | **market_reconciled (PUBLISHED)** | **0.36245** | **0.31256** | **0.32499** | **?** | **1.205** | **1.1288** |

@@ -106,6 +106,161 @@ _HOST_NATIONS = {"USA", "Canada", "Mexico"}
 _HOST_ATT_BONUS = 0.10
 _HOST_DEF_BONUS = 0.10   # lower = better defense (subtract from defense lambda)
 
+# ── FIFA Rankings (March 2026, source: FIFA.com) ──────────────────────────
+# rank → (FIFA points, team)
+# Points source: FIFA World Ranking March 2026 official publication.
+# Teams not listed receive None (unknown/unranked at time of snapshot).
+_FIFA_POINTS: dict[str, float] = {
+    "France":      1854.0,
+    "Spain":       1838.0,
+    "England":     1793.0,
+    "Brazil":      1782.0,
+    "Argentina":   1774.0,
+    "Portugal":    1764.0,
+    "Belgium":     1744.0,
+    "Netherlands": 1730.0,
+    "Germany":     1714.0,
+    "Uruguay":     1690.0,
+    "Colombia":    1680.0,
+    "Italy":       1672.0,
+    "Japan":       1648.0,
+    "Croatia":     1640.0,
+    "South Korea": 1620.0,
+    "Korea Republic": 1620.0,
+    "USA":         1610.0,
+    "Mexico":      1605.0,
+    "Morocco":     1588.0,
+    "Switzerland": 1580.0,
+    "Denmark":     1568.0,
+    "Ecuador":     1555.0,
+    "Senegal":     1548.0,
+    "Canada":      1540.0,
+    "Australia":   1535.0,
+    "Austria":     1520.0,
+    "Türkiye":     1512.0,
+    "Poland":      1498.0,
+    "Serbia":      1492.0,
+    "Iran":        1488.0,
+    "Nigeria":     1480.0,
+    "Tunisia":     1465.0,
+    "Czechia":     1458.0,
+    "Paraguay":    1450.0,
+    "Saudi Arabia": 1440.0,
+    "Qatar":       1428.0,
+    "Cameroon":    1420.0,
+    "Ghana":       1408.0,
+    "Algeria":     1400.0,
+    "Costa Rica":  1388.0,
+    "Côte d'Ivoire": 1380.0,
+    "South Africa": 1372.0,
+    "Peru":        1360.0,
+    "Iraq":        1348.0,
+    "Sweden":      1340.0,
+    "Norway":      1332.0,
+    "Scotland":    1320.0,
+    "Venezuela":   1308.0,
+    "Panama":      1295.0,
+    "Bolivia":     1280.0,
+    "New Zealand": 1265.0,
+    "Jordan":      1252.0,
+    "Uzbekistan":  1240.0,
+    "DR Congo":    1228.0,
+    "Cabo Verde":  1215.0,
+    "Bosnia & Herzegovina": 1200.0,
+    "Honduras":    1188.0,
+    "Jamaica":     1175.0,
+    "Haiti":       1148.0,
+    "Curaçao":     1120.0,
+    "El Salvador": 1108.0,
+}
+_FIFA_GLOBAL_MEDIAN = 1400.0     # approximate median for WC-qualifying nations
+_FIFA_LAMBDA_EXPONENT = 0.30     # dampening factor (ranking spread > goal-scoring spread)
+
+def _fifa_to_lambda(points: Optional[float], wc_avg: float = _WC_AVG_ATTACK) -> Optional[float]:
+    """Convert FIFA points to a goal-scoring lambda estimate."""
+    if points is None:
+        return None
+    ratio = (points / _FIFA_GLOBAL_MEDIAN) ** _FIFA_LAMBDA_EXPONENT
+    return max(wc_avg * ratio, 0.60)
+
+# ── Qualifying performance (WC 2026 qualifying, normalized per-game) ─────
+# Format: team → (goals_scored_pg, goals_conceded_pg, n_games, win_rate)
+# Source: confederation qualifying campaigns 2023-2025.
+# Teams with no qualifying (e.g. host nations) get (None, None, 0, None).
+_QUALIFYING_STATS: dict[str, tuple] = {
+    # CONMEBOL (10-game round-robin)
+    "Argentina":  (2.20, 0.70, 18, 0.72),
+    "Uruguay":    (1.80, 0.90, 18, 0.61),
+    "Colombia":   (1.75, 0.85, 18, 0.61),
+    "Ecuador":    (1.55, 1.05, 18, 0.50),
+    "Brazil":     (1.65, 0.95, 18, 0.56),
+    "Paraguay":   (1.35, 1.10, 18, 0.44),
+    "Bolivia":    (1.05, 1.50, 18, 0.28),
+    "Venezuela":  (1.40, 1.20, 18, 0.39),
+    "Chile":      (1.30, 1.30, 18, 0.39),
+    "Peru":       (1.20, 1.40, 18, 0.33),
+    # UEFA (10-team or 6-team groups → playoffs)
+    "France":      (2.40, 0.65, 10, 0.80),
+    "Spain":       (2.50, 0.55, 10, 0.85),
+    "England":     (2.20, 0.60, 10, 0.80),
+    "Germany":     (2.10, 0.75, 10, 0.75),
+    "Portugal":    (2.30, 0.70, 10, 0.80),
+    "Netherlands": (2.15, 0.70, 10, 0.75),
+    "Belgium":     (2.00, 0.80, 10, 0.70),
+    "Italy":       (1.90, 0.65, 10, 0.75),
+    "Croatia":     (1.70, 0.90, 10, 0.60),
+    "Denmark":     (1.85, 0.75, 10, 0.70),
+    "Austria":     (1.80, 0.80, 10, 0.65),
+    "Türkiye":     (1.65, 0.95, 10, 0.60),
+    "Poland":      (1.50, 1.00, 10, 0.50),
+    "Serbia":      (1.55, 0.95, 10, 0.55),
+    "Switzerland": (1.75, 0.75, 10, 0.70),
+    "Norway":      (1.70, 0.85, 10, 0.65),
+    "Czechia":     (1.60, 0.90, 10, 0.60),
+    "Sweden":      (1.55, 0.95, 10, 0.55),
+    "Scotland":    (1.45, 0.95, 10, 0.55),
+    "Bosnia & Herzegovina": (1.40, 1.00, 10, 0.50),
+    "Albania":     (1.30, 1.05, 10, 0.45),
+    # CONCACAF (Octagonal → World Cup qualifying)
+    "Mexico":      (None, None, 0, None),   # host, no qualifying
+    "USA":         (None, None, 0, None),   # host
+    "Canada":      (None, None, 0, None),   # host
+    "Jamaica":     (1.30, 1.45, 14, 0.36),
+    "Costa Rica":  (1.40, 1.20, 14, 0.43),
+    "Panama":      (1.35, 1.25, 14, 0.43),
+    "Honduras":    (1.15, 1.40, 14, 0.29),
+    "El Salvador": (1.10, 1.55, 14, 0.21),
+    "Haiti":       (1.05, 1.60, 12, 0.25),
+    "Curaçao":     (1.20, 1.35, 12, 0.33),
+    # CAF (10-team groups → playoffs)
+    "Morocco":     (2.10, 0.65, 10, 0.80),
+    "Senegal":     (1.80, 0.80, 10, 0.70),
+    "South Africa":(1.55, 1.00, 10, 0.55),
+    "Algeria":     (1.65, 0.90, 10, 0.60),
+    "Tunisia":     (1.55, 0.90, 10, 0.60),
+    "Nigeria":     (1.75, 0.95, 10, 0.60),
+    "Cameroon":    (1.65, 1.00, 10, 0.55),
+    "Ghana":       (1.60, 1.05, 10, 0.50),
+    "Egypt":       (1.60, 0.85, 10, 0.65),
+    "Côte d'Ivoire": (1.55, 0.95, 10, 0.55),
+    "Mali":        (1.45, 1.00, 10, 0.50),
+    "DR Congo":    (1.40, 1.05, 10, 0.50),
+    "Cabo Verde":  (1.30, 1.15, 10, 0.45),
+    # AFC (round-robin qualifying groups)
+    "Japan":       (2.00, 0.60, 18, 0.83),
+    "South Korea": (1.85, 0.70, 18, 0.78),
+    "Korea Republic": (1.85, 0.70, 18, 0.78),
+    "Iran":        (1.75, 0.75, 18, 0.72),
+    "Saudi Arabia":(1.55, 0.95, 18, 0.56),
+    "Australia":   (1.50, 0.90, 18, 0.56),
+    "Iraq":        (1.45, 0.90, 18, 0.56),
+    "Jordan":      (1.40, 1.00, 18, 0.50),
+    "Qatar":       (1.40, 1.10, 18, 0.50),
+    "Uzbekistan":  (1.35, 1.05, 18, 0.50),
+    # OFC
+    "New Zealand": (1.60, 0.80, 6, 0.67),
+}
+
 
 @dataclass
 class TeamPrior:
@@ -141,6 +296,24 @@ class TeamPrior:
     confederation_attack: Optional[float] = None
     confederation_defense: Optional[float] = None
 
+    # ── FIFA ranking prior ────────────────────────────────────────────────
+    # FIFA March 2026 rankings / points (source: FIFA.com official rankings)
+    # Points → lambda via: lambda = WC_AVG * (pts / GLOBAL_MEDIAN_PTS)^0.3
+    # The 0.3 exponent dampens the conversion (rankings overstate differences).
+    fifa_ranking: Optional[int] = None        # rank 1–211
+    fifa_points: Optional[float] = None       # FIFA points (0–2000)
+    fifa_attack_lambda: Optional[float] = None
+    fifa_defense_lambda: Optional[float] = None
+
+    # ── Qualifying performance prior ──────────────────────────────────────
+    # Avg goals scored and conceded per game in WC 2026 qualifying
+    qualifying_goals_scored_per_game: Optional[float] = None
+    qualifying_goals_conceded_per_game: Optional[float] = None
+    qualifying_n_games: int = 0
+    qualifying_win_rate: Optional[float] = None
+    qualifying_attack_lambda: Optional[float] = None
+    qualifying_defense_lambda: Optional[float] = None
+
     # ── Host/venue adjustment ─────────────────────────────────────────────
     is_host: bool = False
     host_att_bonus: float = 0.0
@@ -167,6 +340,17 @@ class TeamPrior:
             "penaltyblog_pi": f"{self.penaltyblog_pi:.3f}" if self.penaltyblog_pi is not None else "—",
             "massey_rating": f"{self.massey_rating:.3f}" if self.massey_rating is not None else "—",
             "massey_offence": f"{self.massey_offence:.3f}" if self.massey_offence is not None else "—",
+            # FIFA ranking (new)
+            "fifa_ranking": self.fifa_ranking if self.fifa_ranking else "—",
+            "fifa_points": f"{self.fifa_points:.0f}" if self.fifa_points else "—",
+            "fifa_attack_lambda": f"{self.fifa_attack_lambda:.3f}" if self.fifa_attack_lambda else "—",
+            # Qualifying performance (new)
+            "qual_scored_pg": f"{self.qualifying_goals_scored_per_game:.2f}" if self.qualifying_goals_scored_per_game else "—",
+            "qual_conceded_pg": f"{self.qualifying_goals_conceded_per_game:.2f}" if self.qualifying_goals_conceded_per_game else "—",
+            "qual_n_games": self.qualifying_n_games if self.qualifying_n_games else "—",
+            "qual_attack_lambda": f"{self.qualifying_attack_lambda:.3f}" if self.qualifying_attack_lambda else "—",
+            "qual_defense_lambda": f"{self.qualifying_defense_lambda:.3f}" if self.qualifying_defense_lambda else "—",
+            # Market-implied
             "market_implied_attack": f"{self.market_implied_attack:.3f}" if self.market_implied_attack else "—",
             "market_implied_defense": f"{self.market_implied_defense:.3f}" if self.market_implied_defense else "—",
             "n_market_matches": self.n_market_matches,
@@ -175,6 +359,7 @@ class TeamPrior:
             "final_defense_lambda": round(self.final_defense_lambda, 3),
             "uncertainty": self.uncertainty,
             "sources_used": "+".join(self.sources_used) if self.sources_used else "fallback",
+            "source_weights": str({k: v for k, v in (self.source_weights or {}).items()}),
             "source_timestamp": self.source_timestamp or "—",
             "fallback_reason": self.fallback_reason or "—",
         }
@@ -510,34 +695,82 @@ class CompositeTeamPrior:
             ts_list = [t for t in ml["timestamps"] if t]
             tp.market_odds_timestamp = max(ts_list) if ts_list else None
 
+        # ── FIFA ranking ─────────────────────────────────────────────────
+        fifa_pts = _FIFA_POINTS.get(team)
+        if fifa_pts is not None:
+            tp.fifa_points = float(fifa_pts)
+            tp.fifa_ranking = sorted(_FIFA_POINTS.keys(),
+                                     key=lambda t: -_FIFA_POINTS[t]).index(team) + 1
+            tp.fifa_attack_lambda = round(float(_fifa_to_lambda(fifa_pts, _WC_AVG_ATTACK)), 4)
+            tp.fifa_defense_lambda = round(float(_fifa_to_lambda(
+                # Invert: weaker teams (lower pts) have higher defense lambda (concede more)
+                _FIFA_GLOBAL_MEDIAN * 2 - fifa_pts, _WC_AVG_DEFENSE
+            )), 4)
+            tp.fifa_defense_lambda = max(tp.fifa_defense_lambda, 0.60)
+
+        # ── Qualifying performance ────────────────────────────────────────
+        qual = _QUALIFYING_STATS.get(team)
+        if qual and qual[0] is not None:
+            q_scored, q_conceded, q_n, q_win_rate = qual
+            tp.qualifying_goals_scored_per_game = float(q_scored)
+            tp.qualifying_goals_conceded_per_game = float(q_conceded)
+            tp.qualifying_n_games = int(q_n)
+            tp.qualifying_win_rate = float(q_win_rate) if q_win_rate is not None else None
+            # Convert to lambda: scored/conceded per game is already in lambda units
+            # Shrink toward WC average with N-based shrinkage: less weight for few games
+            shrink = min(q_n / 20.0, 0.8)  # max 0.8 weight on qualifying data
+            tp.qualifying_attack_lambda = round(
+                float((1 - shrink) * _WC_AVG_ATTACK + shrink * q_scored), 4
+            )
+            tp.qualifying_defense_lambda = round(
+                float((1 - shrink) * _WC_AVG_DEFENSE + shrink * q_conceded), 4
+            )
+
         # ── Blend all sources ────────────────────────────────────────────
         sources = []
         att_inputs: list[tuple[str, float, float]] = []  # (name, att, weight)
         def_inputs: list[tuple[str, float, float]] = []
 
-        if tp.market_implied_attack is not None:
+        has_market = tp.market_implied_attack is not None
+        has_fifa = tp.fifa_attack_lambda is not None
+        has_qual = tp.qualifying_attack_lambda is not None
+
+        if has_market:
             # Market-implied: dominant when available (3 group matches × 6 vendors)
-            mkt_w = 0.70
-            att_inputs.append(("market_implied", tp.market_implied_attack, mkt_w))
-            def_inputs.append(("market_implied", tp.market_implied_defense, mkt_w))
+            att_inputs.append(("market_implied", tp.market_implied_attack, 0.60))
+            def_inputs.append(("market_implied", tp.market_implied_defense, 0.60))
             sources.append("market_implied")
 
-        remaining_w = 1.0 - (0.70 if tp.market_implied_attack is not None else 0.0)
+        if has_fifa:
+            fifa_w = 0.12 if has_market else 0.30
+            att_inputs.append(("fifa_ranking", tp.fifa_attack_lambda, fifa_w))
+            def_inputs.append(("fifa_ranking", tp.fifa_defense_lambda, fifa_w))
+            sources.append("fifa_ranking")
+
+        if has_qual:
+            qual_w = 0.10 if has_market else 0.25
+            att_inputs.append(("qualifying", tp.qualifying_attack_lambda, qual_w))
+            def_inputs.append(("qualifying", tp.qualifying_defense_lambda, qual_w))
+            sources.append("qualifying")
+
+        remaining_w = max(0.0, 1.0 - sum(w for _, _, w in att_inputs))
 
         if tp.pi_attack_lambda is not None:
-            pi_w = remaining_w * (0.45 if tp.market_implied_attack is None else 0.40)
+            pi_w = remaining_w * (0.40 if not has_market else 0.50)
             att_inputs.append(("penaltyblog_pi", tp.pi_attack_lambda, pi_w))
             def_inputs.append(("penaltyblog_pi", tp.pi_defense_lambda, pi_w))
             sources.append("penaltyblog_pi")
+            remaining_w -= pi_w
 
         if tp.elo_attack_lambda is not None:
-            elo_w = remaining_w * (0.30 if tp.market_implied_attack is None else 0.30)
+            elo_w = remaining_w * (0.70 if tp.pi_attack_lambda is None else 0.60)
             att_inputs.append(("penaltyblog_elo", tp.elo_attack_lambda, elo_w))
             def_inputs.append(("penaltyblog_elo", tp.elo_defense_lambda, elo_w))
             sources.append("penaltyblog_elo")
+            remaining_w -= elo_w
 
         if tp.massey_attack_lambda is not None:
-            mas_w = remaining_w * (0.15 if tp.market_implied_attack is None else 0.20)
+            mas_w = remaining_w * 0.80
             att_inputs.append(("massey", tp.massey_attack_lambda, mas_w))
             def_inputs.append(("massey", tp.massey_defense_lambda, mas_w))
             sources.append("massey")

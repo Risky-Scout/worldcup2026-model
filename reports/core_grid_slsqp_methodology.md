@@ -1,6 +1,6 @@
 # Core-Grid SLSQP Methodology
 
-**Generated**: 2026-06-12T00:17:01Z
+**Generated**: 2026-06-12T00:28:25Z
 
 ## Why 8×8?
 
@@ -56,6 +56,19 @@ The tail is partitioned into event buckets:
 - home_0_7_away_8plus
 - both_8plus
 - other_home_win / other_draw / other_away_win
+
+## Prior used by each reconciliation method
+
+| Method | Prior PMF | Rationale |
+|--------|-----------|-----------|
+| `market_implied` | Parametric (goal_expectancy_extended from 1X2 odds) | Derives lambdas from BDL 1X2 no-vig, constructs Poisson PMF |
+| `blend` | `composite_rating_pmf` (weighted 80%) + market_implied (20%) | Composite prior anchors shape; market adjusts |
+| `slsqp_core` | `market_implied` PMF (core only) | **SLSQP starts from market_implied**, not composite | 
+
+**Why does SLSQP use market_implied and not composite?**  
+SLSQP optimizes to minimize KL divergence from the prior + soft market penalties. If we started from the composite prior, the KL term would fight the market constraint terms on every cell. By starting from the market_implied Poisson shape (which already embeds 1X2 and O/U market information), the KL term reinforces the market constraints instead of resisting them. The composite prior contributes via the `blend` method, not the SLSQP path.
+
+**Consequence**: The `blend` method preserves more composite-prior signal. `slsqp_core` is market-first with plausibility caps enforced via bounds and smoothness penalties. The `compare_reconciliation_methods()` function selects the best on validation loss.
 
 ## Selection rule
 

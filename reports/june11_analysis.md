@@ -1,6 +1,6 @@
 # June 11, 2026 Opening Day Predictions
 
-**Generated**: 2026-06-12T00:17:01Z
+**Generated**: 2026-06-12T00:28:25Z
 **Date**: June 11, 2026 (US Eastern time)
 
 Both opening-day matches identified: Mexico vs South Africa AND South Korea vs Czechia.
@@ -11,21 +11,21 @@ Both opening-day matches identified: Mexico vs South Africa AND South Korea vs C
 - **Publish mode**: **market_reconciled**
 - **Market quality**: 0.83  α (market weight) = 0.85
 - **Vendors**: 6  Correct-score outcomes: 24
-- **Composite model**: composite_rating_pmf  Sources: market_implied+penaltyblog_pi+penaltyblog_elo
+- **Composite model**: composite_rating_pmf  Sources: market_implied+fifa_ranking+penaltyblog_pi
 
 ### Four-mode comparison
 
 | Mode | Home Win | Draw | Away Win | Over 2.5 | exp G home | exp G away |
 |------|----------|------|----------|----------|-----------|-----------|
-| composite_rating (composite_rating_pmf) | 0.6695 | 0.21913 | 0.11137 | ? | 1.8864 | 0.6098 |
+| composite_rating (composite_rating_pmf) | 0.624 | 0.23559 | 0.14042 | ? | 1.7937 | 0.7064 |
 | market_implied | 0.67508 | 0.21113 | 0.11378 | ? | 1.8413 | 0.5973 |
-| **PUBLISHED (reconciled)** | **0.67825** | **0.20505** | **0.1167** | **?** | **1.93** | **0.6205** |
+| **PUBLISHED (reconciled)** | **0.67692** | **0.20542** | **0.11766** | **?** | **1.9272** | **0.6241** |
 
 ### Top scorelines (published PMF)
-- 1-0: 0.1489
-- 2-0: 0.1447
-- 3-0: 0.0943
-- 1-1: 0.0868
+- 1-0: 0.1487
+- 2-0: 0.1443
+- 3-0: 0.0939
+- 1-1: 0.0870
 - 0-0: 0.0852
 
 ### Market correct-score probs (BDL no-vig)
@@ -41,13 +41,13 @@ Both opening-day matches identified: Mexico vs South Africa AND South Korea vs C
 - **Publish mode**: **market_reconciled**
 - **Market quality**: 0.83  α (market weight) = 0.85
 - **Vendors**: 6  Correct-score outcomes: 24
-- **Composite model**: composite_rating_pmf  Sources: market_implied+penaltyblog_pi+penaltyblog_elo
+- **Composite model**: composite_rating_pmf  Sources: market_implied+fifa_ranking+qualifying
 
 ### Four-mode comparison
 
 | Mode | Home Win | Draw | Away Win | Over 2.5 | exp G home | exp G away |
 |------|----------|------|----------|----------|-----------|-----------|
-| composite_rating (composite_rating_pmf) | 0.35876 | 0.2937 | 0.34754 | ? | 1.1835 | 1.1601 |
+| composite_rating (composite_rating_pmf) | 0.37739 | 0.29183 | 0.33078 | ? | 1.2307 | 1.133 |
 | market_implied | 0.36171 | 0.31403 | 0.32426 | ? | 1.2253 | 1.1459 |
 | **PUBLISHED (reconciled)** | **0.36245** | **0.31256** | **0.32499** | **?** | **1.205** | **1.1288** |
 
