@@ -406,6 +406,42 @@ def run_2022_replay(
     predictor = LivePMFPredictor()
     replayer = MatchReplayer(predictor)
 
+    # Normalize BDL event columns to the internal schema expected by MatchReplayer.
+    # BDL uses: incident_type, incident_class, time_minute, is_home
+    # Internal expects: type, clock_minute, team
+    events_norm: Optional[pd.DataFrame] = None
+    if events_df is not None and len(events_df) > 0:
+        ev = events_df.copy()
+        # Rename incident_type → type if needed
+        if "incident_type" in ev.columns and "type" not in ev.columns:
+            ev = ev.rename(columns={"incident_type": "type"})
+        # Map incident_class for goals: ownGoal → own_goal, penalty → penalty_goal
+        if "incident_class" in ev.columns:
+            class_map = {"ownGoal": "own_goal", "penalty": "penalty_goal"}
+            ev["type"] = ev.apply(
+                lambda r: class_map.get(r.get("incident_class", ""), r["type"])
+                if r["type"] == "goal" else r["type"],
+                axis=1,
+            )
+            # Map card classes: red/yellowRed → red_card, yellow → yellow_card
+            card_class_map = {"red": "red_card", "yellowRed": "red_card", "yellow": "yellow_card"}
+            ev["type"] = ev.apply(
+                lambda r: card_class_map.get(r.get("incident_class", ""), r["type"])
+                if r["type"] == "card" else r["type"],
+                axis=1,
+            )
+        # Rename time_minute → clock_minute if needed
+        if "time_minute" in ev.columns and "clock_minute" not in ev.columns:
+            ev = ev.rename(columns={"time_minute": "clock_minute"})
+        # Derive team from is_home column if present
+        if "is_home" in ev.columns and "team" not in ev.columns:
+            ev["team"] = ev["is_home"].map(
+                lambda x: "home" if (x is True or x == 1 or x == "True") else "away"
+            )
+        # Handle own goals: they're credited to the *other* team; swap in type only
+        # (the timeline builder already handles own_goal swapping)
+        events_norm = ev
+
     rows = []
     wc2022 = matches_df[
         (matches_df["season"] == 2022) &
@@ -422,8 +458,16 @@ def run_2022_replay(
             lh, la = pregame_lambdas[mid]
 
         match_events = None
-        if events_df is not None:
-            match_events = events_df[events_df["match_id"] == mid]
+        if events_norm is not None:
+            # Match IDs may be int or str; compare with original type first, fall back to cast
+            try:
+                orig_mid = match_row.get("match_id", idx)
+                match_events = events_norm[events_norm["match_id"] == orig_mid]
+                if len(match_events) == 0:
+                    # Try string comparison
+                    match_events = events_norm[events_norm["match_id"].astype(str) == mid]
+            except Exception:
+                match_events = events_norm[events_norm["match_id"].astype(str) == mid]
 
         match_stats = None
         if stats_df is not None:
