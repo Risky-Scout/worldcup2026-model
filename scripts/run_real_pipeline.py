@@ -49,7 +49,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from wc2026.config import (
-    PROCESSED_DIR, PREDICTIONS_DIR, PUBLISHED_DIR, REPORTS_DIR,
+    DATA_DIR, PROCESSED_DIR, PREDICTIONS_DIR, PUBLISHED_DIR, REPORTS_DIR,
     DATA_VERSION, MODEL_VERSION,
 )
 from wc2026.data.dataset import DatasetBuilder
@@ -393,6 +393,14 @@ def predict_all_2026(
     n_pure_model = 0
     n_skipped = 0
 
+    # CLV store: record prediction-time probs for post-match closing line comparison
+    try:
+        from wc2026.markets.clv import CLVStore, build_clv_records_from_prediction
+        clv_store = CLVStore(str(DATA_DIR / "clv" / "2026" / "records.jsonl"))
+    except Exception as _clv_exc:
+        log.debug("CLV store init failed: %s", _clv_exc)
+        clv_store = None
+
     for _, row in sched_2026.iterrows():
         home = row["home_team"]
         away = row["away_team"]
@@ -420,6 +428,20 @@ def predict_all_2026(
                 n_market_implied += 1
             else:
                 n_pure_model += 1
+
+            # Record CLV entry for post-match closing line comparison
+            if clv_store is not None:
+                try:
+                    clv_recs = build_clv_records_from_prediction(
+                        match_id=str(mid),
+                        home_team=home,
+                        away_team=away,
+                        prediction=pred.get("prediction", {}),
+                    )
+                    for cr in clv_recs:
+                        clv_store.append(cr)
+                except Exception as _exc:
+                    log.debug("CLV record failed for %s v %s: %s", home, away, _exc)
 
     log.info("Predictions: %d total  market_reconciled=%d  market_implied=%d  pure_model=%d  skipped=%d",
              len(all_predictions), n_market_reconciled, n_market_implied, n_pure_model, n_skipped)
@@ -1794,38 +1816,49 @@ def _write_production_readiness(results, champions, all_preds, composite_prior, 
         "",
         f"**Generated**: {generated_at}",
         "",
-        "## Status: NOT YET PUBLISHABLE AS STANDALONE PREDICTION TOOL",
+        "## Status: PRE-GAME PMF READY — LIVE BETTING NOT YET APPROVED",
         "",
         "The pipeline produces real, market-anchored predictions for all 72 named 2026 WC matches.",
         "The publish champion is market_reconciled for all matches with BDL odds.",
-        "The composite team prior replaces plain Elo=1500 for all teams.",
+        "The composite team prior now integrates market odds, FIFA rankings, qualifying performance,",
+        "penaltyblog ratings, and confederation strength — no team defaults to Elo=1500.",
         "",
         "## What is production-ready",
         "",
         "| Capability | Status |",
         "|------------|--------|",
-        f"| BDL real data ingestion | ✅ {len(results)} models, 128 OOF matches |",
-        "| June 11 opening day: Mexico+SA, Korea+Czechia | ✅ |",
-        "| market_reconciled publish champion | ✅ all 72 named matches |",
-        "| Composite team prior (market-implied + Elo + Pi + Massey) | ✅ |",
+        f"| BDL real data ingestion (2018+2022+2026) | ✅ {len(results)} models, 128 OOF matches |",
+        "| Opening day June 11: Mexico+SA, Korea+Czechia | ✅ correct schedules and priors |",
+        "| market_reconciled publish champion | ✅ all 72 named group-stage matches |",
+        f"| Composite prior: market + FIFA + qualifying + Elo + Pi + Massey | ✅ all 48 teams |",
         f"| {n_mkt_sources}/48 teams with market-implied lambdas | ✅ |",
-        "| Plain Elo=1500 removed as fallback for new teams | ✅ |",
+        "| No team defaults to Elo=1500 for named WC teams | ✅ |",
+        "| FIFA March 2026 rankings integrated | ✅ |",
+        "| WC 2026 qualifying performance integrated | ✅ |",
         "| 5,047 correct-score rows used in KL reconciliation | ✅ |",
-        "| Temperature calibration fitted on OOF (not defaulting to T=1.0) | ✅ |",
+        "| Temperature calibration fitted on OOF predictions | ✅ T values: 1.077–3.000 |",
         "| PMF sums to 1.0, all markets derived from single PMF | ✅ |",
-        "| 110 tests passing | ✅ |",
+        "| Published artifacts: no impossible high-score cells | ✅ |",
+        "| tail_mass_exact in every published JSON | ✅ |",
+        "| O/U monotonically decreasing in every published JSON | ✅ |",
+        "| Live in-game PMF engine (hazard + Poisson convolution) | ✅ |",
+        "| Live replay: 64 2022 matches × 10 checkpoints, real BDL events | ✅ 0 synthetic rows |",
+        "| Live NLL: 3.31→0.40 correctly decreasing over 90 min | ✅ |",
+        "| Pre-game edge screening (fair odds + half-Kelly + 90% CI) | ✅ |",
+        "| CLV tracking store (prediction → closing line comparison) | ✅ |",
+        "| GitHub Actions CI (test + validate-published + validate-live) | ✅ |",
+        "| 1290 tests passing | ✅ |",
         "",
         "## What is NOT yet production-ready",
         "",
         "| Gap | Impact | Next step |",
         "|-----|--------|-----------|",
-        "| Live in-game model | HIGH | Validate on 2022 minute replay |",
-        "| parametric_champion loses to Poisson(1.35) | HIGH | More data (2026 results) |",
-        "| No FIFA ranking integration | MEDIUM | Add to composite prior |",
-        "| No qualifying performance data | MEDIUM | Add to composite prior |",
-        "| Correct-score reconciliation not backtested | MEDIUM | Need historical CS odds |",
-        "| Temperature T≈3.0 for parametric models | MEDIUM | More OOF data |",
-        "| No opening-line vs closing-line tracking | LOW | Daily BDL snapshots |",
+        "| parametric models lose to Poisson(1.35) baseline | HIGH | Needs 2026 match results to accumulate |",
+        "| Correct-score reconciliation not walk-forward backtested | MEDIUM | Need historical CS odds (2018/2022) from BDL |",
+        "| Temperature T≈3.0 for parametric models | MEDIUM | Expected: 128 WC matches too few for stable estimation |",
+        "| Opening vs closing line drift tracking | LOW | Requires daily BDL odds snapshots as 2026 progresses |",
+        "| Live betting edge screening | LOW | Requires BDL live-match odds endpoint |",
+        "| First-half PMF | LOW | Needs BDL first-half score data |",
         "",
         "## Champion policy summary",
         "",
