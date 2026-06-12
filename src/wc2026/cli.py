@@ -291,6 +291,92 @@ def publish_today(ctx, season, data_version):
 
 
 # ---------------------------------------------------------------------------
+# Results — show completed match results vs pre-game predictions
+# ---------------------------------------------------------------------------
+
+@cli.command("results")
+@click.option("--date", default=None, help="Date YYYY-MM-DD (default: most recent with results)")
+@click.option("--all", "show_all", is_flag=True, default=False, help="Show all completed matches")
+@click.pass_context
+def results(ctx, date, show_all):
+    """Show completed match results alongside pre-game predictions."""
+    import json
+    import pandas as pd
+    from pathlib import Path
+    from wc2026.config import PROCESSED_DIR, PUBLISHED_DIR
+
+    _setup_logging(ctx.obj.get("verbose", False))
+
+    matches_path = PROCESSED_DIR / "v1" / "matches.parquet"
+    if not matches_path.exists():
+        click.echo("No processed matches found. Run: make build-dataset", err=True)
+        return
+
+    mdf = pd.read_parquet(matches_path)
+    mdf["match_date_et"] = (
+        pd.to_datetime(mdf["match_datetime"], utc=True, errors="coerce")
+        .dt.tz_convert("America/New_York")
+        .dt.strftime("%Y-%m-%d")
+    )
+
+    if show_all:
+        completed = mdf[mdf["status"].isin(["completed", "final"]) & mdf["home_goals"].notna()]
+    else:
+        completed = mdf[mdf["status"].isin(["completed", "final"]) & mdf["home_goals"].notna()]
+        if date:
+            completed = completed[completed["match_date_et"] == date]
+        elif not completed.empty:
+            latest_date = completed["match_date_et"].max()
+            completed = completed[completed["match_date_et"] == latest_date]
+
+    if completed.empty:
+        click.echo("No completed matches found.")
+        return
+
+    # Load published predictions for annotation
+    pred_by_mid: dict = {}
+    for json_path in sorted(PUBLISHED_DIR.glob("2026-*.json")):
+        if json_path.name == "all_scheduled_2026.json":
+            continue
+        try:
+            doc = json.loads(json_path.read_text())
+            for m in doc.get("matches", []):
+                pred_by_mid[int(m.get("match_id", -1))] = m
+        except Exception:
+            pass
+
+    click.echo()
+    click.echo("WC 2026 — Match Results")
+    click.echo("=" * 60)
+    for _, row in completed.sort_values("match_datetime").iterrows():
+        hg, ag = int(row["home_goals"]), int(row["away_goals"])
+        mid = int(row["match_id"])
+        pm = pred_by_mid.get(mid, {})
+        pred = pm.get("prediction", {})
+        dm = pred.get("derived_markets", {})
+
+        outcome = "HOME WIN" if hg > ag else ("DRAW" if hg == ag else "AWAY WIN")
+        click.echo(f"\n  {row['home_team']} {hg}-{ag} {row['away_team']}  [{outcome}]")
+        click.echo(f"  Date: {row['match_date_et']}  Stage: {row.get('stage','?')}")
+
+        if dm:
+            hw, dr, aw = dm.get("home_win", 0), dm.get("draw", 0), dm.get("away_win", 0)
+            mode = pm.get("publish_mode", "?")
+            click.echo(f"  Pre-game ({mode}): H={hw:.1%}  D={dr:.1%}  A={aw:.1%}")
+
+            # Look up exact score probability
+            scores = pred.get("top_scorelines", [])
+            exact = next((s for s in scores if s.get("home_goals") == hg and s.get("away_goals") == ag), None)
+            if exact:
+                click.echo(f"  P({hg}-{ag}) = {exact['probability']:.1%}  "
+                           f"(model ranked #{scores.index(exact)+1} most likely)")
+        else:
+            click.echo("  (no pre-game prediction found)")
+
+    click.echo()
+
+
+# ---------------------------------------------------------------------------
 # Audit
 # ---------------------------------------------------------------------------
 

@@ -133,35 +133,46 @@ def step_predict_date(date: str) -> bool:
     return result.returncode == 0
 
 
+def _american_to_decimal(american: float) -> float:
+    """Convert American moneyline odds to decimal odds."""
+    if american >= 100:
+        return round(american / 100 + 1, 6)
+    elif american <= -100:
+        return round(100 / abs(american) + 1, 6)
+    return 0.0
+
+
 def step_clv_record_closing(date: str) -> None:
     """
     Record closing lines for matches on DATE that have now kicked off.
 
-    In production: call the BDL API for the latest odds snapshot
-    and update CLVStore with the closing price. For now, this reads
-    the current odds from the BDL processed table and writes them.
+    Reads the BDL odds parquet (columns: moneyline_home, moneyline_draw,
+    moneyline_away in American format) and stores the consensus decimal
+    closing price for home_win, draw, and away_win markets.
+
+    Uses the most-recently-updated vendor row per match as the closing proxy.
+    In a production system this would be called ~5 minutes before kickoff.
     """
     log.info("═══ STEP 6: Record CLV closing lines for %s ═══", date)
     try:
+        import numpy as np
         import pandas as pd
         from wc2026.config import DATA_DIR, PROCESSED_DIR
         from wc2026.markets.clv import CLVStore
 
         store = CLVStore(str(DATA_DIR / "clv" / "2026" / "records.jsonl"))
-        records = store.load_all()
-        if not records:
-            log.info("  No CLV records to update for %s", date)
-            return
 
-        # Load current odds to find closing prices for today's matches
         odds_path = PROCESSED_DIR / "v1" / "odds.parquet"
         if not odds_path.exists():
             log.warning("  No odds parquet found — skipping CLV closing update")
             return
 
         odds_df = pd.read_parquet(odds_path)
+        required = {"moneyline_home", "moneyline_draw", "moneyline_away"}
+        if not required.issubset(odds_df.columns):
+            log.warning("  Odds parquet missing columns %s — skipping", required - set(odds_df.columns))
+            return
 
-        # Find match_ids for today's matches
         matches_path = PROCESSED_DIR / "v1" / "matches.parquet"
         if not matches_path.exists():
             return
@@ -171,30 +182,45 @@ def step_clv_record_closing(date: str) -> None:
         ).dt.tz_convert("America/New_York").dt.strftime("%Y-%m-%d")
         today_matches = matches_df[matches_df["match_date"] == date]
 
+        ts = dt.datetime.now(tz=dt.timezone.utc).isoformat()
         n_updated = 0
+        n_skipped_live = 0
         for _, mrow in today_matches.iterrows():
             mid = str(mrow["match_id"])
-            # Get most recent 1X2 odds for this match as closing proxy
             match_odds = odds_df[odds_df["match_id"] == mrow["match_id"]].copy()
             if match_odds.empty:
                 continue
-            # Get latest odds by updated_at
+
+            # Use the most-recent snapshot row as closing line proxy.
+            # Pre-game snapshots are taken before kickoff; post-match live odds
+            # become extreme (e.g. -100000 American).  Skip any row where the
+            # implied moneyline home probability is outside the plausible pre-game
+            # range of 1.05–20.0 decimal (5%–95% implied prob).
             if "updated_at" in match_odds.columns:
-                match_odds = match_odds.sort_values("updated_at", ascending=False)
-            outcome_col = match_odds.get("outcome_name", pd.Series(dtype=str, index=match_odds.index))
-            mask = outcome_col.str.lower().isin(["home", "home win", "1"]).values
-            hw_odds = match_odds.iloc[mask].head(1)
-            if hw_odds.empty:
+                match_odds = match_odds.sort_values("updated_at", ascending=True)
+
+            pregame_row = None
+            for _, r in match_odds.iterrows():
+                hw_dec = _american_to_decimal(float(r.get("moneyline_home") or 0))
+                if 1.05 <= hw_dec <= 20.0:
+                    pregame_row = r
+            if pregame_row is None:
+                log.info("  match_id=%s: no plausible pre-game odds found (likely all live/post-match); skipping closing line", mid)
+                n_skipped_live += 1
                 continue
-            closing_dec = float(hw_odds.iloc[0].get("decimal_odds", 0) or 0)
-            if closing_dec > 1.0:
-                n_u = store.update_closing(mid, "home_win", closing_dec,
-                                           dt.datetime.now(tz=dt.timezone.utc).isoformat())
-                n_updated += n_u
 
-        log.info("  CLV closing lines updated: %d records", n_updated)
+            markets = {
+                "home_win": _american_to_decimal(float(pregame_row.get("moneyline_home") or 0)),
+                "draw":     _american_to_decimal(float(pregame_row.get("moneyline_draw") or 0)),
+                "away_win": _american_to_decimal(float(pregame_row.get("moneyline_away") or 0)),
+            }
+            for market, closing_dec in markets.items():
+                if closing_dec > 1.0:
+                    n_u = store.update_closing(mid, market, closing_dec, ts)
+                    n_updated += n_u
 
-        # Print current summary
+        log.info("  CLV closing lines updated: %d records (%d matches skipped — live/post-match odds)",
+                 n_updated, n_skipped_live)
         summary = store.summary()
         log.info("  CLV summary: %d total, %d with closing, beat_close=%.1f%%",
                  summary.n_records, summary.n_with_closing,
