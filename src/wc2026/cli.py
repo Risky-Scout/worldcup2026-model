@@ -373,8 +373,8 @@ def schedule(ctx, date):
             score_parts = [f"{s['home_goals']}-{s['away_goals']} ({s['probability']:.1%})" for s in scores]
             click.echo(f"     Top scores: {' | '.join(score_parts)}")
 
-        # Edge highlight
-        edge = m.get("edge_report", {})
+        # Edge highlight (nested under prediction)
+        edge = pred.get("edge_report", {})
         if edge and isinstance(edge, dict):
             value_bets = [b for b in edge.get("bets", []) if b.get("is_value")]
             if value_bets:
@@ -468,6 +468,145 @@ def results(ctx, date, show_all):
                            f"(model ranked #{scores.index(exact)+1} most likely)")
         else:
             click.echo("  (no pre-game prediction found)")
+
+    click.echo()
+
+
+# ---------------------------------------------------------------------------
+# Calibration — running model performance on actual 2026 results
+# ---------------------------------------------------------------------------
+
+@cli.command("calibration")
+@click.option("--market", default="all", help="Market to evaluate: all|home_win|draw|away_win|over_2.5|btts_yes")
+@click.pass_context
+def calibration(ctx, market):
+    """Show running calibration metrics on completed 2026 World Cup matches."""
+    import json
+    import math
+    from pathlib import Path
+    from wc2026.config import PUBLISHED_DIR
+
+    _setup_logging(ctx.obj.get("verbose", False))
+
+    MARKETS_1X2 = ["home_win", "draw", "away_win"]
+    MARKETS_TOTALS = ["over_2.5", "under_2.5", "over_1.5", "over_3.5"]
+    MARKETS_BTTS = ["btts_yes", "btts_no"]
+
+    records: list[dict] = []
+    for json_path in sorted(PUBLISHED_DIR.glob("2026-*.json")):
+        if json_path.name == "all_scheduled_2026.json":
+            continue
+        try:
+            doc = json.loads(json_path.read_text())
+        except Exception:
+            continue
+        for m in doc.get("matches", []):
+            result = m.get("result")
+            if not result:
+                continue
+            pred = m.get("prediction", {})
+            dm = pred.get("derived_markets", {})
+            outcome = result.get("outcome")  # home_win | draw | away_win
+            hg = result.get("home_goals", 0)
+            ag = result.get("away_goals", 0)
+            total = hg + ag
+            btts = hg > 0 and ag > 0
+
+            truth: dict[str, bool] = {
+                "home_win": outcome == "home_win",
+                "draw":     outcome == "draw",
+                "away_win": outcome == "away_win",
+                "btts_yes": btts,
+                "btts_no":  not btts,
+                "over_0.5": total > 0.5,
+                "over_1.5": total > 1.5,
+                "over_2.5": total > 2.5,
+                "over_3.5": total > 3.5,
+                "under_0.5": total <= 0.5,
+                "under_1.5": total <= 1.5,
+                "under_2.5": total <= 2.5,
+                "under_3.5": total <= 3.5,
+            }
+
+            for mkt, actual in truth.items():
+                prob = dm.get(mkt)
+                if prob is None or prob <= 0:
+                    continue
+                records.append({
+                    "match": f"{m['home_team']} v {m['away_team']}",
+                    "date": m.get("match_date_et", ""),
+                    "market": mkt,
+                    "model_prob": float(prob),
+                    "outcome": actual,
+                    "mode": m.get("publish_mode", "?"),
+                })
+
+    if not records:
+        click.echo("No completed matches with predictions found yet.")
+        return
+
+    mkt_filter = None if market == "all" else market
+    filtered = [r for r in records if mkt_filter is None or r["market"] == mkt_filter]
+
+    def _metrics(recs):
+        n = len(recs)
+        if n == 0:
+            return {}
+        brier = sum((r["model_prob"] - (1 if r["outcome"] else 0)) ** 2 for r in recs) / n
+        nll = -sum(
+            math.log(r["model_prob"]) if r["outcome"] else math.log(max(1 - r["model_prob"], 1e-9))
+            for r in recs
+        ) / n
+        acc = sum(1 for r in recs if (r["model_prob"] >= 0.5) == r["outcome"]) / n
+        correct = sum(1 for r in recs if r["outcome"])
+        return {"n": n, "n_correct": correct, "brier": brier, "nll": nll, "acc": acc}
+
+    click.echo()
+    click.echo(f"WC 2026 Model Calibration  ({len({r['match'] for r in records})} matches resolved)")
+    click.echo("=" * 68)
+
+    # Per-market breakdown for the 1X2 markets (most important)
+    groups = {
+        "1X2": MARKETS_1X2,
+        "Totals": MARKETS_TOTALS,
+        "BTTS":  MARKETS_BTTS,
+    }
+
+    for group_name, mkts in groups.items():
+        group_recs = [r for r in filtered if r["market"] in mkts]
+        if not group_recs:
+            continue
+        m_all = _metrics(group_recs)
+        click.echo(f"\n  {group_name}  (n={m_all['n']}  correct={m_all['n_correct']})")
+        click.echo(f"  {'Market':<14} {'n':>4} {'Freq':>5} {'Model':>6} {'Brier':>7} {'NLL':>7}")
+        click.echo("  " + "-" * 48)
+        for mkt in mkts:
+            mkt_recs = [r for r in group_recs if r["market"] == mkt]
+            if not mkt_recs:
+                continue
+            freq = sum(1 for r in mkt_recs if r["outcome"]) / len(mkt_recs)
+            mean_prob = sum(r["model_prob"] for r in mkt_recs) / len(mkt_recs)
+            mm = _metrics(mkt_recs)
+            click.echo(
+                f"  {mkt:<14} {mm['n']:>4} {freq:>5.0%} {mean_prob:>6.0%} "
+                f"{mm['brier']:>7.4f} {mm['nll']:>7.4f}"
+            )
+
+    # Overall summary
+    m_overall = _metrics(filtered)
+    click.echo(f"\n  Overall  (n={m_overall['n']})")
+    click.echo(f"  Brier={m_overall['brier']:.4f}  NLL={m_overall['nll']:.4f}  "
+               f"Acc={m_overall['acc']:.1%}")
+
+    # Naive baselines for comparison
+    click.echo()
+    click.echo("  Baselines (1X2 markets only):")
+    recs_1x2 = [r for r in records if r["market"] in MARKETS_1X2]
+    if recs_1x2:
+        # Uniform: 1/3
+        brier_uniform = sum((1/3 - (1 if r["outcome"] else 0))**2 for r in recs_1x2) / len(recs_1x2)
+        # Marginal frequency
+        click.echo(f"  Uniform 1/3:  Brier={brier_uniform:.4f}")
 
     click.echo()
 
