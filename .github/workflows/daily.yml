@@ -53,20 +53,33 @@ jobs:
           echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
 
       - name: Fetch latest BDL data
+        id: fetch
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: make fetch-bdl
         continue-on-error: true
 
+      - name: Warn on fetch failure
+        if: steps.fetch.outcome != 'success'
+        run: echo "::warning::BDL fetch had errors — continuing with cached data"
+
       - name: Rebuild dataset
+        id: build
         run: make build-dataset
-        continue-on-error: true
 
       - name: Run prediction pipeline
         run: python scripts/run_real_pipeline.py
 
       - name: Validate published artifacts
         run: make validate-published
+
+      - name: Deploy HTML pages
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/deploy_html.py
+        continue-on-error: true
 
       - name: Run post-match update (if requested)
         if: github.event.inputs.post_match == 'true'
@@ -79,6 +92,15 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/upload_predictions.py --date $DATE
+        continue-on-error: true
+
+      - name: Write pipeline health status
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: |
+          python scripts/live_snapshot.py --health-only || true
         continue-on-error: true
 
       - name: Commit updated predictions

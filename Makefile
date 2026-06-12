@@ -106,6 +106,13 @@ deploy: ## Upload HTML page and predictions JSON to production server
 	$(PYTHON) scripts/upload_predictions.py --date $(DATE)
 	$(PYTHON) scripts/deploy_html.py
 
+live-snapshot: ## Run live match PMF snapshot and upload wc-live.json to FTP
+	$(PYTHON) scripts/live_snapshot.py
+
+deploy-live: ## Deploy live PMF page and run live snapshot
+	$(PYTHON) scripts/deploy_html.py
+	$(PYTHON) scripts/live_snapshot.py
+
 ##@@ Docker
 docker-build: ## Build the Docker image
 	docker build -t wc2026-pmf:latest .

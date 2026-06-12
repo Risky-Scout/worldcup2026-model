@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WC 2026 Live PMF · Wizard of Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0e1a;--panel:#131826;--panel-2:#1a2030;--panel-3:#222a40;
+  --border:#232a3d;--border-2:#2d3650;
+  --text:#e8ecf5;--text-dim:#8892a8;--text-muted:#5a6378;
+  --gold:#d4af37;--gold-soft:#b89a30;
+  --green:#4ade80;--green-dim:rgba(74,222,128,.15);
+  --red:#f87171;--red-dim:rgba(248,113,113,.12);
+  --blue:#60a5fa;--blue-dim:rgba(96,165,250,.12);
+  --live:#ff4444;--live-dim:rgba(255,68,68,.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--text);font-family:'Fraunces',Georgia,serif;min-height:100vh;}
+
+header{border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0d1220 0%,var(--bg) 100%);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.logo{display:flex;align-items:baseline;gap:12px;}
+.logo-mark{font-size:28px;font-weight:700;color:var(--gold);font-style:italic;}
+.logo-name{font-size:20px;font-weight:500;font-style:italic;}
+.logo-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.15em;padding-left:12px;border-left:1px solid var(--border);}
+.nav{display:flex;gap:8px;flex-wrap:wrap;}
+.nav a{color:var(--text-dim);text-decoration:none;padding:7px 16px;border-radius:18px;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.12em;border:1px solid var(--border);transition:all .15s;}
+.nav a:hover{color:var(--text);border-color:var(--border-2);}
+.nav a.active{background:rgba(255,68,68,.1);border-color:var(--live);color:var(--live);}
+
+/* Live pulse badge */
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:var(--live-dim);border:1px solid var(--live);border-radius:4px;padding:4px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--live);text-transform:uppercase;letter-spacing:.1em;}
+.live-dot{width:8px;height:8px;background:var(--live);border-radius:50%;animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);}}
+
+.hero{padding:24px 28px 16px;max-width:1700px;margin:0 auto;}
+.hero h1{font-size:32px;font-weight:400;line-height:1.05;letter-spacing:-.02em;margin-bottom:8px;}
+.hero h1 em{color:var(--live);font-style:italic;}
+.hero p{color:var(--text-dim);font-size:13px;line-height:1.6;max-width:800px;}
+.refresh-info{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.15em;margin-top:8px;display:flex;align-items:center;gap:12px;}
+.countdown{color:var(--text-dim);}
+
+/* Health banner */
+.health-banner{max-width:1700px;margin:0 auto;padding:0 28px 4px;}
+.health-ok{display:none;}
+.health-warn{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:4px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);margin-bottom:12px;}
+
+/* KPIs */
+.kpis{max-width:1700px;margin:0 auto;padding:0 28px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:14px 16px;}
+.kpi-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.15em;margin-bottom:6px;}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;}
+.kpi-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);margin-top:3px;}
+
+/* Match cards */
+.match-cards{max-width:1700px;margin:0 auto;padding:0 28px 60px;}
+
+.live-card{background:var(--panel);border:1px solid rgba(255,68,68,.3);border-radius:6px;margin-bottom:24px;overflow:hidden;box-shadow:0 0 20px rgba(255,68,68,.06);}
+.upcoming-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;margin-bottom:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+
+/* Live card header */
+.live-header{padding:16px 20px;border-bottom:1px solid rgba(255,68,68,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.live-scoreline{display:flex;align-items:center;gap:16px;}
+.live-team{font-size:17px;font-weight:500;}
+.live-team.leading{color:var(--gold);}
+.live-score{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text);line-height:1;}
+.live-score .sep{color:var(--text-muted);margin:0 4px;}
+.live-minute{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--live);background:var(--live-dim);border:1px solid var(--live);border-radius:3px;padding:3px 8px;}
+.live-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* Probability shift */
+.shift-positive{color:var(--green);}
+.shift-negative{color:var(--red);}
+.shift-neutral{color:var(--text-muted);}
+
+/* Chart grid (same as pmf-distributions) */
+.chart-row{display:grid;gap:1px;background:var(--border);}
+.chart-row.r1{grid-template-columns:1fr 1fr;}
+.chart-row.r2{grid-template-columns:1fr 1fr 1fr;}
+.chart-row.r3{grid-template-columns:2fr 1fr 1fr;}
+.chart-cell{background:var(--panel-2);padding:18px 20px 14px;}
+.chart-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--live);text-transform:uppercase;letter-spacing:.18em;font-weight:600;margin-bottom:3px;}
+.chart-subtitle{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;}
+
+/* Win probability bar */
+.win-bar{display:flex;height:38px;border-radius:4px;overflow:hidden;margin-bottom:10px;}
+.win-seg{display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;transition:width .6s ease;}
+.win-seg.home{background:rgba(212,175,55,.35);color:var(--gold);}
+.win-seg.draw{background:rgba(88,101,130,.3);color:var(--text-dim);}
+.win-seg.away{background:rgba(96,165,250,.3);color:var(--blue);}
+.win-labels{display:flex;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+.win-labels span{flex:1;}
+.win-labels span.center{text-align:center;}
+.win-labels span:last-child{text-align:right;}
+
+/* Pregame comparison */
+.comparison-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.comp-market{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);width:80px;flex-shrink:0;text-transform:uppercase;letter-spacing:.06em;}
+.comp-pre{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);width:48px;text-align:right;flex-shrink:0;}
+.comp-arrow{font-size:10px;width:14px;text-align:center;flex-shrink:0;}
+.comp-live{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;width:48px;flex-shrink:0;}
+.comp-delta{font-family:'JetBrains Mono',monospace;font-size:10px;width:48px;flex-shrink:0;}
+
+/* Bar charts */
+.bar-chart{}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.bar-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:24px;text-align:right;flex-shrink:0;}
+.bar-track{flex:1;height:16px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+.bar-val{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;flex-shrink:0;}
+
+/* Scoreline ranking */
+.score-rank-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.score-badge{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:var(--panel-3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;min-width:44px;text-align:center;flex-shrink:0;}
+.score-badge.leader{background:var(--live-dim);border-color:var(--live);color:var(--live);}
+.score-rank-track{flex:1;height:18px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;}
+.score-rank-fill{height:100%;border-radius:2px;display:flex;align-items:center;padding-left:6px;}
+.score-rank-fill .pct{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:rgba(255,255,255,.9);}
+
+/* Heatmap */
+.heatmap-wrap{overflow-x:auto;}
+.heatmap-svg{display:block;}
+
+/* Next goal */
+.next-goal-panel{display:flex;gap:10px;margin-top:8px;}
+.ng-card{flex:1;background:var(--panel-3);border:1px solid var(--border);border-radius:4px;padding:10px 12px;text-align:center;}
+.ng-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;}
+.ng-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px;}
+
+/* Sparkline */
+.sparkline-wrap{height:48px;width:100%;overflow:hidden;}
+.sparkline-svg{width:100%;height:48px;display:block;}
+
+/* Win history table */
+.history-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.hist-min{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);width:24px;flex-shrink:0;text-align:right;}
+.hist-bar{flex:1;height:10px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;}
+.hist-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(212,175,55,.5),rgba(212,175,55,.25));}
+
+/* Quiet/No games state */
+.quiet-state{text-align:center;padding:60px 28px;}
+.quiet-state h2{font-size:24px;font-weight:400;color:var(--text-dim);margin-bottom:12px;}
+.quiet-state p{font-size:13px;color:var(--text-muted);line-height:1.6;max-width:500px;margin:0 auto 24px;}
+.upcoming-list{max-width:600px;margin:0 auto;}
+
+/* Loading */
+.loading-state{text-align:center;padding:80px 20px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border-2);border-top-color:var(--live);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:900px){.chart-row.r1,.chart-row.r2,.chart-row.r3{grid-template-columns:1fr;}.kpis{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:768px){header,.hero,.match-cards,.health-banner,.kpis{padding-left:16px;padding-right:16px;}.hero h1{font-size:24px;}}
+
+footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">Live PMF Engine</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/nba-props.html">NBA Props</a>
+    <a href="/tools/odds-scanner/predictions/world%20cup/pre%20match.html">WC Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html">PMF Dist.</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html" class="active">Live PMF ⚡</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1><span class="live-badge"><span class="live-dot"></span>Live</span> In-Play <em>PMF Engine</em>.</h1>
+  <p>Real-time score-conditional PMF updated every 5 minutes. Given the current score at minute t,
+     the model computes P(final home = h, away = a) for every regulation-time outcome using
+     the <strong>non-homogeneous hazard model</strong>. All markets re-derived from this single distribution.</p>
+  <div class="refresh-info">
+    <span>Auto-refresh in <span class="countdown" id="countdown">60s</span></span>
+    <span id="last-updated">—</span>
+  </div>
+</section>
+
+<div class="health-banner">
+  <div class="health-warn" id="health-warn" style="display:none;"></div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="kpi-label">Matches Live</div><div class="kpi-val" style="color:var(--live)" id="kpi-live">—</div><div class="kpi-sub">currently in play</div></div>
+  <div class="kpi"><div class="kpi-label">Next Kickoff</div><div class="kpi-val" id="kpi-next">—</div><div class="kpi-sub" id="kpi-next-sub"></div></div>
+  <div class="kpi"><div class="kpi-label">Goals Today</div><div class="kpi-val" id="kpi-goals">—</div><div class="kpi-sub">across all live matches</div></div>
+  <div class="kpi"><div class="kpi-label">Data Age</div><div class="kpi-val" id="kpi-age">—</div><div class="kpi-sub">since last snapshot</div></div>
+</div>
+
+<div class="match-cards" id="match-cards">
+  <div class="loading-state"><div class="spinner"></div><br>Connecting to live engine…</div>
+</div>
+
+<footer>
+  Live PMF · Regulation time conditional · Updates every ~5 min · Not financial advice
+</footer>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const LIVE_URLS = ['./wc-live.json','../wc-live.json'];
+const PRE_URLS  = ['../pre-match/wc-predictions.json','../wc-predictions.json','../../predictions/world%20cup/wc-predictions.json'];
+const REFRESH_INTERVAL = 60 * 1000;   // 60 seconds
+
+// ── Win probability history (session-local) ────────────────────────────────
+const WIN_HISTORY = {};  // match_id → [{minute, hw, dr, aw}]
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function pct(n,d=1){if(n==null||isNaN(n))return'—';return(n*100).toFixed(d)+'%';}
+function sign(n){return n>0?'+':''; }
+function toET(iso){try{const d=new Date(iso);return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York',hour12:true})+' ET';}catch{return iso;}}
+function timeSince(iso){if(!iso)return'—';const s=Math.floor((Date.now()-new Date(iso).getTime())/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';return Math.floor(s/3600)+'h';}
+function lerp(a,b,t){return a+(b-a)*t;}
+const C_LOW=[10,14,26],C_MID=[180,140,30],C_HIGH=[74,222,128];
+function heatColor(t){const c=t<.5?C_LOW.map((v,i)=>lerp(v,C_MID[i],t*2)):C_MID.map((v,i)=>lerp(v,C_HIGH[i],(t-.5)*2));return`rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let PRE_GAME_DATA = null;
+let TIMER = null;
+let COUNTDOWN_TIMER = null;
+let COUNTDOWN_SECS = REFRESH_INTERVAL / 1000;
+
+// ── Load pre-game data for comparison ─────────────────────────────────────
+async function loadPreGame(){
+  for(const url of PRE_URLS){
+    try{const r=await fetch(url+'?t='+Date.now());if(r.ok){PRE_GAME_DATA=await r.json();return;}}catch(e){}
+  }
+}
+
+// ── Health check ──────────────────────────────────────────────────────────
+async function checkHealth(){
+  const urls=['./wc-health.json','../pre-match/wc-health.json'];
+  for(const url of urls){
+    try{
+      const r=await fetch(url+'?t='+Date.now());
+      if(r.ok){
+        const h=await r.json();
+        if(!h.ok){
+          document.getElementById('health-warn').style.display='block';
+          document.getElementById('health-warn').textContent='⚠ Pipeline alert: '+esc(h.message||'Unknown issue');
+        }
+        return;
+      }
+    }catch(e){}
+  }
+}
+
+// ── Heatmap ────────────────────────────────────────────────────────────────
+function buildHeatmap(grid,homeTeam,awayTeam,h0,a0){
+  const maxG=Math.min(8,grid.length);
+  let maxP=0;
+  for(let h=0;h<maxG;h++) for(let a=0;a<maxG;a++) if(grid[h][a]>maxP) maxP=grid[h][a];
+  const scale=p=>maxP>0?Math.sqrt(p/maxP):0;
+  const cell=36,pad=40;
+  const W=pad+maxG*cell+4,H=pad+maxG*cell+4;
+  let svg=`<svg class="heatmap-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  for(let h=0;h<maxG;h++){
+    svg+=`<text x="${pad-8}" y="${pad+h*cell+cell/2+4}" font-family="JetBrains Mono" font-size="9" fill="#8892a8" text-anchor="end">${h}</text>`;
+  }
+  for(let a=0;a<maxG;a++){
+    svg+=`<text x="${pad+a*cell+cell/2}" y="${pad-8}" font-family="JetBrains Mono" font-size="9" fill="#8892a8" text-anchor="middle">${a}</text>`;
+  }
+  for(let h=0;h<maxG;h++){
+    for(let a=0;a<maxG;a++){
+      const p=grid[h]?.[a]||0;
+      const t=scale(p);
+      const col=heatColor(t);
+      const x=pad+a*cell,y=pad+h*cell;
+      // Highlight current score cell
+      const isCurrent=(h===h0&&a===a0);
+      svg+=`<rect x="${x}" y="${y}" width="${cell-1}" height="${cell-1}" fill="${col}" rx="1" stroke="${isCurrent?'rgba(255,68,68,.8)':'none'}" stroke-width="${isCurrent?2:0}"/>`;
+      if(p>=0.05){
+        svg+=`<text x="${x+cell/2}" y="${y+cell/2+3}" font-family="JetBrains Mono" font-size="8" font-weight="600" fill="${t>0.5?'rgba(0,0,0,.7)':'rgba(255,255,255,.85)'}" text-anchor="middle">${(p*100).toFixed(1)}%</text>`;
+      }
+    }
+  }
+  svg+=`</svg>`;
+  return svg;
+}
+
+// ── Win probability sparkline ──────────────────────────────────────────────
+function buildSparkline(history, width=300){
+  if(!history||history.length<2) return '<div style="color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:10px;padding:14px 0;">Accumulating history…</div>';
+  const H=48,pad=2;
+  const pts=history.map((e,i)=>{
+    const x=pad+(i/(history.length-1))*(width-pad*2);
+    const y=H-pad-(e.hw*(H-pad*2));
+    return[x,y];
+  });
+  const path='M'+pts.map(p=>p.join(',')).join('L');
+  const fillPath=path+`L${pts[pts.length-1][0]},${H} L${pts[0][0]},${H}Z`;
+  return `<svg class="sparkline-svg" viewBox="0 0 ${width} ${H}">
+    <path d="${fillPath}" fill="rgba(212,175,55,.1)"/>
+    <path d="${path}" fill="none" stroke="var(--gold)" stroke-width="1.5"/>
+    <line x1="0" y1="${H/2}" x2="${width}" y2="${H/2}" stroke="rgba(255,255,255,.06)" stroke-width="1" stroke-dasharray="3,2"/>
+  </svg>`;
+}
+
+// ── Market comparison row ──────────────────────────────────────────────────
+function compRow(market, live, pre){
+  if(live==null) return '';
+  const delta=pre!=null?live-pre:null;
+  const dCls=delta==null?'shift-neutral':delta>0.005?'shift-positive':delta<-0.005?'shift-negative':'shift-neutral';
+  const dStr=delta==null?'—':(delta>=0?'+':'')+pct(delta,1);
+  return `<div class="comparison-row">
+    <span class="comp-market">${esc(market)}</span>
+    <span class="comp-pre">${pre!=null?pct(pre):'—'}</span>
+    <span class="comp-arrow">→</span>
+    <span class="comp-live ${delta!=null&&Math.abs(delta)>0.02?dCls:''}">${pct(live)}</span>
+    <span class="comp-delta ${dCls}">${dStr}</span>
+  </div>`;
+}
+
+// ── Live match card ────────────────────────────────────────────────────────
+function buildLiveCard(m){
+  const mid=m.match_id;
+  const dm=m.derived_markets||{};
+  const hw=dm.home_win||0,dr=dm.draw||0,aw=dm.away_win||0;
+  const h0=m.current_home_goals||0,a0=m.current_away_goals||0;
+  const scores=m.top_scorelines||[];
+  const grid=m.final_score_pmf_grid||[];
+
+  // Win probability history
+  if(!WIN_HISTORY[mid]) WIN_HISTORY[mid]=[];
+  const lastHist=WIN_HISTORY[mid].slice(-1)[0];
+  if(!lastHist||Math.abs(lastHist.hw-hw)>0.0001){
+    WIN_HISTORY[mid].push({minute:m.regulation_minute||0,hw,dr,aw});
+    if(WIN_HISTORY[mid].length>90) WIN_HISTORY[mid].shift();
+  }
+
+  // Pre-game comparison
+  let preMatch=null;
+  if(PRE_GAME_DATA){
+    preMatch=PRE_GAME_DATA.matches?.find(p=>
+      p.home_team===m.home_team&&p.away_team===m.away_team
+    );
+  }
+  const preDM=(preMatch?.prediction?.derived_markets)||{};
+  const preHW=preDM.home_win,preDR=preDM.draw,preAW=preDM.away_win;
+
+  // Leading team
+  const leadingH=h0>a0,leadingA=a0>h0;
+  const homeTeamClass=leadingH?'live-team leading':'live-team';
+  const awayTeamClass=leadingA?'live-team leading':'live-team';
+
+  // Current score O/U
+  const rg_home=m.expected_remaining_home||0,rg_away=m.expected_remaining_away||0;
+
+  // Win bar widths
+  const hwW=Math.round(hw*100),drW=Math.round(dr*100),awW=Math.round(aw*100);
+
+  // Top scorelines
+  const maxP=scores[0]?.probability||1;
+  const scoreRows=scores.slice(0,10).map(s=>{
+    const isCurrent=(s.home_goals===h0&&s.away_goals===a0);
+    return `<div class="score-rank-row">
+      <span class="score-badge ${isCurrent?'leader':''}">${s.home_goals}–${s.away_goals}${isCurrent?' ←':''}</span>
+      <div class="score-rank-track">
+        <div class="score-rank-fill" style="width:${(s.probability/maxP*100).toFixed(0)}%;background:${isCurrent?'rgba(255,68,68,.3)':'rgba(212,175,55,.2)'};border-right:2px solid ${isCurrent?'var(--live)':'var(--gold)'};">
+          <span class="pct" style="color:${isCurrent?'var(--live)':'var(--gold)'}">${pct(s.probability,2)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Marginal bars
+  function marginalBars(vals, color){
+    const max=Math.max(...vals.filter(v=>v>0));
+    return vals.slice(0,8).map((v,i)=>`<div class="bar-row">
+      <span class="bar-label">${i}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${max>0?v/max*100:0}%;background:${color}20;border-right:2px solid ${color};"></div></div>
+      <span class="bar-val">${pct(v)}</span>
+    </div>`).join('');
+  }
+
+  // Derive marginals from grid
+  const N=grid.length;
+  const homeM=new Array(N).fill(0),awayM=new Array(N).fill(0);
+  for(let h=0;h<N;h++) for(let a=0;a<N;a++){homeM[h]+=grid[h]?.[a]||0;awayM[a]+=grid[h]?.[a]||0;}
+
+  return `<div class="live-card">
+    <div class="live-header">
+      <div class="live-scoreline">
+        <div>
+          <div class="${homeTeamClass}">${esc(m.home_team)}</div>
+          <div class="live-meta">Home · xG rem: ${rg_home.toFixed(2)}</div>
+        </div>
+        <div>
+          <div class="live-score">${h0}<span class="sep">–</span>${a0}</div>
+          <div style="text-align:center;margin-top:2px;"><span class="live-minute">${m.clock_display||Math.round(m.regulation_minute||0)}'</span></div>
+        </div>
+        <div style="text-align:right;">
+          <div class="${awayTeamClass}">${esc(m.away_team)}</div>
+          <div class="live-meta">Away · xG rem: ${rg_away.toFixed(2)}</div>
+        </div>
+      </div>
+      <div>
+        <div class="live-badge"><span class="live-dot"></span>Live</div>
+        ${m.warnings?.length?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);margin-top:4px;">${esc(m.warnings[0])}</div>`:''}
+      </div>
+    </div>
+
+    <!-- Row 1: Win bar + comparison + sparkline | Heatmap -->
+    <div class="chart-row r1">
+      <div class="chart-cell">
+        <div class="chart-title">Live Regulation Win Probability</div>
+        <div class="chart-subtitle">P(Win/Draw/Loss) conditional on current score at ${m.clock_display||''}'. Red border = current scoreline in heatmap.</div>
+        <div class="win-bar">
+          <div class="win-seg home" style="width:${hwW}%">${hwW>=12?hwW+'%':''}</div>
+          <div class="win-seg draw" style="width:${drW}%">${drW>=10?drW+'%':''}</div>
+          <div class="win-seg away" style="width:${awW}%">${awW>=12?awW+'%':''}</div>
+        </div>
+        <div class="win-labels"><span>${esc(m.home_team)} ${pct(hw)}</span><span class="center">Draw ${pct(dr)}</span><span>${pct(aw)} ${esc(m.away_team)}</span></div>
+        <div class="chart-title" style="margin-top:12px;">Pre-game → Live Shift</div>
+        ${compRow('Home Win',hw,preHW)}
+        ${compRow('Draw',dr,preDR)}
+        ${compRow('Away Win',aw,preAW)}
+        ${compRow('O/U 2.5',dm.over_2_5,preDM['over_2.5']||preDM.over_2_5)}
+        ${compRow('BTTS',dm.btts_yes,preDM.btts_yes)}
+        <div class="chart-title" style="margin-top:14px;">Home Win Probability History</div>
+        <div class="sparkline-wrap">${buildSparkline(WIN_HISTORY[mid])}</div>
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Live Joint Score PMF — P(Final H=h, A=a)</div>
+        <div class="chart-subtitle">Scores impossible given current state (below current score) grayed out. Red border = current score.</div>
+        <div class="heatmap-wrap">${grid.length?buildHeatmap(grid,m.home_team,m.away_team,h0,a0):'<span style="color:var(--text-muted)">Grid unavailable</span>'}</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Top scorelines | Home marginal | Away marginal -->
+    <div class="chart-row r2">
+      <div class="chart-cell">
+        <div class="chart-title">Top 10 Most Likely Final Scores</div>
+        <div class="chart-subtitle">← marks current live score. Distribution updates with each goal / every 5 min.</div>
+        ${scoreRows}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Home Goals Marginal</div>
+        <div class="chart-subtitle">P(${esc(m.home_team)} final regulation goals = h)</div>
+        ${marginalBars(homeM,'#d4af37')}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Away Goals Marginal</div>
+        <div class="chart-subtitle">P(${esc(m.away_team)} final regulation goals = a)</div>
+        ${marginalBars(awayM,'#60a5fa')}
+        <div style="margin-top:14px;">
+          <div class="chart-title">Next Goal Probabilities</div>
+          <div class="next-goal-panel">
+            <div class="ng-card"><div class="ng-val" style="color:var(--gold)">${pct(m.next_goal_home_prob)}</div><div class="ng-label">${esc(m.home_team.split(' ').pop())} next</div></div>
+            <div class="ng-card"><div class="ng-val" style="color:var(--blue)">${pct(m.next_goal_away_prob)}</div><div class="ng-label">${esc(m.away_team.split(' ').pop())} next</div></div>
+            <div class="ng-card"><div class="ng-val" style="color:var(--text-muted)">${pct(m.no_more_goals_prob)}</div><div class="ng-label">No more goals</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Upcoming match card ────────────────────────────────────────────────────
+function buildUpcomingCard(m){
+  return `<div class="upcoming-card">
+    <div>
+      <div style="font-size:15px;font-weight:500;">${esc(m.home_team)} <span style="color:var(--text-muted)">vs</span> ${esc(m.away_team)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Kickoff ${esc(m.kickoff_et)}</div>
+    </div>
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);text-decoration:none;border:1px solid rgba(212,175,55,.3);padding:6px 12px;border-radius:3px;text-transform:uppercase;letter-spacing:.1em;">View Pre-Game →</a>
+  </div>`;
+}
+
+// ── KPI update ─────────────────────────────────────────────────────────────
+function updateKPIs(data){
+  const n=data.n_live||0;
+  document.getElementById('kpi-live').textContent=n;
+  const totalGoals=(data.live_matches||[]).reduce((s,m)=>(m.current_home_goals||0)+(m.current_away_goals||0)+s,0);
+  document.getElementById('kpi-goals').textContent=totalGoals;
+  const age=timeSince(data.generated_at);
+  document.getElementById('kpi-age').textContent=age;
+  // Next kickoff
+  const upcoming=(data.upcoming_today||[]);
+  if(upcoming.length){
+    document.getElementById('kpi-next').textContent=upcoming[0].kickoff_et||'—';
+    document.getElementById('kpi-next-sub').textContent=`${esc(upcoming[0].home_team)} vs ${esc(upcoming[0].away_team)}`;
+  } else {
+    document.getElementById('kpi-next').textContent='—';
+  }
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
+function render(data){
+  const wrap=document.getElementById('match-cards');
+  const live=data.live_matches||[];
+  const upcoming=data.upcoming_today||[];
+  updateKPIs(data);
+
+  if(live.length===0){
+    let upHtml='';
+    if(upcoming.length){
+      upHtml='<div class="upcoming-list">'+upcoming.map(buildUpcomingCard).join('')+'</div>';
+    }
+    wrap.innerHTML=`<div class="quiet-state">
+      <h2>No live matches right now.</h2>
+      <p>The live PMF engine activates when a World Cup match is in play.
+         Pre-game distributions are available until kickoff.</p>
+      ${upHtml}
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML=live.map(buildLiveCard).join('');
+  if(upcoming.length){
+    wrap.innerHTML+=`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin:20px 0 10px;">Up Next Today</div>`+upcoming.map(buildUpcomingCard).join('');
+  }
+}
+
+// ── Countdown timer ────────────────────────────────────────────────────────
+function startCountdown(){
+  COUNTDOWN_SECS=REFRESH_INTERVAL/1000;
+  clearInterval(COUNTDOWN_TIMER);
+  COUNTDOWN_TIMER=setInterval(()=>{
+    COUNTDOWN_SECS=Math.max(0,COUNTDOWN_SECS-1);
+    document.getElementById('countdown').textContent=COUNTDOWN_SECS+'s';
+  },1000);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init(){
+  clearTimeout(TIMER);
+  let data=null;
+  for(const url of LIVE_URLS){
+    try{const r=await fetch(url+'?t='+Date.now());if(r.ok){data=await r.json();break;}}catch(e){}
+  }
+
+  if(!data){
+    document.getElementById('match-cards').innerHTML=`<div class="loading-state">Live engine offline — no data available yet. Retrying in 60s.</div>`;
+  } else {
+    render(data);
+    const gen=data.generated_at;
+    if(gen){
+      const d=new Date(gen);
+      document.getElementById('last-updated').textContent='Updated '+d.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true})+' ET';
+    }
+  }
+
+  await checkHealth();
+  startCountdown();
+  TIMER=setTimeout(init,REFRESH_INTERVAL);
+}
+
+// Load pre-game data in parallel, then init
+loadPreGame().then(init);
+</script>
+</body>
+</html>

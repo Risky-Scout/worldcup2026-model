@@ -344,11 +344,30 @@ class LivePMFPredictor:
 
             status_map = {
                 "1h": MatchStatus.FIRST_HALF,
+                "first half": MatchStatus.FIRST_HALF,
+                "1st half": MatchStatus.FIRST_HALF,
                 "ht": MatchStatus.HALF_TIME,
+                "halftime": MatchStatus.HALF_TIME,
+                "half time": MatchStatus.HALF_TIME,
                 "2h": MatchStatus.SECOND_HALF,
+                "second half": MatchStatus.SECOND_HALF,
+                "2nd half": MatchStatus.SECOND_HALF,
                 "et": MatchStatus.EXTRA_TIME_FIRST,
+                "extra time": MatchStatus.EXTRA_TIME_FIRST,
+                "extra_time": MatchStatus.EXTRA_TIME_FIRST,
                 "ft": MatchStatus.COMPLETED,
+                "finished": MatchStatus.COMPLETED,
+                "completed": MatchStatus.COMPLETED,
+                "full time": MatchStatus.COMPLETED,
+                "full_time": MatchStatus.COMPLETED,
                 "ns": MatchStatus.PREMATCH,
+                "scheduled": MatchStatus.PREMATCH,
+                "not started": MatchStatus.PREMATCH,
+                "in_progress": MatchStatus.SECOND_HALF,   # fallback; clock will correct
+                "in progress": MatchStatus.SECOND_HALF,
+                "live": MatchStatus.SECOND_HALF,
+                "ongoing": MatchStatus.SECOND_HALF,
+                "active": MatchStatus.SECOND_HALF,
             }
             status = status_map.get(status_raw, MatchStatus.PREMATCH)
 

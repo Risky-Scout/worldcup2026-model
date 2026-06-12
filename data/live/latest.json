@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-06-12T16:28:03.733392+00:00",
+  "date": "2026-06-12",
+  "status": "quiet",
+  "n_live": 0,
+  "live_matches": [],
+  "upcoming_today": [
+    {
+      "match_id": "3",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "4",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "5",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "6",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "7",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "8",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "9",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "10",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "11",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    },
+    {
+      "match_id": "12",
+      "home_team": "",
+      "away_team": "",
+      "kickoff_et": "",
+      "kickoff_utc": "",
+      "status": "scheduled"
+    }
+  ]
+}

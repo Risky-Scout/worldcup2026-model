@@ -1,0 +1,75 @@
+name: Hourly Refresh (Pre-Match)
+
+on:
+  schedule:
+    # Run every hour 06:00–02:00 UTC (2AM–10PM ET) during WC
+    - cron: "0 6-23 * * *"
+    - cron: "0 0-2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  hourly-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Create .env
+        run: |
+          echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
+          echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
+          echo "FTP_USER=${{ secrets.FTP_USER }}" >> .env
+          echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
+
+      - name: Get today's date (ET)
+        id: date
+        run: echo "DATE=$(TZ=America/New_York date +%Y-%m-%d)" >> $GITHUB_ENV
+
+      - name: Run prediction pipeline
+        id: pipeline
+        run: python scripts/run_real_pipeline.py
+        continue-on-error: true
+
+      - name: Upload predictions to server
+        if: steps.pipeline.outcome == 'success'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/upload_predictions.py --date $DATE
+
+      - name: Deploy HTML pages
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/deploy_html.py
+
+      - name: Write health status (pipeline failed)
+        if: steps.pipeline.outcome != 'success'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: |
+          python -c "
+          from scripts.live_snapshot import write_health_status
+          write_health_status(False, 'Hourly pipeline failed — predictions may be stale')
+          "
+        continue-on-error: true
+
+      - name: Fail job if pipeline failed
+        if: steps.pipeline.outcome != 'success'
+        run: |
+          echo "::error::Prediction pipeline failed during hourly refresh"
+          exit 1

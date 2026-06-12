@@ -1,0 +1,38 @@
+name: Live Match Snapshot
+
+on:
+  schedule:
+    # Every 5 minutes during match hours: 14:00–04:00 UTC (10AM–midnight ET)
+    - cron: "*/5 14-23 * * *"
+    - cron: "*/5 0-4 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  live-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Create .env
+        run: |
+          echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
+          echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
+          echo "FTP_USER=${{ secrets.FTP_USER }}" >> .env
+          echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
+
+      - name: Run live snapshot
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/live_snapshot.py

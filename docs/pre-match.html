@@ -220,6 +220,10 @@
   </nav>
 </header>
 
+<div id="health-banner" style="display:none;max-width:1700px;margin:12px auto 0;padding:0 28px;">
+  <div id="health-warn" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:4px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;"></div>
+</div>
+
 <section class="hero" style="max-width:1700px;margin:0 auto;padding:32px 28px 0;">
   <h1>Today's <em>World Cup</em> Predictions.</h1>
   <p>Every match our PMF model has priced for <strong>regulation time</strong> (90 min + stoppage).
@@ -722,6 +726,27 @@ async function init() {
   REFRESH_TIMER = setTimeout(init, 5 * 60 * 1000);
 }
 
+async function checkHealth() {
+  const urls = ['./wc-health.json', '../pre-match/wc-health.json', '../wc-health.json'];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url + '?t=' + Date.now());
+      if (r.ok) {
+        const h = await r.json();
+        const staleMs = Date.now() - new Date(h.updated_at || 0).getTime();
+        const isStale = staleMs > 4 * 60 * 60 * 1000; // > 4 hours
+        if (!h.ok || isStale) {
+          const msg = !h.ok ? h.message : 'Pipeline data is over 4 hours old — predictions may be stale.';
+          document.getElementById('health-warn').textContent = '⚠ ' + msg;
+          document.getElementById('health-banner').style.display = 'block';
+        }
+        return;
+      }
+    } catch (e) {}
+  }
+}
+
+checkHealth();
 init();
 </script>
 </body>
