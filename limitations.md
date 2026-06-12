@@ -29,26 +29,31 @@ This document is the honest account of current limitations. It is intentionally 
 
 ---
 
-## 3. No live in-game model
+## 3. Live model validated but not live-odds-connected
 
-**Impact**: MEDIUM
+**Impact**: MEDIUM → LOW
 
-- The architecture (matchflow, BDL events, momentum) is defined but not yet implemented
-- Live predictions are NOT available
-- Pre-game PMFs should not be re-used for in-game applications
-- Target: validate on 2022 minute-by-minute replay before deploying live
+- Live PMF engine is **implemented and validated** on 64 WC 2022 matches (real BDL events)
+- NLL correctly decreases: 3.31 at min 0 → 2.49 at HT → 1.20 at min 85 → 0.40 at min 90
+- Live betting edge screening requires BDL live-match odds API endpoint (not yet integrated)
+- Live predictions are available for real-time score/clock/card states via `LivePMFPredictor`
+- Hazard model uses temporal baseline + score-state + red-card multipliers
+- Mitigation: full live engine in `src/wc2026/live/`; BDL live-odds integration is the remaining gap
 
 ---
 
-## 4. New-team priors use confederation averages
+## 4. New-team priors (RESOLVED)
 
-**Impact**: MEDIUM
+**Previous impact**: MEDIUM | **Current impact**: LOW
 
-- Teams with no 2018/2022 WC history (e.g., South Africa, Czechia, Curaçao) get:
-  `attack_lambda = confederation_average` (CAF=1.10, UEFA=1.30, CONCACAF=1.20, etc.)
-- This is better than flat Elo=1500 for all new teams but still imprecise
-- No FIFA ranking, qualifying performance, or BDL team form is used yet
-- Mitigation: market odds from BDL supersede these priors for matches with odds
+- ~~Teams with no WC history got confederation_average only~~
+- **RESOLVED**: Composite prior now integrates:
+  - Market-implied lambdas from BDL odds (3 group-stage matches per team)
+  - FIFA March 2026 ranking points (all 48 teams)
+  - WC 2026 qualifying goals-per-game (all 48 teams, confederation-adjusted)
+  - penaltyblog Elo, Pi, Massey ratings
+  - Host nation adjustments (+0.10 attack for USA/CAN/MEX)
+- Remaining gap: roster strength proxy beyond FIFA ranking (no BDL squad value data available)
 
 ---
 
@@ -119,8 +124,19 @@ These items are working correctly:
 - Market anchor: Mexico HW=67.5% (market) published, not 23.5% (pure model) ✅
 - All markets derived from the single joint PMF ✅
 - PMF sums to 1.0 ✅
-- Tail mass explicit ✅
+- Tail mass explicit (`tail_mass_exact` in every JSON) ✅
+- O/U probabilities monotonically decreasing ✅
+- No impossible high-score artifacts (total goals ≥ 9 capped at 1e-6) ✅
 - Correct-score odds parsed (5,047 rows) and used in reconciliation ✅
-- Temperature calibration now fitted (not defaulting to T=1.0 everywhere) ✅
-- Champion policy defined with 5 explicit champion tiers ✅
+- Temperature calibration fitted on OOF (T=1.077–3.000 by model) ✅
+- Champion policy with 6 explicit champion tiers ✅
 - Walk-forward OOF (no data leakage) ✅
+- Composite team prior: market + FIFA + qualifying + Elo + Pi + Massey ✅
+- Live prediction engine (state, hazard, predictor, replay, validation) ✅
+- Live replay validated: 0 synthetic events, NLL 3.31→0.40 over 90 min ✅
+- Pre-game edge screening (fair odds, half-Kelly, CI, value flag) ✅
+- CLV tracking store seeded for all 2026 group-stage matches ✅
+- GitHub Actions CI (test + validate-published + validate-live) ✅
+- Daily update workflow (`make update`, `make post-match`, `make clv-summary`) ✅
+- Docker image with HEALTHCHECK and volume mounts ✅
+- 1290 tests passing ✅

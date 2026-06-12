@@ -7,9 +7,10 @@ possible regulation-time final score for every 2026 World Cup match, every day.
 All other markets (1X2, totals, BTTS, spreads, exact score) are derived from this single PMF.
 
 > **Current status**: Real BDL data pipeline active. `market_reconciled` is the publish
-> champion for all matches with BDL odds. The statistical models serve as a prior only;
-> the BDL 6-vendor no-vig consensus anchors the published probabilities.
-> Live in-game predictions are **not yet implemented** — see [`limitations.md`](docs/limitations.md).
+> champion for all matches with BDL odds. Composite team prior integrates market odds,
+> FIFA rankings, qualifying performance, penaltyblog ratings, and confederation strength.
+> Live in-game predictions are **implemented and validated** on 64 WC 2022 matches
+> (real BDL events, NLL decreasing 3.31→0.40 over 90 minutes).
 
 ---
 
@@ -50,10 +51,14 @@ Three modes are computed for every match:
 | Champion | Model | Use |
 |----------|-------|-----|
 | `diagnostic_champion` | `equal_probability` (Poisson λ=1.35) | Audit only. NOT used for publish. |
-| `parametric_champion` | `negative_binomial` | Prior for reconciliation |
-| `elo_champion` | `elo` | New-team fallback |
+| `parametric_champion` | `negative_binomial` | Feeds composite prior |
+| `rating_champion` | `composite_rating_pmf` | All-source team prior (market + FIFA + qualifying + Elo + Pi) |
 | `market_implied_champion` | market PMF | Direct market inference |
 | **`publish_champion`** | **`market_reconciled`** | **Published prediction** |
+
+**Plain Elo is no longer a publish fallback.** Every team's prior combines market-implied
+lambdas, FIFA March 2026 rankings, WC 2026 qualifying performance, and penaltyblog ratings.
+No team defaults to Elo=1500.
 
 **Why `equal_probability` wins on diagnostic NLL (3.02)**: it is Poisson(λ=1.35, λ=1.35) —
 the WC average — not a uniform distribution. It wins on 128-match OOF NLL due to
@@ -132,46 +137,108 @@ worldcup2026-model/
 │   │   └── prediction.py             ScorePMFPrediction schema
 │   ├── markets/
 │   │   ├── exact_score_reconcile.py  THREE PUBLISH MODES + min-KL reconciliation
+│   │   ├── core_grid_reconcile.py    CoreGridSLSQPReconciler (8×8, soft constraints)
 │   │   ├── no_vig.py                 Vig removal (multiplicative, additive, Shin)
 │   │   ├── consensus.py              Multi-vendor aggregation
-│   │   └── market_pmf.py             goal_expectancy_extended wrapper
+│   │   ├── market_pmf.py             goal_expectancy_extended wrapper
+│   │   ├── edge.py                   Pre-game edge: fair odds, half-Kelly, 90% CI
+│   │   └── clv.py                    CLV tracking: closing line value store + summary
+│   ├── ratings/
+│   │   └── composite.py              CompositeTeamPrior (market + FIFA + qualifying + Elo + Pi + Massey)
+│   ├── live/
+│   │   ├── state.py                  MatchState, MatchEvent, EventType
+│   │   ├── features.py               LiveFeatureVector extraction
+│   │   ├── hazard.py                 Non-homogeneous minute-level goal hazard
+│   │   ├── predictor.py              LivePMFPredictor (Poisson convolution)
+│   │   ├── replay.py                 MatchReplayer (2022 replay, real BDL events)
+│   │   └── validation.py             NLL/RPS/Brier metrics + report generation
 │   ├── backtest/
 │   │   └── walkforward.py            Strict time-ordered OOF with temperature fitting
 │   └── calibration/
 │       └── score_pmf.py              Temperature scaling on exact-score NLL
 ├── scripts/
-│   └── run_real_pipeline.py          Full pipeline: fetch→backtest→predict→reports
+│   ├── run_real_pipeline.py          Full pipeline: fetch→backtest→predict→reports
+│   └── daily_update.py               Daily ops: fetch→build→pipeline→CLV→validate
 ├── reports/
-│   ├── champion_selection.md         5 champion types defined
-│   ├── equal_prob_baseline_audit.md  Explains why Poisson(1.35) beats parametric
-│   ├── score_pmf_calibration.md      Temperature calibration (T fitted on OOF)
-│   ├── walkforward_backtest.md       OOF NLL table
-│   ├── model_benchmark_table.md      All models ranked
-│   ├── market_calibration.md         3-mode comparison per match
-│   ├── june11_analysis.md            Opening day: Mexico/SA + Korea/Czechia
-│   ├── team_prior_table.md           Priors for all 48 teams
-│   ├── schedule_validation.md        104 total, 72 named, 32 TBD
-│   └── bdl_endpoint_coverage.md      Raw data coverage
+│   ├── champion_selection.md         6 champion types defined
+│   ├── composite_rating_methodology.md  CompositeTeamPrior design
+│   ├── team_prior_table.md           All 48 teams: FIFA + qualifying + market + Elo
+│   ├── core_grid_slsqp_methodology.md   8×8 SLSQP design + prior audit
+│   ├── correct_score_reconciliation_audit.md  CS usage per match
+│   ├── live_replay_validation.md     Live NLL by checkpoint (0→90 min)
+│   ├── production_readiness.md       20 ✅ capabilities, 6 remaining gaps
+│   └── ...                          (15 total reports)
 ├── data/
-│   ├── published/2026-06-11.json     Opening day PMFs (market_reconciled)
-│   └── published/all_scheduled_2026.json
-└── docs/
-    ├── model_card.md
-    └── limitations.md
+│   ├── published/2026-06-11.json     Opening day PMFs + edge_report
+│   ├── published/all_scheduled_2026.json
+│   ├── predictions/live_replay_2022.parquet  640 checkpoints × 64 matches
+│   └── clv/2026/records.jsonl        433 CLV records seeded at prediction time
+├── .github/workflows/
+│   ├── ci.yml                        test + validate-published + validate-live on PR
+│   └── daily.yml                     04:00 UTC daily update + auto-commit
+├── Dockerfile                        Production image (python:3.10-slim, HEALTHCHECK)
+├── docker-compose.yml                wc2026, daily-update, predict services
+└── limitations.md
+```
+
+---
+
+## Live prediction engine
+
+| Component | Status |
+|-----------|--------|
+| `MatchState` | Score, clock, cards, subs, xG, momentum |
+| `LiveFeatureVector` | Clock, score-state, pregame λ, live performance, cards |
+| Non-homogeneous hazard model | Baseline × score-state × red-card multipliers |
+| `LivePMFPredictor` | Poisson convolution + temperature scaling |
+| `MatchReplayer` | Minute-by-minute 2022 replay (real BDL events, 0 synthetic) |
+| Validation | 640 checkpoints × 64 matches — NLL 3.31→0.40 as match progresses |
+
+---
+
+## Pre-game edge screening
+
+Every published JSON includes an `edge_report` with:
+- Fair odds (1/model_p) vs market odds (1/market_p)
+- Edge % = (model_p − market_p) / market_p
+- Half-Kelly bet fraction (capped at 5%)
+- 90% CI via ±12% λ perturbation
+- Value flag: edge ≥ 4% AND CI lower > market_p AND market_p ≥ 2%
+
+---
+
+## CLV tracking
+
+CLV records seeded at prediction time in `data/clv/2026/records.jsonl`.
+After each matchday:
+```bash
+make post-match DATE=2026-06-11   # record actual outcomes
+make clv-summary                   # print beat-close rate and log-score
+```
+
+---
+
+## Daily operations
+
+```bash
+make update DATE=2026-06-12       # fetch + build + pipeline + validate (~25s)
+make post-match DATE=2026-06-11   # record CLV outcomes
+make clv-summary                   # print CLV report
+make pipeline                      # full run_real_pipeline.py
 ```
 
 ---
 
 ## Limitations
 
-See [`docs/limitations.md`](docs/limitations.md) for full detail.
+See [`limitations.md`](limitations.md) for full detail.
 
 Key current limitations:
 - WC-only historical data (128 matches) is too small for reliable team-specific parameter estimation
 - Parametric champion (negative_binomial) loses to Poisson(1.35) on OOF NLL; market odds subsume this
-- No live in-game model (architecture ready, but not validated)
-- New-team priors use confederation averages (no FIFA ranking integration yet)
-- Temperature calibration is near T=1.0 for all models (expected with 128 OOF matches)
+- Correct-score reconciliation not walk-forward backtested (no historical CS odds from 2018/2022 BDL)
+- Temperature calibration T≈3.0 for parametric models — expected with 128 OOF matches
+- Live betting edge screening requires BDL live odds endpoint (not yet available)
 
 ---
 

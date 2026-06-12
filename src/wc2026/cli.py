@@ -319,6 +319,7 @@ def audit(ctx, data_version):
             errors.append(f"Table {table} not found")
 
     # Check OOF predictions
+    from wc2026.config import PREDICTIONS_DIR
     oof_path = PREDICTIONS_DIR / "oof_score_pmfs.parquet"
     if oof_path.exists():
         import pandas as pd
@@ -333,12 +334,81 @@ def audit(ctx, data_version):
         click.echo(f"  ✗ OOF predictions: NOT FOUND. Run `make backtest` first.")
         warnings.append("OOF predictions not found. Cannot verify no-leakage calibration.")
 
-    # Check for in-sample calibration
+    # Check OOF leakage
     click.echo()
     click.echo("Leakage checks:")
     click.echo("  ✓ WalkForwardEngine trains on strict pre-prediction-date history.")
     click.echo("  ✓ No in-sample evaluation in ModelLadder.")
     click.echo("  ✓ ScorePMFCalibrator fit only on OOF predictions.")
+
+    # Check published artifacts
+    click.echo()
+    click.echo("Published artifacts:")
+    import glob
+    import json
+    from wc2026.config import PUBLISHED_DIR
+    published_files = sorted(glob.glob(str(PUBLISHED_DIR / "*.json")))
+    click.echo(f"  Published JSONs: {len(published_files)}")
+    n_pmf_valid = 0
+    n_pmf_invalid = 0
+    for fp in published_files[:5]:  # spot-check first 5
+        try:
+            with open(fp) as f:
+                doc = json.load(f)
+            for m in doc.get("matches", []):
+                pred = m.get("prediction") or {}
+                grid = pred.get("regulation_score_pmf_grid")
+                if grid:
+                    import numpy as np
+                    g = np.array(grid)
+                    if abs(g.sum() - 1.0) < 0.01:
+                        n_pmf_valid += 1
+                    else:
+                        n_pmf_invalid += 1
+                        errors.append(f"PMF sum {g.sum():.4f} in {Path(fp).name}")
+        except Exception as exc:
+            errors.append(f"Cannot parse {Path(fp).name}: {exc}")
+    if n_pmf_valid > 0:
+        click.echo(f"  ✓ PMF sums checked: {n_pmf_valid} valid, {n_pmf_invalid} invalid")
+
+    # Check CLV store
+    click.echo()
+    click.echo("CLV tracking:")
+    from wc2026.config import DATA_DIR
+    clv_path = DATA_DIR / "clv" / "2026" / "records.jsonl"
+    if clv_path.exists():
+        with open(clv_path) as f:
+            n_clv = sum(1 for line in f if line.strip())
+        click.echo(f"  ✓ CLV records: {n_clv} (data/clv/2026/records.jsonl)")
+    else:
+        click.echo("  ⚠ CLV records not found — run pipeline to seed")
+        warnings.append("CLV store not found — run scripts/run_real_pipeline.py")
+
+    # Check live replay
+    click.echo()
+    click.echo("Live engine:")
+    replay_path = PREDICTIONS_DIR / "live_replay_2022.parquet"
+    if replay_path.exists():
+        import pandas as pd
+        rdf = pd.read_parquet(replay_path)
+        click.echo(f"  ✓ live_replay_2022.parquet: {len(rdf)} rows, {rdf['match_id'].nunique()} matches")
+    else:
+        click.echo("  ⚠ live_replay_2022.parquet not found — run pipeline")
+        warnings.append("Live replay parquet missing")
+
+    # Composite prior check
+    click.echo()
+    click.echo("Composite prior:")
+    try:
+        from wc2026.data.storage import read_table
+        matches_df = read_table("matches", data_version)
+        odds_df = read_table("odds", data_version) if table_exists("odds", data_version) else None
+        from wc2026.ratings.composite import _FIFA_POINTS
+        click.echo(f"  ✓ FIFA points table: {len(_FIFA_POINTS)} teams")
+        from wc2026.ratings.composite import _QUALIFYING_STATS
+        click.echo(f"  ✓ Qualifying stats: {len(_QUALIFYING_STATS)} teams")
+    except Exception as exc:
+        warnings.append(f"Composite prior check failed: {exc}")
 
     # Final summary
     click.echo()
