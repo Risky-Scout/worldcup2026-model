@@ -62,7 +62,7 @@ calibrate: ## Fit temperature scaling on OOF predictions
 predict-date: ## Predict all matches on DATE (default: today)
 	$(WC2026) predict-date --date $(DATE) --season $(SEASON) --data-version $(DATA_VERSION)
 
-predict-match: ## Predict HOME vs AWAY match
+predict-match: ## Predict HOME_TEAM vs AWAY_TEAM (use HOME_TEAM=X AWAY_TEAM=Y, not HOME=)
 	$(WC2026) predict-match --home "$(HOME_TEAM)" --away "$(AWAY_TEAM)" --season $(SEASON)
 
 predict-all-scheduled: ## Predict all scheduled 2026 matches

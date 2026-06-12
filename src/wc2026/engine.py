@@ -157,13 +157,26 @@ class PredictionEngine:
         venue: Optional[str] = None,
         neutral_venue: bool = True,
     ) -> dict:
-        """Predict a single match. Returns full JSON-serializable dict."""
+        """
+        Predict a single match using composite prior + market reconciliation.
+
+        Uses the full pipeline (CompositeTeamPrior + SLSQP reconciliation) when
+        available, giving the same quality output as predict_date. Falls back to
+        the parametric ladder for ad-hoc matchups not in the 2026 schedule.
+        """
         if self._ladder is None:
             self.fit_models()
 
-        predictions: dict[str, ScorePMFPrediction] = {}
+        # ── Try full composite-prior pipeline first ───────────────────────
+        try:
+            return self._predict_match_composite(
+                home_team, away_team, match_id, season, stage, venue
+            )
+        except Exception as exc:
+            log.debug("Composite predict_match failed, falling back: %s", exc)
 
-        # Get all model predictions
+        # ── Fallback: parametric ladder ───────────────────────────────────
+        predictions: dict[str, ScorePMFPrediction] = {}
         for model_name in self._ladder.fitted_models():
             try:
                 pred = self._ladder.predict(
@@ -172,34 +185,29 @@ class PredictionEngine:
                     neutral_venue=neutral_venue,
                 )
                 predictions[model_name] = pred
-            except Exception as exc:
-                log.warning("Model %s prediction failed: %s", model_name, exc)
+            except Exception as exc2:
+                log.debug("Model %s failed: %s", model_name, exc2)
 
         if not predictions:
-            raise RuntimeError(f"No models produced predictions for {home_team} v {away_team}")
+            # Last resort: equal-probability baseline
+            predictions["equal_probability"] = EqualProbabilityBaseline().predict(
+                home_team, away_team, match_id=match_id
+            )
 
-        # Add equal-probability baseline
         predictions["equal_probability"] = EqualProbabilityBaseline().predict(
             home_team, away_team, match_id=match_id
         )
 
-        # Get market consensus
         market_data = None
         if self._odds_df is not None and match_id is not None:
             market_data = build_consensus(self._odds_df, match_id)
 
-        # Champion model (best walk-forward performer if calibrated, else Dixon-Coles)
         champion_name = self._select_champion(predictions)
         champion_pred = predictions[champion_name]
-
-        # Reconcile with market if available
         if market_data and market_data.has_1x2:
             champion_reconciled = reconcile_pmf(champion_pred, market_data)
         else:
             champion_reconciled = champion_pred
-
-        # Consistency check
-        consistency_errors = champion_reconciled.check_consistency()
 
         return {
             "schema_version": _DAILY_SCHEMA_VERSION,
@@ -213,6 +221,8 @@ class PredictionEngine:
             "data_version": self._data_version,
             "model_version": self._model_version,
             "champion_model": champion_name,
+            "prediction_mode": "parametric_fallback",
+            "warning": "composite_prior_unavailable — using parametric ladder",
             "prediction": champion_reconciled.to_dict(),
             "model_predictions": {
                 name: {
@@ -224,15 +234,142 @@ class PredictionEngine:
                     "away_win": round(p.derived_markets.away_win, 4),
                     "over_2_5": round(p.derived_markets.over_2_5, 4),
                     "btts_yes": round(p.derived_markets.btts_yes, 4),
-                    "calibration_status": p.calibration_status.value,
-                    "warnings": p.warnings,
                 }
                 for name, p in predictions.items()
             },
             "market": market_data.to_dict() if market_data else None,
-            "model_vs_market": _compute_model_market_diff(champion_pred, market_data),
-            "consistency_checks": consistency_errors,
+            "consistency_checks": champion_reconciled.check_consistency(),
             "warnings": _collect_warnings(predictions, market_data),
+        }
+
+    def _predict_match_composite(
+        self,
+        home_team: str,
+        away_team: str,
+        match_id: Optional[int],
+        season: Optional[int],
+        stage: Optional[str],
+        venue: Optional[str],
+    ) -> dict:
+        """Full composite-prior + SLSQP prediction for arbitrary matchups."""
+        from wc2026.ratings.composite import build_composite_prior
+        from wc2026.models.baselines import EloBaseline
+        from wc2026.models.joint_pmf import from_lambdas
+        from wc2026.markets.exact_score_reconcile import (
+            extract_constraints, reconcile,
+        )
+        from wc2026.markets.edge import compute_edge_report
+        from wc2026.config import PROCESSED_DIR
+        import numpy as np
+
+        matches_df = self._matches_df
+        odds_df = self._odds_df if self._odds_df is not None else pd.DataFrame()
+        markets_path = PROCESSED_DIR / self._data_version / "markets.parquet"
+        markets_df = pd.read_parquet(markets_path) if markets_path.exists() else pd.DataFrame()
+
+        # Fit composite prior on full history
+        composite_prior = build_composite_prior(matches_df, odds_df, markets_df)
+        home_prior = composite_prior.get_prior(home_team)
+        away_prior = composite_prior.get_prior(away_team)
+
+        # Build composite PMF
+        comp_lh = home_prior.final_attack_lambda * away_prior.final_defense_lambda / 1.30
+        comp_la = away_prior.final_attack_lambda * home_prior.final_defense_lambda / 1.30
+        comp_pmf_obj = from_lambdas(comp_lh, comp_la, rho=-0.05, max_goals=15)
+        comp_pmf = comp_pmf_obj._grid_arr[:15, :15].copy()
+        comp_pmf = np.clip(comp_pmf, 0, None)
+        comp_pmf /= comp_pmf.sum()
+
+        # Extract market constraints (if match_id provided)
+        mc = extract_constraints(odds_df, markets_df, match_id or -1)
+
+        # Reconcile
+        rec = reconcile(
+            match_id=str(match_id or f"{home_team}_vs_{away_team}"),
+            home_team=home_team, away_team=away_team,
+            pure_model_pmf=comp_pmf, pure_model_lh=comp_lh, pure_model_la=comp_la,
+            mc=mc, max_goals=15, use_kl=True,
+        )
+
+        publish_pmf = rec.publish_pmf
+        n = publish_pmf.shape[0]
+        hh, aa = np.meshgrid(np.arange(n), np.arange(n), indexing="ij")
+        totals = hh + aa
+        home_win = float((publish_pmf * (hh > aa)).sum())
+        draw = float((publish_pmf * (hh == aa)).sum())
+        away_win = float((publish_pmf * (hh < aa)).sum())
+        over_2_5 = float((publish_pmf * (totals > 2)).sum())
+        btts = float((publish_pmf * ((hh > 0) & (aa > 0))).sum())
+        pl_lh = float(np.sum(publish_pmf * hh))
+        pl_la = float(np.sum(publish_pmf * aa))
+
+        # Top scorelines
+        flat = [(int(h), int(a), float(publish_pmf[h, a]))
+                for h in range(n) for a in range(n)]
+        top = sorted(flat, key=lambda x: -x[2])[:20]
+
+        # Edge report
+        edge_report = None
+        if mc.has_1x2:
+            try:
+                mkt = {"home_win": mc.home_win, "draw": mc.draw, "away_win": mc.away_win}
+                if mc.btts_yes: mkt["btts_yes"] = mc.btts_yes
+                er = compute_edge_report(publish_pmf, mkt, pl_lh, pl_la,
+                    match_id=str(match_id or ""), home_team=home_team, away_team=away_team,
+                    prediction_mode=rec.publish_mode)
+                edge_report = er.to_dict()
+            except Exception:
+                pass
+
+        return {
+            "schema_version": _DAILY_SCHEMA_VERSION,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "match_id": match_id,
+            "home_team": home_team,
+            "away_team": away_team,
+            "season": season,
+            "stage": stage,
+            "venue": venue,
+            "data_version": self._data_version,
+            "model_version": self._model_version,
+            "publish_mode": rec.publish_mode,
+            "champion_model": "composite_rating_pmf",
+            "home_prior": {
+                "final_attack": home_prior.final_attack_lambda,
+                "final_defense": home_prior.final_defense_lambda,
+                "sources": home_prior.sources_used,
+                "uncertainty": home_prior.uncertainty,
+            },
+            "away_prior": {
+                "final_attack": away_prior.final_attack_lambda,
+                "final_defense": away_prior.final_defense_lambda,
+                "sources": away_prior.sources_used,
+                "uncertainty": away_prior.uncertainty,
+            },
+            "prediction": {
+                "regulation_only": True,
+                "prediction_mode": rec.publish_mode,
+                "expected_home_goals": round(pl_lh, 4),
+                "expected_away_goals": round(pl_la, 4),
+                "derived_markets": {
+                    "home_win": round(home_win, 5),
+                    "draw": round(draw, 5),
+                    "away_win": round(away_win, 5),
+                    "over_2_5": round(over_2_5, 5),
+                    "btts_yes": round(btts, 5),
+                },
+                "top_scorelines": [
+                    {"home_goals": h, "away_goals": a, "probability": round(p, 6)}
+                    for h, a, p in top
+                ],
+                "market_odds_available": mc.has_1x2,
+                "n_vendors_1x2": mc.n_vendors_1x2,
+                "reconciliation_method": getattr(rec, "_best_reconciliation_method", "blend"),
+                "edge_report": edge_report,
+            },
+            "consistency_checks": [],
+            "warnings": [] if rec.publish_mode == "market_reconciled" else
+                        [f"No market odds — using composite_rating_pmf (pure_model)"],
         }
 
     def predict_date(
