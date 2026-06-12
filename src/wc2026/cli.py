@@ -473,6 +473,44 @@ def results(ctx, date, show_all):
 
 
 # ---------------------------------------------------------------------------
+# Simulate — Monte Carlo group stage advancement probabilities
+# ---------------------------------------------------------------------------
+
+@cli.command("simulate")
+@click.option("--n", default=50_000, show_default=True, help="Number of Monte Carlo simulations")
+@click.option("--group", default=None, help="Filter to one group e.g. 'Group A'")
+@click.option("--markdown", is_flag=True, default=False, help="Output Markdown format")
+@click.option("--save", is_flag=True, default=False, help="Save to reports/group_advancement.md")
+@click.pass_context
+def simulate(ctx, n, group, markdown, save):
+    """Monte Carlo simulation of group stage advancement probabilities."""
+    import sys
+    from pathlib import Path
+    _setup_logging(ctx.obj.get("verbose", False))
+
+    scripts_dir = Path(__file__).resolve().parent.parent.parent / "scripts"
+    sys.path.insert(0, str(scripts_dir))
+
+    from simulate_groups import run_simulation, render_text, render_markdown
+    from wc2026.config import DATA_DIR
+
+    click.echo(f"Running {n:,} simulations...", err=True)
+    sim = run_simulation(n_sims=n)
+
+    if markdown or save:
+        output = render_markdown(sim)
+        if save:
+            from pathlib import Path
+            out = Path(__file__).resolve().parent.parent.parent / "reports" / "group_advancement.md"
+            out.write_text(output)
+            click.echo(f"Saved to {out}", err=True)
+        else:
+            click.echo(output)
+    else:
+        click.echo(render_text(sim, group_filter=group))
+
+
+# ---------------------------------------------------------------------------
 # Calibration — running model performance on actual 2026 results
 # ---------------------------------------------------------------------------
 

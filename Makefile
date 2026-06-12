@@ -87,6 +87,12 @@ clv-close: ## Record closing lines in CLV store for matches kicking off today
 clv-summary: ## Print current CLV summary report
 	$(PYTHON) scripts/clv_ops.py summary
 
+simulate: ## Monte Carlo group stage advancement probabilities (50k sims, saves report)
+	$(WC2026) simulate --n 50000 --save
+
+simulate-group: ## Simulate one group: make simulate-group GROUP="Group A"
+	$(WC2026) simulate --n 50000 --group "$(GROUP)"
+
 ##@@ Docker
 docker-build: ## Build the Docker image
 	docker build -t wc2026-pmf:latest .
