@@ -291,6 +291,102 @@ def publish_today(ctx, season, data_version):
 
 
 # ---------------------------------------------------------------------------
+# Schedule — morning briefing: today's matches with kickoffs and predictions
+# ---------------------------------------------------------------------------
+
+@cli.command("schedule")
+@click.option("--date", default=None, help="Date YYYY-MM-DD (default: today ET)")
+@click.pass_context
+def schedule(ctx, date):
+    """Show today's match schedule with kickoff times and model predictions."""
+    import json
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    from pathlib import Path
+    from wc2026.config import PUBLISHED_DIR
+
+    _setup_logging(ctx.obj.get("verbose", False))
+
+    ET = ZoneInfo("America/New_York")
+    if date is None:
+        date = datetime.now(tz=ET).strftime("%Y-%m-%d")
+
+    json_path = PUBLISHED_DIR / f"{date}.json"
+    if not json_path.exists():
+        click.echo(f"No predictions found for {date}. Run: make update DATE={date}", err=True)
+        return
+
+    doc = json.loads(json_path.read_text())
+    matches = doc.get("matches", [])
+
+    click.echo()
+    click.echo(f"WC 2026 — {date} Match Schedule  ({doc.get('n_matches',0)} matches)")
+    click.echo("=" * 68)
+
+    if not matches:
+        click.echo("  No matches scheduled for this date.")
+        click.echo()
+        return
+
+    for i, m in enumerate(matches, 1):
+        pred = m.get("prediction", {})
+        dm = pred.get("derived_markets", {})
+        result = m.get("result")
+
+        # Parse kickoff time
+        dt_utc = m.get("match_datetime_utc", "")
+        try:
+            ko_utc = datetime.fromisoformat(str(dt_utc).replace("+00:00", "")).replace(tzinfo=timezone.utc)
+            ko_et = ko_utc.astimezone(ET)
+            ko_str = ko_et.strftime("%-I:%M %p ET")
+        except Exception:
+            ko_str = str(dt_utc)
+
+        mode = m.get("publish_mode", "?")
+        hw = dm.get("home_win", 0)
+        dr = dm.get("draw", 0)
+        aw = dm.get("away_win", 0)
+        o25 = dm.get("over_2.5", 0)
+        btts = dm.get("btts_yes", 0)
+
+        home_label = m["home_team"]
+        away_label = m["away_team"]
+        # Bold the favourite
+        if hw > aw:
+            home_label = f"*{home_label}*"
+        elif aw > hw:
+            away_label = f"*{away_label}*"
+
+        if result:
+            status_str = f"FINAL: {result['result_label']}  ({result['outcome'].replace('_',' ').upper()})"
+        else:
+            status_str = ko_str
+
+        click.echo(f"\n  {i}. {home_label} vs {away_label}  [{status_str}]")
+        click.echo(f"     Stage: {m.get('stage','?')}  |  {m.get('stadium','?')}")
+        click.echo(f"     Model ({mode}):  H={hw:.0%}  D={dr:.0%}  A={aw:.0%}")
+        click.echo(f"     O/U 2.5={o25:.0%}  BTTS={btts:.0%}")
+
+        # Top 3 most-likely scorelines
+        scores = pred.get("top_scorelines", [])[:3]
+        if scores:
+            score_parts = [f"{s['home_goals']}-{s['away_goals']} ({s['probability']:.1%})" for s in scores]
+            click.echo(f"     Top scores: {' | '.join(score_parts)}")
+
+        # Edge highlight
+        edge = m.get("edge_report", {})
+        if edge and isinstance(edge, dict):
+            value_bets = [b for b in edge.get("bets", []) if b.get("is_value")]
+            if value_bets:
+                vb = value_bets[0]
+                click.echo(f"     ★ Edge: {vb['market']} {vb['edge_pct']:+.1f}%  half-Kelly={vb['kelly_half']:.1%}")
+
+    click.echo()
+    click.echo(f"  Generated: {doc.get('generated_at','')}  |  mode: {doc.get('publish_mode_policy','')[:60]}")
+    click.echo()
+
+
+# ---------------------------------------------------------------------------
 # Results — show completed match results vs pre-game predictions
 # ---------------------------------------------------------------------------
 
