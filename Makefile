@@ -99,6 +99,13 @@ winner: ## Tournament winner probabilities via full bracket simulation (20k sims
 report: ## Generate matchday briefing report for DATE (default: today)
 	$(PYTHON) scripts/matchday_report.py --date $(DATE)
 
+upload: ## Upload predictions JSON to sportsodds.wizardofodds.com via FTP
+	$(PYTHON) scripts/upload_predictions.py --date $(DATE)
+
+deploy: ## Upload HTML page and predictions JSON to production server
+	$(PYTHON) scripts/upload_predictions.py --date $(DATE)
+	$(PYTHON) scripts/deploy_html.py
+
 ##@@ Docker
 docker-build: ## Build the Docker image
 	docker build -t wc2026-pmf:latest .

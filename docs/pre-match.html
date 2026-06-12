@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup Predictions · Wizard of Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --panel: #131826; --panel-2: #1a2030; --panel-3: #222a40;
+    --border: #232a3d; --border-2: #2d3650;
+    --text: #e8ecf5; --text-dim: #8892a8; --text-muted: #5a6378;
+    --gold: #d4af37; --gold-soft: #b89a30;
+    --green: #4ade80; --green-deep: #16a34a;
+    --red: #f87171; --blue: #60a5fa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Fraunces', Georgia, serif; min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .logo { display: flex; align-items: baseline; gap: 12px; }
+  .logo-mark { font-size: 28px; font-weight: 700; color: var(--gold); font-style: italic; letter-spacing: -0.02em; }
+  .logo-name { font-size: 20px; font-weight: 500; font-style: italic; }
+  .logo-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; padding-left: 12px; border-left: 1px solid var(--border); }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav a {
+    color: var(--text-dim); text-decoration: none; padding: 7px 16px; border-radius: 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.12em; border: 1px solid var(--border); transition: all 0.15s;
+  }
+  .nav a:hover { color: var(--text); border-color: var(--border-2); }
+  .nav a.active { background: rgba(212,175,55,0.1); border-color: var(--gold); color: var(--gold); }
+
+  .hero { padding: 32px 28px 20px; max-width: 1700px; margin: 0 auto; }
+  .hero h1 { font-size: 36px; font-weight: 400; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .hero h1 em { color: var(--gold); font-style: italic; font-weight: 500; }
+  .hero p { color: var(--text-dim); font-size: 14px; line-height: 1.6; max-width: 800px; }
+  .hero p strong { color: var(--text); font-weight: 500; }
+  .updated-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; margin-top: 10px; }
+  .updated-tag span { color: var(--text-dim); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 0; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 16px 18px; }
+  .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 600; color: var(--text); }
+  .kpi-val.gold { color: var(--gold); }
+  .kpi-val.green { color: var(--green); }
+  .kpi-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+  .bankroll-card {
+    max-width: 1700px; margin: 16px auto 0; padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(212,175,55,0.02) 100%);
+    border: 1px solid rgba(212,175,55,0.25); border-radius: 6px;
+    display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+  }
+  .bankroll-card-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.18em; font-weight: 600; }
+  .bankroll-input-group { display: flex; align-items: center; gap: 10px; }
+  .bankroll-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; }
+  .bankroll-input {
+    background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+    padding: 10px 16px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600;
+    width: 140px; outline: none; text-align: right;
+  }
+  .bankroll-input:focus { border-color: var(--gold); }
+  .kelly-select {
+    background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+    padding: 10px 16px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; cursor: pointer; outline: none;
+  }
+  .kelly-select:focus { border-color: var(--gold); }
+  .kelly-explainer { color: var(--text-dim); font-size: 12px; max-width: 380px; line-height: 1.5; margin-left: auto; }
+  .kelly-explainer strong { color: var(--text); }
+
+  .controls {
+    max-width: 1700px; margin: 0 auto; padding: 18px 28px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .ctrl-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; }
+  .chip {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 7px 14px; border-radius: 18px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+    letter-spacing: 0.08em; user-select: none;
+  }
+  .chip:hover { border-color: var(--border-2); color: var(--text); }
+  .chip.active { background: rgba(212,175,55,0.1); border-color: var(--gold); color: var(--gold); }
+
+  .table-wrap { max-width: 1700px; margin: 0 auto; padding: 16px 28px 40px; overflow-x: auto; }
+  table.matches { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1100px; }
+  th { background: var(--bg); position: sticky; top: 0; z-index: 5; color: var(--text-dim); font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: 0.12em; padding: 10px 12px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; text-align: left; }
+  td { padding: 13px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; vertical-align: middle; border-bottom: 1px solid rgba(35,42,61,0.6); }
+  tbody tr.match-row { cursor: pointer; transition: background 0.12s; }
+  tbody tr.match-row:hover { background: rgba(212,175,55,0.03); }
+  tbody tr.match-row.expanded { background: rgba(212,175,55,0.04); border-bottom: none; }
+  tbody tr.detail-row td { padding: 0; border-bottom: 1px solid var(--border); }
+  tbody tr.detail-row { display: none; }
+  tbody tr.detail-row.open { display: table-row; }
+
+  /* Match cell */
+  .match-cell { font-family: 'Fraunces', serif; }
+  .teams { font-size: 15px; font-weight: 500; color: var(--text); }
+  .teams .fav { color: var(--gold); }
+  .match-meta { display: block; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .mode-pill { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-left: 6px; }
+  .mode-pill.mr { background: rgba(74,222,128,0.1); color: var(--green); }
+  .mode-pill.co { background: rgba(96,165,250,0.1); color: var(--blue); }
+
+  /* Probability bars */
+  .prob-bars { display: flex; gap: 2px; align-items: stretch; height: 28px; border-radius: 3px; overflow: hidden; min-width: 120px; }
+  .prob-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; transition: width 0.3s ease; }
+  .prob-seg.home { background: rgba(212,175,55,0.25); color: var(--gold); }
+  .prob-seg.draw { background: rgba(88,101,130,0.3); color: var(--text-dim); }
+  .prob-seg.away { background: rgba(96,165,250,0.2); color: var(--blue); }
+  .prob-labels { display: flex; gap: 4px; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
+  .prob-labels span { flex: 1; text-align: center; }
+
+  /* O/U cell */
+  .ou-cell { text-align: center; }
+  .ou-over { color: var(--green); font-weight: 600; }
+  .ou-under { color: var(--red); font-weight: 600; }
+  .ou-label { color: var(--text-muted); font-size: 10px; }
+
+  /* Score cell */
+  .score-cell .score { font-size: 14px; font-weight: 600; color: var(--text); }
+  .score-cell .score-prob { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* xG cell */
+  .xg-cell { color: var(--text); font-size: 13px; font-weight: 600; }
+  .xg-cell .xg-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Edge cell */
+  .edge-val { font-size: 14px; font-weight: 700; }
+  .edge-pos { color: var(--green); }
+  .edge-neg { color: var(--red); }
+  .edge-none { color: var(--text-muted); }
+  .edge-market { font-size: 10px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kelly-val { font-size: 12px; color: var(--gold); margin-top: 2px; }
+
+  /* Fair odds cell */
+  .fair-odds { display: flex; gap: 6px; flex-wrap: wrap; }
+  .odds-chip { background: var(--panel-2); border: 1px solid var(--border); border-radius: 3px; padding: 3px 7px; font-size: 11px; font-weight: 600; }
+  .odds-chip .odds-label { font-size: 8px; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1px; }
+
+  /* Expand arrow */
+  .expand-arrow { color: var(--text-muted); font-size: 12px; transition: transform 0.2s; display: inline-block; }
+  .expanded .expand-arrow { transform: rotate(90deg); }
+
+  /* Detail panel */
+  .detail-panel { background: var(--panel); padding: 20px 28px 24px; border-top: 1px solid var(--border); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 12px; font-weight: 600; }
+  .score-pmf-table { width: 100%; border-collapse: collapse; }
+  .score-pmf-table td { padding: 4px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; border-bottom: 1px solid rgba(35,42,61,0.5); }
+  .score-pmf-table .score-td { color: var(--text); font-weight: 600; width: 60px; }
+  .score-pmf-table .prob-td { color: var(--text-dim); width: 60px; }
+  .pmf-bar-td { width: 100%; }
+  .pmf-bar { height: 6px; background: rgba(212,175,55,0.25); border-radius: 2px; }
+  .pmf-bar.value { background: rgba(74,222,128,0.4); }
+  .market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .market-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; background: var(--panel-2); border-radius: 3px; }
+  .market-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .market-prob { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text); }
+  .edge-rows { display: flex; flex-direction: column; gap: 4px; }
+  .edge-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--panel-2); border-radius: 3px; border-left: 3px solid transparent; }
+  .edge-row.value { border-left-color: var(--green); background: rgba(74,222,128,0.05); }
+  .edge-row.negative { border-left-color: var(--red); background: rgba(248,113,113,0.03); }
+  .edge-row-market { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+  .edge-row-pct { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  .edge-row-kelly { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); }
+
+  /* Result badge */
+  .result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; margin-top: 4px; }
+  .result-badge.home_win { background: rgba(212,175,55,0.15); color: var(--gold); }
+  .result-badge.away_win { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .result-badge.draw { background: rgba(88,101,130,0.2); color: var(--text-dim); }
+
+  /* Loading / empty state */
+  .loading-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .loading-state .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .bankroll-card { flex-direction: column; align-items: flex-start; }
+    .kelly-explainer { margin-left: 0; }
+    .hero h1 { font-size: 26px; }
+    header { padding: 14px 16px; }
+    .hero, .table-wrap, .controls { padding-left: 16px; padding-right: 16px; }
+    .bankroll-card { margin-left: 16px; margin-right: 16px; }
+  }
+
+  footer { text-align: center; padding: 32px 28px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">Prediction Engine</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/nba-props.html">NBA Props</a>
+    <a href="/tools/odds-scanner/predictions/world%20cup/pre%20match.html" class="active">World Cup</a>
+    <a href="/tools/odds-scanner/predictions/world%20cup/live.html">Live ⚡</a>
+  </nav>
+</header>
+
+<section class="hero" style="max-width:1700px;margin:0 auto;padding:32px 28px 0;">
+  <h1>Today's <em>World Cup</em> Predictions.</h1>
+  <p>Every match our PMF model has priced for <strong>regulation time</strong> (90 min + stoppage).
+     Probabilities exclude extra time and penalty shootouts.
+     Click any row to expand the full scoreline distribution and all markets.</p>
+  <div class="updated-tag" id="updated-tag">Updated &mdash;</div>
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="kpi-label">Matches Today</div><div class="kpi-val" id="kpi-matches">—</div><div class="kpi-sub">scheduled</div></div>
+    <div class="kpi"><div class="kpi-label">Value Bets</div><div class="kpi-val gold" id="kpi-value">—</div><div class="kpi-sub">edge &gt; 4% confirmed by CI</div></div>
+    <div class="kpi"><div class="kpi-label">Best Edge</div><div class="kpi-val green" id="kpi-edge">—</div><div class="kpi-sub" id="kpi-edge-sub">market</div></div>
+    <div class="kpi"><div class="kpi-label">Avg xG / Match</div><div class="kpi-val" id="kpi-xg">—</div><div class="kpi-sub">expected total goals</div></div>
+  </div>
+</section>
+
+<div class="bankroll-card" style="max-width:1700px;margin:16px 28px 0;">
+  <span class="bankroll-card-title">Bankroll Sizing</span>
+  <div class="bankroll-input-group">
+    <span class="bankroll-label">Bankroll $</span>
+    <input class="bankroll-input" type="number" id="bankroll-input" value="1000" min="1" step="100">
+  </div>
+  <select class="kelly-select" id="kelly-select">
+    <option value="1">Whole · Full Kelly</option>
+    <option value="0.75">¾ Kelly</option>
+    <option value="0.5" selected>½ Kelly (recommended)</option>
+    <option value="0.25">¼ Kelly</option>
+  </select>
+  <p class="kelly-explainer">
+    Kelly sizes each bet by your edge × your bankroll.
+    <strong>Half Kelly</strong> is the standard for most professional bettors —
+    it sacrifices a little growth for substantially less variance.
+  </p>
+</div>
+
+<div class="controls" style="max-width:1700px;margin:0 28px;">
+  <span class="ctrl-label">Filter</span>
+  <span class="chip active" data-filter="all" onclick="setFilter('all',this)">All Matches</span>
+  <span class="chip" data-filter="value" onclick="setFilter('value',this)">Value Bets Only</span>
+  <span class="chip" data-filter="completed" onclick="setFilter('completed',this)">Completed</span>
+  <span class="ctrl-label" style="margin-left:12px;">Group</span>
+  <span id="group-chips"></span>
+</div>
+
+<div class="table-wrap">
+  <table class="matches" id="matches-table">
+    <thead>
+      <tr>
+        <th style="width:220px;">Match</th>
+        <th style="width:160px;">1X2 Probability</th>
+        <th style="width:90px;text-align:center;">O/U 2.5</th>
+        <th style="width:80px;text-align:center;">BTTS</th>
+        <th style="width:110px;">Top Score</th>
+        <th style="width:80px;text-align:center;">xG</th>
+        <th style="width:130px;">Best Edge</th>
+        <th style="width:150px;">Fair Odds (H/D/A)</th>
+        <th style="width:30px;"></th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="9" class="loading-state"><div class="spinner"></div><br>Loading predictions…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
+  Not financial advice · <span id="footer-date"></span>
+</footer>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const STATE = { bankroll: 1000, kelly: 0.5, filter: 'all', group: 'all' };
+let ALL_MATCHES = [];
+let REFRESH_TIMER = null;
+let LOAD_TIME = null;
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtPct(n, dec = 0) {
+  if (n == null || isNaN(n)) return '—';
+  return (n * 100).toFixed(dec) + '%';
+}
+function fmtAmerican(p) {
+  if (p == null || p <= 0 || p >= 1) return '—';
+  const a = p >= 0.5
+    ? Math.round(-100 * p / (1 - p))
+    : Math.round(100 * (1 - p) / p);
+  return a > 0 ? `+${a}` : `${a}`;
+}
+function fmtDecimal(p) {
+  if (p == null || p <= 0 || p >= 1) return '—';
+  return (1 / p).toFixed(2);
+}
+function fmtMoney(n) {
+  if (!n || n < 0.5) return '—';
+  return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function timeSince(iso) {
+  if (!iso) return '—';
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+  return `${Math.floor(secs/3600)}h ago`;
+}
+function toET(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', hour12: true }) + ' ET';
+  } catch { return iso; }
+}
+function inferGroup(m) {
+  // Try to find group from match metadata
+  return m.group || m.stage_detail || '';
+}
+
+// ── Data ───────────────────────────────────────────────────────────────────
+async function loadData() {
+  const urls = [
+    './wc-predictions.json',
+    '../wc-predictions.json',
+  ];
+  let data = null;
+  for (const url of urls) {
+    try {
+      const r = await fetch(url + '?t=' + Date.now());
+      if (r.ok) { data = await r.json(); break; }
+    } catch (e) {}
+  }
+  return data;
+}
+
+// ── KPIs ───────────────────────────────────────────────────────────────────
+function updateKPIs(matches) {
+  document.getElementById('kpi-matches').textContent = matches.length;
+
+  let valueBets = 0, bestEdge = -Infinity, bestEdgeMarket = '', totalXG = 0;
+  for (const m of matches) {
+    const pred = m.prediction || {};
+    const edges = (pred.edge_report || {}).edges || [];
+    for (const e of edges) {
+      if (e.value_flag) valueBets++;
+      if (e.edge_pct > bestEdge) { bestEdge = e.edge_pct; bestEdgeMarket = e.market; }
+    }
+    totalXG += (pred.expected_home_goals || 0) + (pred.expected_away_goals || 0);
+  }
+
+  document.getElementById('kpi-value').textContent = valueBets || '0';
+  if (bestEdge > -Infinity && bestEdge > 0) {
+    document.getElementById('kpi-edge').textContent = bestEdge.toFixed(1) + '%';
+    document.getElementById('kpi-edge-sub').textContent = bestEdgeMarket;
+  } else {
+    document.getElementById('kpi-edge').textContent = '—';
+  }
+  document.getElementById('kpi-xg').textContent = matches.length
+    ? (totalXG / matches.length).toFixed(2)
+    : '—';
+}
+
+// ── Group chips ────────────────────────────────────────────────────────────
+function buildGroupChips(matches) {
+  const groups = new Set();
+  for (const m of matches) { if (m.group) groups.add(m.group); }
+  const wrap = document.getElementById('group-chips');
+  wrap.innerHTML = '';
+  for (const g of [...groups].sort()) {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = g;
+    chip.dataset.group = g;
+    chip.onclick = () => setGroup(g, chip);
+    wrap.appendChild(chip);
+  }
+}
+
+// ── Filter / group ─────────────────────────────────────────────────────────
+function setFilter(f, el) {
+  STATE.filter = f;
+  document.querySelectorAll('[data-filter]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderTable(ALL_MATCHES);
+}
+function setGroup(g, el) {
+  if (STATE.group === g) {
+    STATE.group = 'all';
+    el.classList.remove('active');
+  } else {
+    STATE.group = g;
+    document.querySelectorAll('[data-group]').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+  renderTable(ALL_MATCHES);
+}
+function applyFilters(matches) {
+  let out = matches;
+  if (STATE.filter === 'value') {
+    out = out.filter(m => {
+      const edges = ((m.prediction || {}).edge_report || {}).edges || [];
+      return edges.some(e => e.value_flag);
+    });
+  } else if (STATE.filter === 'completed') {
+    out = out.filter(m => m.result);
+  }
+  if (STATE.group !== 'all') {
+    out = out.filter(m => m.group === STATE.group);
+  }
+  return out;
+}
+
+// ── Row rendering ──────────────────────────────────────────────────────────
+function renderMatchRow(m, idx) {
+  const pred = m.prediction || {};
+  const dm = pred.derived_markets || {};
+  const edges = (pred.edge_report || {}).edges || [];
+  const scores = pred.top_scorelines || [];
+  const topScore = scores[0] || null;
+
+  const hw = dm.home_win || 0;
+  const dr = dm.draw || 0;
+  const aw = dm.away_win || 0;
+  const over25 = dm['over_2.5'] || dm.over_2_5 || 0;
+  const btts = dm.btts_yes || 0;
+  const lh = pred.expected_home_goals || 0;
+  const la = pred.expected_away_goals || 0;
+
+  const fav = hw > aw ? m.home_team : (aw > hw ? m.away_team : null);
+  const modePill = m.publish_mode === 'market_reconciled'
+    ? '<span class="mode-pill mr">Market</span>'
+    : '<span class="mode-pill co">Model</span>';
+
+  // Probability bars
+  const hwW = Math.round(hw * 100), drW = Math.round(dr * 100), awW = Math.round(aw * 100);
+  const probBars = `
+    <div class="prob-bars">
+      <div class="prob-seg home" style="width:${hwW}%">${hwW >= 14 ? hwW + '%' : ''}</div>
+      <div class="prob-seg draw" style="width:${drW}%">${drW >= 12 ? drW + '%' : ''}</div>
+      <div class="prob-seg away" style="width:${awW}%">${awW >= 14 ? awW + '%' : ''}</div>
+    </div>
+    <div class="prob-labels"><span>H</span><span>D</span><span>A</span></div>`;
+
+  // Best value edge
+  const valueEdges = edges.filter(e => e.value_flag).sort((a,b) => b.edge_pct - a.edge_pct);
+  const topEdge = valueEdges[0] || edges.sort((a,b) => b.edge_pct - a.edge_pct)[0] || null;
+  let edgeHtml = '<span class="edge-none">—</span>';
+  let kellyHtml = '';
+  if (topEdge) {
+    const cls = topEdge.edge_pct > 0 ? 'edge-pos' : 'edge-neg';
+    edgeHtml = `<div class="edge-val ${cls}">${topEdge.edge_pct > 0 ? '+' : ''}${topEdge.edge_pct.toFixed(1)}%</div>
+                <div class="edge-market">${esc(topEdge.market)}</div>`;
+    if (topEdge.value_flag) {
+      const kellyFrac = (topEdge.half_kelly_pct || 0) / 100;
+      const betAmt = STATE.bankroll * kellyFrac * STATE.kelly * 2; // half_kelly_pct is already half
+      kellyHtml = `<div class="kelly-val">${(topEdge.half_kelly_pct * STATE.kelly * 2).toFixed(2)}% · ${fmtMoney(betAmt)}</div>`;
+    }
+  }
+
+  // Fair odds
+  const fairOdds = `
+    <div class="fair-odds">
+      <div class="odds-chip"><span class="odds-label">H</span>${fmtDecimal(hw)}</div>
+      <div class="odds-chip"><span class="odds-label">D</span>${fmtDecimal(dr)}</div>
+      <div class="odds-chip"><span class="odds-label">A</span>${fmtDecimal(aw)}</div>
+    </div>`;
+
+  // Result badge
+  let resultHtml = '';
+  if (m.result) {
+    const r = m.result;
+    resultHtml = `<span class="result-badge ${r.outcome || ''}">${esc(r.result_label)}</span>`;
+  }
+
+  const homeDisplay = fav === m.home_team
+    ? `<span class="fav">${esc(m.home_team)}</span>`
+    : esc(m.home_team);
+  const awayDisplay = fav === m.away_team
+    ? `<span class="fav">${esc(m.away_team)}</span>`
+    : esc(m.away_team);
+
+  return `<tr class="match-row" data-idx="${idx}" onclick="toggleDetail(${idx}, this)">
+    <td class="match-cell">
+      <div class="teams">${homeDisplay} <span style="color:var(--text-muted)">vs</span> ${awayDisplay}</div>
+      <span class="match-meta">${toET(m.match_datetime_utc)} · ${esc(m.stadium || '')}${modePill}</span>
+      ${resultHtml}
+    </td>
+    <td>${probBars}</td>
+    <td class="ou-cell">
+      <div class="ou-over">${fmtPct(over25)}</div>
+      <div class="ou-label">O 2.5</div>
+      <div class="ou-under">${fmtPct(1 - over25)}</div>
+    </td>
+    <td class="ou-cell">
+      <div class="ou-over">${fmtPct(btts)}</div>
+      <div class="ou-label">Yes</div>
+      <div class="ou-under">${fmtPct(1 - btts)}</div>
+    </td>
+    <td class="score-cell">
+      ${topScore ? `<div class="score">${topScore.home_goals}–${topScore.away_goals}</div>
+      <div class="score-prob">${fmtPct(topScore.probability, 1)}</div>` : '—'}
+    </td>
+    <td class="xg-cell" style="text-align:center;">
+      <div>${lh.toFixed(2)}</div>
+      <div class="xg-sub">— ${la.toFixed(2)}</div>
+    </td>
+    <td>${edgeHtml}${kellyHtml}</td>
+    <td>${fairOdds}</td>
+    <td><span class="expand-arrow">▶</span></td>
+  </tr>`;
+}
+
+function renderDetailRow(m, idx) {
+  const pred = m.prediction || {};
+  const dm = pred.derived_markets || {};
+  const scores = pred.top_scorelines || [];
+  const edges = (pred.edge_report || {}).edges || [];
+  const lh = pred.expected_home_goals || 0;
+  const la = pred.expected_away_goals || 0;
+
+  // Top-10 scorelines
+  const maxProb = scores[0] ? scores[0].probability : 1;
+  const scoreRows = scores.slice(0, 10).map(s => {
+    const barW = maxProb > 0 ? Math.round((s.probability / maxProb) * 100) : 0;
+    const isValue = edges.some(e => e.market === `${s.home_goals}-${s.away_goals}` && e.value_flag);
+    return `<tr>
+      <td class="score-td">${s.home_goals}–${s.away_goals}</td>
+      <td class="prob-td">${fmtPct(s.probability, 2)}</td>
+      <td class="pmf-bar-td"><div class="pmf-bar ${isValue ? 'value' : ''}" style="width:${barW}%"></div></td>
+    </tr>`;
+  }).join('');
+
+  // All markets
+  const ouKeys = ['over_0.5','over_1.5','over_2.5','over_3.5','over_4.5','over_5.5'];
+  const ouRows = ouKeys.map(k => {
+    const v = dm[k];
+    if (v == null) return '';
+    const line = k.replace('over_', '').replace('_', '.');
+    return `<div class="market-row">
+      <span class="market-name">O/U ${line}</span>
+      <span class="market-prob">
+        <span style="color:var(--green)">${fmtPct(v)}</span>
+        <span style="color:var(--text-muted)"> / </span>
+        <span style="color:var(--red)">${fmtPct(1-v)}</span>
+      </span>
+    </div>`;
+  }).join('');
+
+  const extraMarkets = [
+    ['btts_yes', 'BTTS Yes'], ['btts_no', 'BTTS No'],
+    ['home_clean_sheet', 'Home CS'], ['away_clean_sheet', 'Away CS'],
+    ['dnb_home', 'DNB Home'], ['dnb_away', 'DNB Away'],
+    ['dc_home_draw', 'DC Home/Draw'], ['dc_away_draw', 'DC Away/Draw'],
+  ].map(([k, label]) => {
+    const v = dm[k];
+    if (v == null) return '';
+    return `<div class="market-row">
+      <span class="market-name">${label}</span>
+      <span class="market-prob">${fmtPct(v)}</span>
+    </div>`;
+  }).join('');
+
+  // Team totals
+  const teamTotalRows = [
+    ['home_over_0.5', `${m.home_team} O 0.5`],
+    ['home_over_1.5', `${m.home_team} O 1.5`],
+    ['away_over_0.5', `${m.away_team} O 0.5`],
+    ['away_over_1.5', `${m.away_team} O 1.5`],
+  ].map(([k, label]) => {
+    const v = dm[k];
+    if (v == null) return '';
+    return `<div class="market-row">
+      <span class="market-name" style="font-size:9px;">${esc(label)}</span>
+      <span class="market-prob">${fmtPct(v)}</span>
+    </div>`;
+  }).join('');
+
+  // Edge breakdown (top 8)
+  const edgeRows = edges.slice(0, 8).map(e => {
+    const cls = e.value_flag ? 'value' : (e.edge_pct < 0 ? 'negative' : '');
+    const kellyFrac = (e.half_kelly_pct || 0) / 100;
+    const betAmt = STATE.bankroll * kellyFrac * STATE.kelly * 2;
+    return `<div class="edge-row ${cls}">
+      <span class="edge-row-market">${esc(e.market)}</span>
+      <span>
+        <span class="edge-row-pct" style="color:${e.edge_pct > 0 ? 'var(--green)' : 'var(--red)'}">${e.edge_pct > 0 ? '+' : ''}${e.edge_pct.toFixed(1)}%</span>
+        ${e.value_flag ? `<span class="edge-row-kelly"> · ${(e.half_kelly_pct * STATE.kelly * 2).toFixed(2)}% · ${fmtMoney(betAmt)}</span>` : ''}
+      </span>
+    </div>`;
+  }).join('');
+
+  // Result section
+  let resultSection = '';
+  if (m.result) {
+    const r = m.result;
+    const pExact = r.model_prob_exact_score;
+    resultSection = `<div style="margin-bottom:16px;padding:12px 14px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:4px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Final Result</div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);">${esc(r.result_label)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:4px;">${esc((r.outcome||'').replace('_',' ').toUpperCase())}${pExact != null ? ` · Model P(exact) = ${fmtPct(pExact, 2)}` : ''}</div>
+    </div>`;
+  }
+
+  return `<tr class="detail-row" id="detail-${idx}">
+    <td colspan="9">
+      <div class="detail-panel">
+        ${resultSection}
+        <div class="detail-grid">
+          <div class="detail-section">
+            <h4>Top 10 Scoreline PMF</h4>
+            <table class="score-pmf-table">${scoreRows}</table>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:8px;">
+              xG: ${lh.toFixed(2)} – ${la.toFixed(2)} · tail: ${fmtPct(pred.tail_mass_display || pred.tail_mass_exact)}
+            </div>
+          </div>
+          <div class="detail-section">
+            <h4>All Markets</h4>
+            <div class="market-grid">${ouRows}</div>
+            <div style="height:8px;"></div>
+            <div class="market-grid">${extraMarkets}</div>
+            <div style="height:8px;"></div>
+            <div class="market-grid">${teamTotalRows}</div>
+          </div>
+          <div class="detail-section">
+            <h4>Edge Report (top 8)</h4>
+            <div class="edge-rows">${edgeRows || '<div style="color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:11px;">No market odds available</div>'}</div>
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>`;
+}
+
+// ── Toggle detail ──────────────────────────────────────────────────────────
+function toggleDetail(idx, rowEl) {
+  const detail = document.getElementById(`detail-${idx}`);
+  if (!detail) return;
+  const isOpen = detail.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.detail-row.open').forEach(r => {
+    r.classList.remove('open');
+    r.previousElementSibling?.classList.remove('expanded');
+  });
+  if (!isOpen) {
+    detail.classList.add('open');
+    rowEl.classList.add('expanded');
+    rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── Render table ───────────────────────────────────────────────────────────
+function renderTable(matches) {
+  const filtered = applyFilters(matches);
+  const tbody = document.getElementById('table-body');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="loading-state">No matches for this filter.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((m, i) => {
+    const origIdx = matches.indexOf(m);
+    return renderMatchRow(m, origIdx) + renderDetailRow(m, origIdx);
+  }).join('');
+}
+
+// ── Bankroll/Kelly reactivity ──────────────────────────────────────────────
+document.getElementById('bankroll-input').addEventListener('input', e => {
+  STATE.bankroll = Math.max(1, parseFloat(e.target.value) || 1000);
+  renderTable(ALL_MATCHES);
+});
+document.getElementById('kelly-select').addEventListener('change', e => {
+  STATE.kelly = parseFloat(e.target.value);
+  renderTable(ALL_MATCHES);
+});
+
+// ── Main init ──────────────────────────────────────────────────────────────
+async function init() {
+  const data = await loadData();
+  if (!data || !data.matches) {
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="9" class="loading-state">No predictions available. Check back before kickoff.</td></tr>`;
+    return;
+  }
+
+  ALL_MATCHES = data.matches;
+  LOAD_TIME = data.generated_at;
+
+  updateKPIs(ALL_MATCHES);
+  buildGroupChips(ALL_MATCHES);
+  renderTable(ALL_MATCHES);
+
+  const updatedTag = document.getElementById('updated-tag');
+  if (data.generated_at) {
+    const d = new Date(data.generated_at);
+    updatedTag.innerHTML = `Updated <span>${d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span> · auto-refreshes every 5 min`;
+  }
+
+  document.getElementById('footer-date').textContent = data.date || '';
+  document.title = `WC 2026 Predictions ${data.date || ''} · Wizard of Odds`;
+
+  // Auto-refresh every 5 minutes
+  clearTimeout(REFRESH_TIMER);
+  REFRESH_TIMER = setTimeout(init, 5 * 60 * 1000);
+}
+
+init();
+</script>
+</body>
+</html>

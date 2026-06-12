@@ -48,6 +48,9 @@ jobs:
       - name: Create .env for CI
         run: |
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
+          echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
+          echo "FTP_USER=${{ secrets.FTP_USER }}" >> .env
+          echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
 
       - name: Fetch latest BDL data
         env:
@@ -68,6 +71,14 @@ jobs:
       - name: Run post-match update (if requested)
         if: github.event.inputs.post_match == 'true'
         run: python scripts/daily_update.py --date $DATE --post-match
+        continue-on-error: true
+
+      - name: Upload predictions to sportsodds.wizardofodds.com
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/upload_predictions.py --date $DATE
         continue-on-error: true
 
       - name: Commit updated predictions
