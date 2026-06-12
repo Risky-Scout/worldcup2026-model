@@ -2163,6 +2163,76 @@ def _update_readme(generated_at: str) -> None:
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# POST-MATCH: Annotate published JSONs with actual results
+# ────────────────────────────────────────────────────────────────────────────
+
+def annotate_published_with_results(matches_df) -> None:
+    """
+    For each published date JSON, annotate any completed match with its actual
+    result and the model's pre-game PMF probability for that exact score.
+
+    This is purely additive — pre-game predictions are never modified.
+    Safe to call multiple times; already-annotated matches are left unchanged.
+    """
+    import pandas as pd
+
+    completed = matches_df[
+        matches_df["status"].isin(["completed", "final"]) &
+        matches_df["home_goals"].notna()
+    ].copy()
+    if completed.empty:
+        log.info("annotate_published_with_results: no completed matches yet")
+        return
+
+    result_by_id: dict[int, dict] = {}
+    for _, row in completed.iterrows():
+        hg, ag = int(row["home_goals"]), int(row["away_goals"])
+        result_by_id[int(row["match_id"])] = {
+            "home_goals": hg,
+            "away_goals": ag,
+            "result_label": f"{hg}-{ag}",
+            "outcome": "home_win" if hg > ag else ("draw" if hg == ag else "away_win"),
+        }
+
+    annotated_files = 0
+    for json_path in sorted(PUBLISHED_DIR.glob("2026-*.json")):
+        if json_path.name == "all_scheduled_2026.json":
+            continue
+        doc = json.loads(json_path.read_text())
+        changed = False
+        for m in doc.get("matches", []):
+            mid = int(m.get("match_id", -1))
+            if mid not in result_by_id:
+                continue
+            if m.get("result") == result_by_id[mid]:
+                continue  # already annotated
+
+            r = result_by_id[mid]
+            m["result"] = r
+            # Look up P(exact score) from the published top_scorelines
+            try:
+                scores = m.get("prediction", {}).get("top_scorelines", [])
+                hg, ag = r["home_goals"], r["away_goals"]
+                pmf_entry = next(
+                    (s for s in scores
+                     if s.get("home_goals") == hg and s.get("away_goals") == ag),
+                    None,
+                )
+                m["result"]["model_prob_exact_score"] = (
+                    round(pmf_entry["probability"], 6) if pmf_entry else None
+                )
+            except Exception:
+                m["result"]["model_prob_exact_score"] = None
+            changed = True
+
+        if changed:
+            json_path.write_text(json.dumps(doc, indent=2, default=str))
+            annotated_files += 1
+
+    log.info("annotate_published_with_results: updated %d date JSON files", annotated_files)
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ────────────────────────────────────────────────────────────────────────────
 

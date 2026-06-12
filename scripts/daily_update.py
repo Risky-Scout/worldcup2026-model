@@ -181,9 +181,9 @@ def step_clv_record_closing(date: str) -> None:
             # Get latest odds by updated_at
             if "updated_at" in match_odds.columns:
                 match_odds = match_odds.sort_values("updated_at", ascending=False)
-            hw_odds = match_odds[match_odds.get("outcome_name", pd.Series(dtype=str)).str.lower().isin(
-                ["home", "home win", "1"]
-            )].head(1)
+            outcome_col = match_odds.get("outcome_name", pd.Series(dtype=str, index=match_odds.index))
+            mask = outcome_col.str.lower().isin(["home", "home win", "1"]).values
+            hw_odds = match_odds.iloc[mask].head(1)
             if hw_odds.empty:
                 continue
             closing_dec = float(hw_odds.iloc[0].get("decimal_odds", 0) or 0)
@@ -269,6 +269,16 @@ def step_post_match_forensics(date: str) -> None:
                      mrow["home_team"], mrow["away_team"], hg, ag, home_won, draw)
 
         log.info("  Outcome records updated: %d", n_outcomes)
+
+        # Annotate published JSONs with actual results + model exact-score probability
+        try:
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+            from run_real_pipeline import annotate_published_with_results
+            annotate_published_with_results(matches_df)
+        except Exception as ann_exc:
+            log.warning("  Published JSON annotation failed: %s", ann_exc)
 
         # Print CLV summary after outcomes
         summary = store.summary()
