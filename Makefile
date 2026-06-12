@@ -93,6 +93,9 @@ simulate: ## Monte Carlo group stage advancement probabilities (50k sims, saves 
 simulate-group: ## Simulate one group: make simulate-group GROUP="Group A"
 	$(WC2026) simulate --n 50000 --group "$(GROUP)"
 
+winner: ## Tournament winner probabilities via full bracket simulation (20k sims)
+	$(WC2026) simulate --winner --n 20000 --save
+
 ##@@ Docker
 docker-build: ## Build the Docker image
 	docker build -t wc2026-pmf:latest .

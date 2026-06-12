@@ -479,11 +479,12 @@ def results(ctx, date, show_all):
 @cli.command("simulate")
 @click.option("--n", default=50_000, show_default=True, help="Number of Monte Carlo simulations")
 @click.option("--group", default=None, help="Filter to one group e.g. 'Group A'")
+@click.option("--winner", is_flag=True, default=False, help="Show tournament winner probabilities (full bracket)")
 @click.option("--markdown", is_flag=True, default=False, help="Output Markdown format")
-@click.option("--save", is_flag=True, default=False, help="Save to reports/group_advancement.md")
+@click.option("--save", is_flag=True, default=False, help="Save reports to reports/ directory")
 @click.pass_context
-def simulate(ctx, n, group, markdown, save):
-    """Monte Carlo simulation of group stage advancement probabilities."""
+def simulate(ctx, n, group, winner, markdown, save):
+    """Monte Carlo simulation of group stage advancement and tournament winner probabilities."""
     import sys
     from pathlib import Path
     _setup_logging(ctx.obj.get("verbose", False))
@@ -491,16 +492,37 @@ def simulate(ctx, n, group, markdown, save):
     scripts_dir = Path(__file__).resolve().parent.parent.parent / "scripts"
     sys.path.insert(0, str(scripts_dir))
 
-    from simulate_groups import run_simulation, render_text, render_markdown
-    from wc2026.config import DATA_DIR
+    if winner:
+        from simulate_groups import run_full_tournament_simulation, render_winner_text
+        click.echo(f"Running {n:,} full tournament simulations...", err=True)
+        sim = run_full_tournament_simulation(n_sims=n)
+        if save:
+            probs = sim["champion_probs"]
+            md_lines = [
+                "# WC 2026 Tournament Winner Probabilities", "",
+                f"**Simulations**: {sim['n_sims']:,}", "",
+                "| Rank | Team | Win% | Implied Odds |",
+                "|------|------|------|--------------|",
+            ]
+            for rank, (team, p) in enumerate(probs.items(), 1):
+                if team == "TBD":
+                    continue
+                odds = f"+{round((1/p - 1)*100):,}" if p > 0 else "—"
+                md_lines.append(f"| {rank} | {team} | {p:.1%} | {odds} |")
+            out = Path(__file__).resolve().parent.parent.parent / "reports" / "winner_probabilities.md"
+            out.write_text("\n".join(md_lines))
+            click.echo(f"Saved to {out}", err=True)
+        else:
+            click.echo(render_winner_text(sim))
+        return
 
+    from simulate_groups import run_simulation, render_text, render_markdown
     click.echo(f"Running {n:,} simulations...", err=True)
     sim = run_simulation(n_sims=n)
 
     if markdown or save:
         output = render_markdown(sim)
         if save:
-            from pathlib import Path
             out = Path(__file__).resolve().parent.parent.parent / "reports" / "group_advancement.md"
             out.write_text(output)
             click.echo(f"Saved to {out}", err=True)
