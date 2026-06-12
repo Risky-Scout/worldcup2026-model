@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  wc2026:
+    build: .
+    image: wc2026-pmf:latest
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: ["--help"]
+
+  # Daily update service (runs fetch → build → pipeline → validate)
+  daily-update:
+    build: .
+    image: wc2026-pmf:latest
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./scripts:/app/scripts
+      - ./src:/app/src
+    entrypoint: ["python", "scripts/daily_update.py"]
+    command: ["--date", "2026-06-11"]
+
+  # Predict a specific date
+  predict:
+    build: .
+    image: wc2026-pmf:latest
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: ["predict-date", "--date", "${DATE:-2026-06-11}", "--season", "2026"]

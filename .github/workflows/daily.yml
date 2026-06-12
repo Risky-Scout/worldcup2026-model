@@ -1,0 +1,82 @@
+name: Daily Update
+
+on:
+  # Run daily at 04:00 UTC (midnight ET) during World Cup group stage
+  schedule:
+    - cron: "0 4 * * *"
+  # Also allow manual trigger
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Date to predict (YYYY-MM-DD, default: tomorrow)"
+        required: false
+        default: ""
+      post_match:
+        description: "Run post-match mode (record outcomes)"
+        required: false
+        default: "false"
+
+jobs:
+  daily-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Set date
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "DATE=${{ github.event.inputs.date }}" >> $GITHUB_ENV
+          else
+            # Default: tomorrow ET
+            echo "DATE=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -v +1d +%Y-%m-%d)" >> $GITHUB_ENV
+          fi
+
+      - name: Create .env for CI
+        run: |
+          echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
+
+      - name: Fetch latest BDL data
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
+        run: make fetch-bdl
+        continue-on-error: true
+
+      - name: Rebuild dataset
+        run: make build-dataset
+        continue-on-error: true
+
+      - name: Run prediction pipeline
+        run: python scripts/run_real_pipeline.py
+
+      - name: Validate published artifacts
+        run: make validate-published
+
+      - name: Run post-match update (if requested)
+        if: github.event.inputs.post_match == 'true'
+        run: python scripts/daily_update.py --date $DATE --post-match
+        continue-on-error: true
+
+      - name: Commit updated predictions
+        run: |
+          git config user.name "wc2026-bot"
+          git config user.email "wc2026-bot@users.noreply.github.com"
+          git add data/published/ data/clv/ reports/
+          git diff --cached --quiet || \
+            git commit -m "Daily update $DATE: regenerate predictions and reports [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

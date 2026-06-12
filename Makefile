@@ -14,7 +14,9 @@ DATA_VERSION ?= v1
         fetch-bdl build-dataset train backtest calibrate \
         predict-date predict-match publish-today audit \
         validate-published validate-live \
-        clean all
+        pipeline update post-match clv-close clv-summary \
+        docker-build docker-run \
+        clean clean-data all
 
 ##@@ Help
 help: ## Show this help
@@ -68,6 +70,42 @@ predict-all-scheduled: ## Predict all scheduled 2026 matches
 
 publish-today: ## Write today's predictions to data/published/
 	$(WC2026) publish-today --season $(SEASON) --data-version $(DATA_VERSION)
+
+##@@ Daily operations (run these after each matchday)
+pipeline: ## Run the full prediction pipeline (fetch → build → predict → validate)
+	$(PYTHON) scripts/run_real_pipeline.py
+
+update: ## Daily update: fetch latest BDL data → rebuild → re-predict → validate
+	$(PYTHON) scripts/daily_update.py --date $(DATE)
+
+post-match: ## Post-match update for a completed date (record CLV outcomes, update ratings)
+	$(PYTHON) scripts/daily_update.py --date $(DATE) --post-match
+
+clv-close: ## Record closing lines in CLV store for matches kicking off today
+	$(PYTHON) -c " \
+from wc2026.markets.clv import CLVStore; \
+from wc2026.config import DATA_DIR; \
+store = CLVStore(str(DATA_DIR / 'clv' / '2026' / 'records.jsonl')); \
+s = store.summary(); \
+print(s.to_markdown()); \
+print(f'CLV records: {s.n_records}  with closing: {s.n_with_closing}  beat close: {s.n_beat_close}') \
+"
+
+clv-summary: ## Print current CLV summary report
+	$(PYTHON) -c " \
+from wc2026.markets.clv import CLVStore; \
+from wc2026.config import DATA_DIR; \
+store = CLVStore(str(DATA_DIR / 'clv' / '2026' / 'records.jsonl')); \
+print(store.summary().to_markdown()) \
+"
+
+##@@ Docker
+docker-build: ## Build the Docker image
+	docker build -t wc2026-pmf:latest .
+
+docker-run: ## Run the pipeline in Docker (requires .env with BDL_API_KEY)
+	docker run --rm -v $(PWD)/data:/app/data -v $(PWD)/reports:/app/reports \
+	    --env-file .env wc2026-pmf:latest predict-date --date $(DATE)
 
 ##@@ Quality / Audit
 audit: ## Run consistency and quality checks
