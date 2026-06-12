@@ -40,6 +40,7 @@ except ImportError:
 ET = ZoneInfo("America/New_York")
 
 REMOTE_DIR = "/tools/odds-scanner/predictions/world cup"
+REMOTE_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/pre-match"
 REMOTE_FILE = "wc-predictions.json"
 
 
@@ -116,6 +117,18 @@ def upload(date: str | None = None) -> None:
             ftp.sendcmd(f"SITE CHMOD 2775 {REMOTE_DIR}")
         except Exception:
             pass
+
+        # Mirror to world-cup/pre-match/ for PMF distributions page
+        _ensure_remote_dir(ftp, REMOTE_DIR_HYPHEN)
+        ftp.cwd(REMOTE_DIR_HYPHEN)
+        ftp.storbinary(f"STOR {REMOTE_FILE}", io.BytesIO(payload_bytes))
+        try:
+            ftp.sendcmd(f"SITE CHMOD 775 {REMOTE_DIR_HYPHEN}/{REMOTE_FILE}")
+            ftp.sendcmd(f"SITE CHMOD 2775 {REMOTE_DIR_HYPHEN}")
+            ftp.sendcmd(f"SITE CHMOD 2775 /tools/odds-scanner/predictions/world-cup")
+        except Exception:
+            pass
+        print(f"  ✓ Mirrored: {REMOTE_DIR_HYPHEN}/{REMOTE_FILE}")
 
     print(f"Done. {len(doc.get('matches', []))} matches uploaded.")
 

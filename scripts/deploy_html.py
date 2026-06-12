@@ -28,6 +28,12 @@ DEPLOYMENTS = [
         "remote_file": "pre match.html",
         "description": "Pre-match predictions page",
     },
+    {
+        "local": REPO_ROOT / "docs" / "pmf-distributions.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/pre-match",
+        "remote_file": "Probability Distributions.html",
+        "description": "Pre-game PMF distributions page",
+    },
 ]
 
 

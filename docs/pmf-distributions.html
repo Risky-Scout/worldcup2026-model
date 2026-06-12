@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WC 2026 PMF Distributions · Wizard of Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0e1a;--panel:#131826;--panel-2:#1a2030;--panel-3:#222a40;
+  --border:#232a3d;--border-2:#2d3650;
+  --text:#e8ecf5;--text-dim:#8892a8;--text-muted:#5a6378;
+  --gold:#d4af37;--gold-soft:#b89a30;--gold-dim:rgba(212,175,55,0.15);
+  --green:#4ade80;--green-dim:rgba(74,222,128,0.15);
+  --red:#f87171;--red-dim:rgba(248,113,113,0.12);
+  --blue:#60a5fa;--blue-dim:rgba(96,165,250,0.12);
+  --purple:#c084fc;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--text);font-family:'Fraunces',Georgia,serif;min-height:100vh;}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+
+header{border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0d1220 0%,var(--bg) 100%);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.logo{display:flex;align-items:baseline;gap:12px;}
+.logo-mark{font-size:28px;font-weight:700;color:var(--gold);font-style:italic;}
+.logo-name{font-size:20px;font-weight:500;font-style:italic;}
+.logo-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.15em;padding-left:12px;border-left:1px solid var(--border);}
+.nav{display:flex;gap:8px;flex-wrap:wrap;}
+.nav a{color:var(--text-dim);text-decoration:none;padding:7px 16px;border-radius:18px;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.12em;border:1px solid var(--border);transition:all .15s;}
+.nav a:hover{color:var(--text);border-color:var(--border-2);}
+.nav a.active{background:rgba(212,175,55,.1);border-color:var(--gold);color:var(--gold);}
+
+.hero{padding:32px 28px 24px;max-width:1700px;margin:0 auto;}
+.hero h1{font-size:36px;font-weight:400;line-height:1.05;letter-spacing:-.02em;margin-bottom:12px;}
+.hero h1 em{color:var(--gold);font-style:italic;font-weight:500;}
+.hero p{color:var(--text-dim);font-size:14px;line-height:1.7;max-width:860px;}
+.hero p strong{color:var(--text);}
+.updated-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.15em;margin-top:10px;}
+.updated-tag span{color:var(--text-dim);}
+
+/* Legend / explainer pills */
+.explainer-bar{max-width:1700px;margin:0 auto;padding:14px 28px;display:flex;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--border);}
+.explain-pill{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:8px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px;}
+.explain-pill .swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0;}
+
+/* Match selector */
+.match-nav{max-width:1700px;margin:0 auto;padding:16px 28px 0;display:flex;flex-wrap:wrap;gap:8px;}
+.match-chip{background:var(--panel);border:1px solid var(--border);color:var(--text-dim);padding:8px 16px;border-radius:18px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.08em;user-select:none;}
+.match-chip:hover{border-color:var(--border-2);color:var(--text);}
+.match-chip.active{background:rgba(212,175,55,.1);border-color:var(--gold);color:var(--gold);}
+
+/* Match cards */
+.match-cards{max-width:1700px;margin:0 auto;padding:20px 28px 60px;}
+.match-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;margin-bottom:32px;overflow:hidden;}
+.match-card.hidden{display:none;}
+
+.card-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.card-teams{font-size:22px;font-weight:500;}
+.card-teams .vs{color:var(--text-muted);font-size:16px;margin:0 8px;}
+.card-teams .fav{color:var(--gold);}
+.card-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+.card-summary{display:flex;gap:20px;flex-wrap:wrap;}
+.summary-stat{text-align:right;}
+.summary-stat .val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--text);}
+.summary-stat .lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-top:2px;}
+.mode-pill{display:inline-block;padding:3px 8px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-left:8px;}
+.mode-pill.mr{background:rgba(74,222,128,.1);color:var(--green);}
+.mode-pill.co{background:rgba(96,165,250,.1);color:var(--blue);}
+
+/* Chart grid */
+.chart-row{display:grid;gap:1px;background:var(--border);}
+.chart-row.r1{grid-template-columns:1fr 1fr;}
+.chart-row.r2{grid-template-columns:1fr 1fr 1fr;}
+.chart-row.r3{grid-template-columns:2fr 1fr 1fr;}
+.chart-cell{background:var(--panel-2);padding:20px 22px 16px;}
+.chart-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.18em;font-weight:600;margin-bottom:4px;}
+.chart-subtitle{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;}
+
+/* ── Heatmap ────────────────────────────────────────────────────────── */
+.heatmap-wrap{overflow-x:auto;padding-bottom:4px;}
+.heatmap-svg{display:block;}
+
+/* ── Bar charts ─────────────────────────────────────────────────────── */
+.bar-chart{width:100%;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.bar-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:28px;text-align:right;flex-shrink:0;}
+.bar-track{flex:1;height:18px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;border-radius:2px;transition:width .3s ease;position:relative;}
+.bar-val{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap;}
+.bar-val.inside{color:rgba(255,255,255,.85);}
+.bar-val.outside{position:static;transform:none;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);flex-shrink:0;min-width:42px;}
+
+/* ── Scoreline ranking ──────────────────────────────────────────────── */
+.score-rank-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.score-badge{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:var(--panel-3);border:1px solid var(--border);border-radius:3px;padding:4px 9px;min-width:46px;text-align:center;flex-shrink:0;}
+.score-badge.value{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.score-rank-track{flex:1;height:20px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;}
+.score-rank-fill{height:100%;border-radius:2px;display:flex;align-items:center;padding-left:8px;}
+.score-rank-fill .pct{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:rgba(255,255,255,.9);}
+.score-rank-fill .fair{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);margin-left:6px;}
+
+/* ── O/U table ──────────────────────────────────────────────────────── */
+.ou-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.ou-card{background:var(--panel-3);border:1px solid var(--border);border-radius:4px;padding:8px 10px;text-align:center;}
+.ou-line{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.ou-over{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--green);}
+.ou-under{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--red);}
+.ou-mini{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;}
+
+/* ── 1X2 summary bar ─────────────────────────────────────────────────── */
+.win-bar{display:flex;height:40px;border-radius:4px;overflow:hidden;margin-bottom:12px;}
+.win-seg{display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;transition:width .4s ease;}
+.win-seg.home{background:rgba(212,175,55,.35);color:var(--gold);}
+.win-seg.draw{background:rgba(88,101,130,.3);color:var(--text-dim);}
+.win-seg.away{background:rgba(96,165,250,.3);color:var(--blue);}
+.win-labels{display:flex;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;}
+.win-labels span{flex:1;}
+.win-labels span:last-child{text-align:right;}
+.win-labels span.center{text-align:center;}
+
+/* ── GD chart ────────────────────────────────────────────────────────── */
+.gd-chart{}
+.gd-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.gd-label{font-family:'JetBrains Mono',monospace;font-size:10px;min-width:36px;text-align:right;flex-shrink:0;}
+.gd-label.pos{color:var(--gold);}
+.gd-label.neg{color:var(--blue);}
+.gd-label.zero{color:var(--text-dim);}
+.gd-track{flex:1;height:16px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;position:relative;}
+.gd-fill{height:100%;border-radius:2px;}
+.gd-fill.pos{background:linear-gradient(90deg,rgba(212,175,55,.5),rgba(212,175,55,.25));}
+.gd-fill.neg{background:linear-gradient(90deg,rgba(96,165,250,.5),rgba(96,165,250,.25));}
+.gd-fill.zero{background:linear-gradient(90deg,rgba(88,101,130,.4),rgba(88,101,130,.2));}
+.gd-val{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;flex-shrink:0;}
+
+/* ── BTTS ────────────────────────────────────────────────────────────── */
+.btts-pair{display:flex;gap:10px;margin-top:8px;}
+.btts-card{flex:1;background:var(--panel-3);border:1px solid var(--border);border-radius:4px;padding:12px 14px;text-align:center;}
+.btts-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;}
+.btts-val.yes{color:var(--green);}
+.btts-val.no{color:var(--red);}
+.btts-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-top:4px;}
+
+/* Loading */
+.loading-state{text-align:center;padding:80px 20px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:13px;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border-2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Responsive */
+@media(max-width:900px){.chart-row.r1,.chart-row.r2,.chart-row.r3{grid-template-columns:1fr;}}
+@media(max-width:768px){header,div.hero,.match-cards,.match-nav,.explainer-bar{padding-left:16px;padding-right:16px;}.hero h1{font-size:26px;}}
+
+footer{text-align:center;padding:32px 28px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">PMF Engine</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/nba-props.html">NBA Props</a>
+    <a href="/tools/odds-scanner/predictions/world%20cup/pre%20match.html">WC Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html" class="active">PMF Distributions</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html">Live PMF ⚡</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>Full Outcome <em>PMF Distributions</em>.</h1>
+  <p>
+    Every probability the model can compute — visualised. The <strong>Joint Score PMF</strong> is the engine:
+    a grid of P(Home goals = h, Away goals = a) for every possible regulation-time result.
+    All other markets — 1X2, totals, BTTS, clean sheets — are <em>derived exactly</em> from this single distribution.
+    Probabilities represent <strong>90 minutes + stoppage time only</strong>; extra time and penalties are excluded.
+  </p>
+  <div class="updated-tag" id="updated-tag">Updated —</div>
+</section>
+
+<div class="explainer-bar">
+  <div class="explain-pill"><span class="swatch" style="background:linear-gradient(135deg,#0a0e1a,#d4af37);"></span>Joint PMF heatmap — darker = lower probability</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(212,175,55,.35);"></span>Home win probability</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(88,101,130,.3);"></span>Draw probability</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(96,165,250,.3);"></span>Away win probability</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(74,222,128,.4);"></span>Value bet detected (edge &gt; 4%)</div>
+</div>
+
+<div class="match-nav" id="match-nav">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);padding:8px 0;text-transform:uppercase;letter-spacing:.12em;">Loading…</span>
+</div>
+
+<div class="match-cards" id="match-cards">
+  <div class="loading-state"><div class="spinner"></div><br>Building distributions…</div>
+</div>
+
+<footer>
+  PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
+  P(score) sums to 1.0 including tail mass · Not financial advice
+</footer>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const DATA_URLS = ['../wc-predictions.json','../../wc-predictions.json','../../../predictions/world cup/wc-predictions.json'];
+const HEATMAP_MAX = 9;   // show 0..8 goals on each axis for the heatmap
+const TOP_SCORES  = 15;  // number of top scorelines to show
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function pct(n,d=1){if(n==null||isNaN(n))return'—';return(n*100).toFixed(d)+'%';}
+function decimal(p){if(!p||p<=0||p>=1)return'—';return(1/p).toFixed(2);}
+function american(p){if(!p||p<=0||p>=1)return'—';const a=p>=.5?Math.round(-100*p/(1-p)):Math.round(100*(1-p)/p);return a>0?`+${a}`:`${a}`;}
+function toET(iso){try{const d=new Date(iso);return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York',hour12:true})+' ET';}catch{return iso;}}
+function lerp(a,b,t){return a+(b-a)*t;}
+function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
+function rgbStr([r,g,b]){return`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;}
+
+// Color scale: bg → gold → green for heatmap
+const C_LOW=[10,14,26], C_MID=[180,140,30], C_HIGH=[74,222,128];
+function heatColor(t){
+  // t in [0,1]
+  if(t<0.5) return rgbStr(C_LOW.map((v,i)=>lerp(v,C_MID[i],t*2)));
+  return rgbStr(C_MID.map((v,i)=>lerp(v,C_HIGH[i],(t-.5)*2)));
+}
+
+// ── Data derivation from grid ──────────────────────────────────────────────
+function deriveFromGrid(grid){
+  const N=grid.length;
+  const home=new Array(N).fill(0);
+  const away=new Array(N).fill(0);
+  const total=new Array(N*2).fill(0);
+  const gd={};
+  for(let h=0;h<N;h++){
+    for(let a=0;a<N;a++){
+      const p=grid[h][a];
+      home[h]+=p; away[a]+=p;
+      total[h+a]+=p;
+      const d=h-a;
+      gd[d]=(gd[d]||0)+p;
+    }
+  }
+  return{home,away,total,gd};
+}
+
+// ── Heatmap SVG ────────────────────────────────────────────────────────────
+function buildHeatmap(grid,homeTeam,awayTeam){
+  const maxG=Math.min(HEATMAP_MAX,grid.length);
+  // Find max probability for scaling
+  let maxP=0;
+  for(let h=0;h<maxG;h++) for(let a=0;a<maxG;a++) if(grid[h][a]>maxP) maxP=grid[h][a];
+  // Use sqrt scale so low-prob cells are still visible
+  const scale=p=>maxP>0?Math.sqrt(p/maxP):0;
+
+  const cell=40, pad=44, labelOff=20;
+  const W=pad+maxG*cell+4, H=pad+maxG*cell+4;
+  let svg=`<svg class="heatmap-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+
+  // Axis labels
+  svg+=`<text x="${pad-4}" y="${pad-6}" font-family="JetBrains Mono" font-size="9" fill="#5a6378" text-anchor="middle" transform="rotate(-90,${pad-4},${pad-6+maxG*cell/2})">${esc(homeTeam.split(' ').pop())} Goals →</text>`;
+
+  for(let h=0;h<maxG;h++){
+    const y=pad+h*cell+cell/2;
+    svg+=`<text x="${pad-10}" y="${y+4}" font-family="JetBrains Mono" font-size="10" fill="#8892a8" text-anchor="end">${h}</text>`;
+  }
+  for(let a=0;a<maxG;a++){
+    const x=pad+a*cell+cell/2;
+    svg+=`<text x="${x}" y="${pad-10}" font-family="JetBrains Mono" font-size="10" fill="#8892a8" text-anchor="middle">${a}</text>`;
+  }
+  // Away axis label
+  svg+=`<text x="${pad+maxG*cell/2}" y="${H-1}" font-family="JetBrains Mono" font-size="9" fill="#5a6378" text-anchor="middle">${esc(awayTeam.split(' ').pop())} Goals →</text>`;
+
+  // Cells
+  for(let h=0;h<maxG;h++){
+    for(let a=0;a<maxG;a++){
+      const p=grid[h][a];
+      const t=scale(p);
+      const col=heatColor(t);
+      const x=pad+a*cell, y=pad+h*cell;
+      svg+=`<rect x="${x}" y="${y}" width="${cell-1}" height="${cell-1}" fill="${col}" rx="1"/>`;
+      if(p>=0.04){
+        const brightness=t>0.6?'rgba(0,0,0,.7)':'rgba(255,255,255,.85)';
+        svg+=`<text x="${x+cell/2}" y="${y+cell/2+4}" font-family="JetBrains Mono" font-size="9" font-weight="600" fill="${brightness}" text-anchor="middle">${(p*100).toFixed(1)}%</text>`;
+      }
+    }
+  }
+  // Diagonal guide (draw line)
+  svg+=`<line x1="${pad}" y1="${pad}" x2="${pad+maxG*cell}" y2="${pad+maxG*cell}" stroke="rgba(255,255,255,.06)" stroke-width="1" stroke-dasharray="3,3"/>`;
+
+  svg+=`</svg>`;
+  return svg;
+}
+
+// ── Bar chart ──────────────────────────────────────────────────────────────
+function buildBarChart(values, labels, color, maxVal, opts={}){
+  const {showFairOdds=false, highlightFn=null} = opts;
+  const maxV=maxVal||Math.max(...values.filter(v=>v>0));
+  let html='<div class="bar-chart">';
+  values.forEach((v,i)=>{
+    if(v<0.0005 && i>values.findIndex(x=>x>0)+8) return; // trim trailing zeros
+    const w=maxV>0?(v/maxV*100):0;
+    const isHl=highlightFn&&highlightFn(i,v);
+    const fillColor=isHl?'var(--green)':color;
+    const pctStr=pct(v,v>=0.01?1:2);
+    const inside=w>28;
+    html+=`<div class="bar-row">
+      <span class="bar-label" style="color:${isHl?'var(--green)':'var(--text-dim)'}">${labels[i]}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${w}%;background:${fillColor}20;border-right:2px solid ${fillColor};">
+          ${inside?`<span class="bar-val inside" style="color:${fillColor}">${pctStr}</span>`:''}
+        </div>
+      </div>
+      ${!inside?`<span class="bar-val outside">${pctStr}</span>`:''}
+    </div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+// ── Scoreline ranking ──────────────────────────────────────────────────────
+function buildScoreRanking(scorelines, edges){
+  const valueMarkets=new Set((edges||[]).filter(e=>e.value_flag).map(e=>e.market));
+  const maxP=scorelines[0]?scorelines[0].probability:1;
+  let html='';
+  scorelines.slice(0,TOP_SCORES).forEach((s,i)=>{
+    const key=`${s.home_goals}-${s.away_goals}`;
+    const isVal=valueMarkets.has(key);
+    const w=maxP>0?(s.probability/maxP*100):0;
+    const pctStr=pct(s.probability,2);
+    const fairDec=decimal(s.probability);
+    const inside=w>35;
+    html+=`<div class="score-rank-row">
+      <span class="score-badge ${isVal?'value':''}" title="${isVal?'Value bet detected':''}">${key}${isVal?' ⚡':''}</span>
+      <div class="score-rank-track">
+        <div class="score-rank-fill" style="width:${w}%;background:${isVal?'rgba(74,222,128,.25)':'rgba(212,175,55,.2)'};border-right:2px solid ${isVal?'var(--green)':'var(--gold)'};">
+          <span class="pct" style="color:${isVal?'var(--green)':'var(--gold)'}">${pctStr}</span>
+          ${inside?`<span class="fair">${fairDec}×</span>`:''}
+        </div>
+      </div>
+      ${!inside?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;">${fairDec}×</span>`:''}
+    </div>`;
+  });
+  return html;
+}
+
+// ── O/U cards ──────────────────────────────────────────────────────────────
+function buildOUGrid(dm){
+  const lines=['0.5','1.5','2.5','3.5','4.5','5.5','6.5'];
+  let html='<div class="ou-grid">';
+  lines.forEach(line=>{
+    const key='over_'+line.replace('.','.');
+    const overKeys=[`over_${line}`,`over_${line.replace('.','_')}`];
+    let over=null;
+    for(const k of overKeys){if(dm[k]!=null){over=dm[k];break;}}
+    if(over==null) return;
+    const under=1-over;
+    html+=`<div class="ou-card">
+      <div class="ou-line">O/U ${line}</div>
+      <div class="ou-over">${pct(over,1)}</div>
+      <div class="ou-mini">Over</div>
+      <div style="height:4px;"></div>
+      <div class="ou-under">${pct(under,1)}</div>
+      <div class="ou-mini">Under</div>
+    </div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+// ── GD chart ───────────────────────────────────────────────────────────────
+function buildGDChart(gd, homeTeam, awayTeam){
+  const dMin=-6, dMax=6;
+  const maxP=Math.max(...Object.values(gd));
+  let html='<div class="gd-chart">';
+  for(let d=dMax;d>=dMin;d--){
+    const p=gd[d]||0;
+    const w=maxP>0?(p/maxP*100):0;
+    const cls=d>0?'pos':d<0?'neg':'zero';
+    const label=d>0?`+${d}`:String(d);
+    let tooltip='';
+    if(d>0) tooltip=`${homeTeam.split(' ').pop()} wins by ${d}`;
+    else if(d<0) tooltip=`${awayTeam.split(' ').pop()} wins by ${Math.abs(d)}`;
+    else tooltip='Draw';
+    html+=`<div class="gd-row" title="${esc(tooltip)}">
+      <span class="gd-label ${cls}">${label}</span>
+      <div class="gd-track">
+        <div class="gd-fill ${cls}" style="width:${w}%;"></div>
+      </div>
+      <span class="gd-val">${pct(p,1)}</span>
+    </div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+// ── Full match card ────────────────────────────────────────────────────────
+function buildMatchCard(m, idx){
+  const pred=m.prediction||{};
+  const dm=pred.derived_markets||{};
+  const grid=pred.regulation_score_pmf_grid||[];
+  const scores=pred.top_scorelines||[];
+  const edges=(pred.edge_report||{}).edges||[];
+  const lh=pred.expected_home_goals||0;
+  const la=pred.expected_away_goals||0;
+  const hw=dm.home_win||0, dr=dm.draw||0, aw=dm.away_win||0;
+  const bttsY=dm.btts_yes||0, bttsN=dm.btts_no||0;
+  const homeCS=dm.home_clean_sheet||0, awayCS=dm.away_clean_sheet||0;
+
+  const fav=hw>aw?m.home_team:(aw>hw?m.away_team:null);
+  const modePill=m.publish_mode==='market_reconciled'?'<span class="mode-pill mr">Market</span>':'<span class="mode-pill co">Model</span>';
+
+  // Derived distributions
+  const derived=deriveFromGrid(grid);
+  const maxGoals=Math.min(10,grid.length);
+
+  // Home/Away marginal labels
+  const goalLabels=Array.from({length:maxGoals},(_,i)=>String(i));
+
+  // Total goals labels (0..12)
+  const totalMax=Math.min(14,derived.total.length);
+  const totalLabels=Array.from({length:totalMax},(_,i)=>String(i));
+
+  // 1X2 bar
+  const hwW=Math.round(hw*100), drW=Math.round(dr*100), awW=Math.round(aw*100);
+  const winBar=`
+    <div class="win-bar">
+      <div class="win-seg home" style="width:${hwW}%">${hwW>=12?hwW+'%':''}</div>
+      <div class="win-seg draw" style="width:${drW}%">${drW>=10?drW+'%':''}</div>
+      <div class="win-seg away" style="width:${awW}%">${awW>=12?awW+'%':''}</div>
+    </div>
+    <div class="win-labels">
+      <span>${esc(m.home_team)} ${pct(hw)}</span>
+      <span class="center">Draw ${pct(dr)}</span>
+      <span>${pct(aw)} ${esc(m.away_team)}</span>
+    </div>`;
+
+  // Header
+  const homeDisp=fav===m.home_team?`<span class="fav">${esc(m.home_team)}</span>`:esc(m.home_team);
+  const awayDisp=fav===m.away_team?`<span class="fav">${esc(m.away_team)}</span>`:esc(m.away_team);
+
+  // Result badge
+  let resultBadge='';
+  if(m.result){
+    const r=m.result;
+    const oc=r.outcome||'';
+    const bg=oc.includes('home')?'rgba(212,175,55,.15)':oc.includes('away')?'rgba(96,165,250,.15)':'rgba(88,101,130,.2)';
+    const col=oc.includes('home')?'var(--gold)':oc.includes('away')?'var(--blue)':'var(--text-dim)';
+    resultBadge=`<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:${bg};border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${col};margin-left:10px;">FT ${esc(r.result_label)}</span>`;
+  }
+
+  const valueCount=(edges||[]).filter(e=>e.value_flag).length;
+  const bestEdge=edges.length>0?Math.max(...edges.map(e=>e.edge_pct)):null;
+
+  return `<div class="match-card" id="match-${idx}">
+    <div class="card-header">
+      <div>
+        <div class="card-teams">${homeDisp}<span class="vs">vs</span>${awayDisp}${resultBadge}${modePill}</div>
+        <div class="card-meta">${toET(m.match_datetime_utc)} · ${esc(m.stage||'')} · ${esc(m.stadium||'')}</div>
+      </div>
+      <div class="card-summary">
+        <div class="summary-stat"><div class="val">${lh.toFixed(2)}</div><div class="lbl">xG Home</div></div>
+        <div class="summary-stat"><div class="val">${la.toFixed(2)}</div><div class="lbl">xG Away</div></div>
+        <div class="summary-stat"><div class="val" style="color:var(--gold)">${valueCount}</div><div class="lbl">Value Bets</div></div>
+        ${bestEdge!=null&&bestEdge>0?`<div class="summary-stat"><div class="val" style="color:var(--green)">${bestEdge.toFixed(1)}%</div><div class="lbl">Best Edge</div></div>`:''}
+      </div>
+    </div>
+
+    <!-- Row 1: Joint PMF heatmap + 1X2 win bar + BTTS/CS -->
+    <div class="chart-row r1">
+      <div class="chart-cell">
+        <div class="chart-title">Joint Score PMF — P(Home = h, Away = a)</div>
+        <div class="chart-subtitle">Each cell is the probability of that exact regulation-time scoreline. The diagonal (top-left → bottom-right) separates home wins (above) from away wins (below); cells on the diagonal are draws.</div>
+        <div class="heatmap-wrap">${grid.length?buildHeatmap(grid,m.home_team,m.away_team):'<span style="color:var(--text-muted)">Grid not available</span>'}</div>
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">1X2 Win Probabilities</div>
+        <div class="chart-subtitle">Model's probability for each regulation-time outcome. Derived by summing the joint PMF over all home-win, draw, and away-win cells.</div>
+        ${winBar}
+        <div style="height:16px;"></div>
+        <div class="chart-title">Both Teams to Score (BTTS)</div>
+        <div class="chart-subtitle">P(Home ≥ 1) × P(Away ≥ 1) — i.e. both teams score at least one goal in regulation.</div>
+        <div class="btts-pair">
+          <div class="btts-card"><div class="btts-val yes">${pct(bttsY)}</div><div class="btts-label">Yes · Both Score</div></div>
+          <div class="btts-card"><div class="btts-val no">${pct(bttsN)}</div><div class="btts-label">No · One or Zero</div></div>
+        </div>
+        <div style="height:16px;"></div>
+        <div class="chart-title">Clean Sheet Probability</div>
+        <div class="chart-subtitle">P(opposing team scores 0 goals).</div>
+        <div class="btts-pair">
+          <div class="btts-card"><div class="btts-val" style="color:var(--gold)">${pct(homeCS)}</div><div class="btts-label">${esc(m.home_team.split(' ').pop())} CS</div></div>
+          <div class="btts-card"><div class="btts-val" style="color:var(--blue)">${pct(awayCS)}</div><div class="btts-label">${esc(m.away_team.split(' ').pop())} CS</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Marginal home goals | Marginal away goals | Total goals -->
+    <div class="chart-row r2">
+      <div class="chart-cell">
+        <div class="chart-title">Home Goals Distribution — P(H = h)</div>
+        <div class="chart-subtitle">Marginal probability ${esc(m.home_team)} scores exactly h goals. Derived by summing each row of the joint PMF.</div>
+        ${buildBarChart(derived.home.slice(0,maxGoals),goalLabels,'#d4af37',null,{highlightFn:(i,v)=>false})}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Away Goals Distribution — P(A = a)</div>
+        <div class="chart-subtitle">Marginal probability ${esc(m.away_team)} scores exactly a goals. Derived by summing each column of the joint PMF.</div>
+        ${buildBarChart(derived.away.slice(0,maxGoals),goalLabels,'#60a5fa',null)}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Total Goals Distribution — P(T = n)</div>
+        <div class="chart-subtitle">P(total regulation goals = n). Used to price all Over/Under lines — e.g. P(O/U 2.5 over) = P(T≥3).</div>
+        ${buildBarChart(derived.total.slice(0,totalMax),totalLabels,'#c084fc',null,{highlightFn:(i,v)=>i>=3})}
+      </div>
+    </div>
+
+    <!-- Row 3: Top scorelines | GD | O/U table -->
+    <div class="chart-row r3">
+      <div class="chart-cell">
+        <div class="chart-title">Top ${TOP_SCORES} Most Likely Scorelines</div>
+        <div class="chart-subtitle">Ranked by model probability. ⚡ indicates a value bet where the model edge exceeds 4% and the CI lower bound beats the market implied probability. Fair odds in decimal format (×) shown beside each bar.</div>
+        ${buildScoreRanking(scores,edges)}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">Goal Difference Distribution</div>
+        <div class="chart-subtitle">P(H − A = d). Positive = home advantage, negative = away win margin. <span style="color:var(--gold)">Gold</span> = home favoured, <span style="color:var(--blue)">blue</span> = away favoured, grey = draw.</div>
+        ${buildGDChart(derived.gd,m.home_team,m.away_team)}
+      </div>
+      <div class="chart-cell">
+        <div class="chart-title">All Over/Under Lines</div>
+        <div class="chart-subtitle">Over/Under probabilities for every standard line. All derived from the total goals distribution above — no separate model needed.</div>
+        ${buildOUGrid(dm)}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Match nav ──────────────────────────────────────────────────────────────
+function buildMatchNav(matches, activeIdx){
+  return matches.map((m,i)=>{
+    const fav=((m.prediction||{}).derived_markets||{}).home_win>(((m.prediction||{}).derived_markets||{}).away_win||0)?m.home_team:m.away_team;
+    return `<span class="match-chip ${i===activeIdx?'active':''}" onclick="showMatch(${i},this)">${esc(m.home_team)} vs ${esc(m.away_team)}</span>`;
+  }).join('');
+}
+
+let ALL_MATCHES=[];
+function showMatch(idx, el){
+  document.querySelectorAll('.match-chip').forEach(c=>c.classList.remove('active'));
+  el&&el.classList.add('active');
+  document.querySelectorAll('.match-card').forEach((c,i)=>{
+    c.classList.toggle('hidden', idx!=='all'&&i!==idx);
+  });
+  if(idx!=='all') window.scrollTo({top:document.getElementById('match-nav').offsetTop-20,behavior:'smooth'});
+}
+document.getElementById('match-nav').addEventListener('click',e=>{
+  if(e.target.dataset.all) showMatch('all',e.target);
+});
+
+// ── Main ───────────────────────────────────────────────────────────────────
+async function init(){
+  let data=null;
+  for(const url of DATA_URLS){
+    try{const r=await fetch(url+'?t='+Date.now());if(r.ok){data=await r.json();break;}}catch(e){}
+  }
+  if(!data||!data.matches){
+    document.getElementById('match-cards').innerHTML=`<div class="loading-state">No predictions available. Check back before kickoff.</div>`;
+    return;
+  }
+  ALL_MATCHES=data.matches;
+
+  // Build nav
+  const navEl=document.getElementById('match-nav');
+  navEl.innerHTML=`<span class="match-chip active" data-all="1">All Matches</span>`+buildMatchNav(ALL_MATCHES,-1);
+
+  // Build cards
+  const cardsEl=document.getElementById('match-cards');
+  cardsEl.innerHTML=ALL_MATCHES.map((m,i)=>buildMatchCard(m,i)).join('');
+
+  // Updated tag
+  if(data.generated_at){
+    const d=new Date(data.generated_at);
+    document.getElementById('updated-tag').innerHTML=`Updated <span>${d.toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true})} ET</span>`;
+    document.title=`WC 2026 PMF Distributions ${data.date||''} · Wizard of Odds`;
+  }
+
+  // Auto-refresh every 5 minutes (live version will override to 1 minute)
+  setTimeout(init, 5*60*1000);
+}
+
+init();
+</script>
+</body>
+</html>
