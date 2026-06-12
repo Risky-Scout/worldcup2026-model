@@ -375,6 +375,16 @@ def main():
             log.error("Artifact validation FAILED — check data/published/*.json")
             sys.exit(1)
 
+    # Generate matchday briefing report for today
+    try:
+        from matchday_report import generate_report
+        report_md = generate_report(date)
+        report_path = REPO_ROOT / "reports" / f"matchday_{date}.md"
+        report_path.write_text(report_md)
+        log.info("✓ matchday report: reports/matchday_%s.md", date)
+    except Exception as rpt_exc:
+        log.warning("Matchday report generation failed: %s", rpt_exc)
+
     elapsed = (dt.datetime.now() - start).total_seconds()
     log.info("═" * 60)
     log.info("Update complete for %s in %.1fs", date, elapsed)

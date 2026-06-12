@@ -430,12 +430,18 @@ def _resolve_slot(
         if slot in third_assignments:
             return third_assignments[slot]
         # Assign: first eligible group in priority list that still has a team
+        assigned_teams = set(third_assignments.values())
         for g in _THIRD_PLACE_SLOTS[slot]:
-            if g in third_pool and third_pool[g] not in third_assignments.values():
+            if g in third_pool and third_pool[g] not in assigned_teams:
                 team = third_pool[g]
                 third_assignments[slot] = team
                 return team
-        return "TBD"
+        # Fallback: pick any unassigned qualifying 3rd-place team
+        for g, team in third_pool.items():
+            if team not in assigned_teams:
+                third_assignments[slot] = team
+                return team
+        return "TBD"  # only if somehow all 3rd-place teams are already used
 
     return slot  # already a team name or "TBD"
 

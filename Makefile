@@ -96,6 +96,9 @@ simulate-group: ## Simulate one group: make simulate-group GROUP="Group A"
 winner: ## Tournament winner probabilities via full bracket simulation (20k sims)
 	$(WC2026) simulate --winner --n 20000 --save
 
+report: ## Generate matchday briefing report for DATE (default: today)
+	$(PYTHON) scripts/matchday_report.py --date $(DATE)
+
 ##@@ Docker
 docker-build: ## Build the Docker image
 	docker build -t wc2026-pmf:latest .
