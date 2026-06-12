@@ -1,6 +1,6 @@
 # Reconciliation Method Comparison
 
-**Generated**: 2026-06-12T01:06:57Z
+**Generated**: 2026-06-12T03:37:45Z
 
 ## Methods compared
 
@@ -24,15 +24,8 @@ This prevents SLSQP from being selected when it diverges or creates artifacts.
 
 | Method | Count |
 |--------|-------|
-| blend | 45 |
-| slsqp_core | 27 |
-
-## June 11 method details
-
-| Match | Method selected | slsqp_score | blend_score |
-|-------|----------------|-------------|-------------|
-| Mexico vs South Africa | blend | — | — |
-| South Korea vs Czechia | slsqp_core | — | — |
+| blend | 44 |
+| slsqp_core | 26 |
 
 ## SLSQP core-grid design
 

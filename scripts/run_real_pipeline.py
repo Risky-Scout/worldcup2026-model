@@ -777,6 +777,40 @@ def _build_team_priors(
 # 4. WRITE PUBLISHED JSON
 # ────────────────────────────────────────────────────────────────────────────
 
+def _safe_write_date_json(date_str: str, matches: list, generated_at: str) -> bool:
+    """Write PUBLISHED_DIR/{date_str}.json only if it doesn't already have predictions.
+
+    Returns True if written, False if skipped (file already has n_matches > 0).
+    This guards against overwriting pre-game predictions once matches have kicked off.
+    """
+    out_path = PUBLISHED_DIR / f"{date_str}.json"
+    if out_path.exists() and not matches:
+        existing = json.loads(out_path.read_text())
+        if existing.get("n_matches", 0) > 0:
+            log.info(
+                "%s.json already has %d matches — skipping overwrite (matches in progress/completed)",
+                date_str, existing["n_matches"],
+            )
+            return False
+
+    doc = {
+        "schema_version": "1.0",
+        "generated_at": generated_at,
+        "date": date_str,
+        "date_timezone": "US/Eastern (UTC-4)",
+        "data_source": "balldontlie_api_v1",
+        "data_version": DATA_VERSION,
+        "model_version": MODEL_VERSION,
+        "regulation_time_definition": "90 minutes + stoppage time. Extra time and penalty shootouts are excluded.",
+        "publish_mode_policy": "market_reconciled is the publish champion when BDL odds are available.",
+        "n_matches": len(matches),
+        "matches": matches,
+    }
+    out_path.write_text(json.dumps(doc, indent=2, default=str))
+    log.info("Written %s.json (%d matches)", date_str, len(matches))
+    return True
+
+
 def write_published_json(all_preds: list, generated_at: str) -> None:
     log.info("── STEP 4: Writing published JSON ──")
     PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
@@ -798,25 +832,21 @@ def write_published_json(all_preds: list, generated_at: str) -> None:
     (PUBLISHED_DIR / "all_scheduled_2026.json").write_text(json.dumps(all_doc, indent=2, default=str))
     log.info("Written all_scheduled_2026.json (%d matches)", len(all_preds))
 
-    june11 = [m for m in all_preds if m.get("match_date_et") == "2026-06-11"]
-    log.info("June 11 ET: %d → %s",
-             len(june11), [f"{m['home_team']} v {m['away_team']}" for m in june11])
+    # Write per-date JSON files for each unique match date in predictions,
+    # never overwriting a past-date file that already has pre-game predictions.
+    from collections import defaultdict
+    by_date: dict[str, list] = defaultdict(list)
+    for m in all_preds:
+        d = m.get("match_date_et")
+        if d:
+            by_date[d].append(m)
 
-    june11_doc = {
-        "schema_version": "1.0",
-        "generated_at": generated_at,
-        "date": "2026-06-11",
-        "date_timezone": "US/Eastern (UTC-4)",
-        "data_source": "balldontlie_api_v1",
-        "data_version": DATA_VERSION,
-        "model_version": MODEL_VERSION,
-        "regulation_time_definition": "90 minutes + stoppage time. Extra time and penalty shootouts are excluded.",
-        "publish_mode_policy": "market_reconciled is the publish champion when BDL odds are available.",
-        "n_matches": len(june11),
-        "matches": june11,
-    }
-    (PUBLISHED_DIR / "2026-06-11.json").write_text(json.dumps(june11_doc, indent=2, default=str))
-    log.info("Written 2026-06-11.json (%d matches)", len(june11))
+    for date_str, day_matches in sorted(by_date.items()):
+        _safe_write_date_json(date_str, day_matches, generated_at)
+
+    # Ensure June 11 (opening day) file is never lost even when all its matches
+    # have moved past "scheduled" status.
+    _safe_write_date_json("2026-06-11", by_date.get("2026-06-11", []), generated_at)
 
 
 # ────────────────────────────────────────────────────────────────────────────
