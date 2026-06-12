@@ -562,6 +562,45 @@ def _predict_one_match(
         mkt_cs = {f"{h}-{a}": round(p, 6) for (h, a), p in
                   sorted(mc.correct_score.items(), key=lambda x: -x[1])[:30]}
 
+    # ── 6. Pre-game edge screening ────────────────────────────────────────
+    edge_report = None
+    if mc.has_1x2 and publish_pmf is not None:
+        try:
+            from wc2026.markets.edge import compute_edge_report
+            # Build no-vig market probs dict for edge computation
+            mkt_no_vig: dict = {}
+            if mc.home_win is not None:
+                mkt_no_vig["home_win"] = float(mc.home_win)
+                mkt_no_vig["draw"] = float(mc.draw)
+                mkt_no_vig["away_win"] = float(mc.away_win)
+            if mc.btts_yes is not None:
+                mkt_no_vig["btts_yes"] = float(mc.btts_yes)
+                mkt_no_vig["btts_no"] = 1.0 - float(mc.btts_yes)
+            for attr in ["over_0_5", "over_1_5", "over_2_5", "over_3_5",
+                         "over_4_5", "over_5_5", "over_6_5"]:
+                val = getattr(mc, attr, None)
+                if val is not None:
+                    key = attr.replace("over_", "over_").replace("_", "_")
+                    mkt_no_vig[attr] = float(val)
+                    mkt_no_vig[attr.replace("over_", "under_")] = 1.0 - float(val)
+            # Add correct-score market probs
+            if mc.has_correct_score:
+                for (h_g, a_g), p in mc.correct_score.items():
+                    mkt_no_vig[f"{h_g}-{a_g}"] = float(p)
+            er = compute_edge_report(
+                pmf=publish_pmf,
+                market_probs=mkt_no_vig,
+                lh=pl_lh,
+                la=pl_la,
+                match_id=str(match_id),
+                home_team=home,
+                away_team=away,
+                prediction_mode=rec.publish_mode,
+            )
+            edge_report = er.to_dict()
+        except Exception as exc:
+            log.debug("Edge report failed for %s v %s: %s", home, away, exc)
+
     return {
         "match_id": match_id,
         "home_team": home,
@@ -643,6 +682,7 @@ def _predict_one_match(
             "reconciliation_method": getattr(rec, "_best_reconciliation_method", "blend"),
             "warnings": list(set(model_warnings + rec.warnings)),
             "consistency_errors": _validate_pmf(publish_pmf, f"{home} v {away}", []),
+            "edge_report": edge_report,
         },
     }
 
