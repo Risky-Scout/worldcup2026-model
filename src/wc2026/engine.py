@@ -6,6 +6,7 @@ It loads trained models, fetches market data, calibrates, and produces JSON.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
 import os
@@ -238,45 +239,176 @@ class PredictionEngine:
         self,
         date: str,
         season: int = 2026,
+        force_recompute: bool = False,
     ) -> dict:
         """
         Produce predictions for all scheduled matches on a given date.
 
+        Strategy
+        --------
+        1. If data/published/{date}.json exists and is current, serve it directly.
+           The full pipeline (run_real_pipeline.py) generates the authoritative
+           published JSON using the composite prior + SLSQP core-grid reconciliation.
+           Re-using it avoids running a weaker engine here.
+        2. If not, filter matches by date and delegate to the full pipeline
+           prediction function for each match (uses composite prior + market
+           reconciliation identically to run_real_pipeline.py).
+
         Parameters
         ----------
-        date : "YYYY-MM-DD"
-        season : season year
+        date             : "YYYY-MM-DD"
+        season           : season year
+        force_recompute  : ignore cached published JSON and re-run
 
         Returns
         -------
         Full JSON-serializable prediction document for the date.
         """
+        # ── 1. Serve pre-computed published JSON if current ───────────────
+        published_path = PUBLISHED_DIR / f"{date}.json"
+        if published_path.exists() and not force_recompute:
+            try:
+                with open(published_path) as f:
+                    doc = json.load(f)
+                doc["_served_from_cache"] = True
+                doc["_cache_path"] = str(published_path)
+                log.info("predict_date(%s): serving cached published JSON (%d matches)",
+                         date, len(doc.get("matches", [])))
+                return doc
+            except Exception as exc:
+                log.warning("Failed to load cached published JSON: %s — recomputing", exc)
+
+        # ── 2. Full pipeline prediction (composite prior + reconciliation) ─
         if self._matches_df is None:
             self.load_data()
 
-        # Filter to scheduled (or completed) matches on this date
-        df = self._matches_df.copy()
-        df["date_str"] = pd.to_datetime(df["match_datetime"], utc=True, errors="coerce").dt.strftime("%Y-%m-%d")
-        day_matches = df[
-            (df["date_str"] == date) & (df["season"] == season)
-        ]
+        try:
+            from wc2026.config import PROCESSED_DIR
+            from wc2026.data.storage import read_table
 
+            matches_df = self._matches_df
+            odds_df = self._odds_df if self._odds_df is not None else pd.DataFrame()
+            markets_df_path = PROCESSED_DIR / self._data_version / "markets.parquet"
+            markets_df = pd.read_parquet(markets_df_path) if markets_df_path.exists() else pd.DataFrame()
+
+            return self._predict_date_via_pipeline(
+                date, season, matches_df, odds_df, markets_df
+            )
+        except Exception as exc:
+            log.error("Full-pipeline predict_date failed: %s", exc)
+            # Last resort: plain engine with warning
+            return self._predict_date_simple(date, season)
+
+    def _predict_date_via_pipeline(
+        self,
+        date: str,
+        season: int,
+        matches_df: pd.DataFrame,
+        odds_df: pd.DataFrame,
+        markets_df: pd.DataFrame,
+    ) -> dict:
+        """Delegate to the full pipeline's prediction functions."""
+        import sys
+        import importlib
+        # Import the pipeline module's prediction helpers
+        pipeline_module = None
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "run_real_pipeline",
+                str(Path(__file__).resolve().parent.parent.parent.parent /
+                    "scripts" / "run_real_pipeline.py"),
+            )
+            if spec and spec.loader:
+                pipeline_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(pipeline_module)
+        except Exception:
+            pass
+
+        # Filter to date
+        df = matches_df.copy()
+        df["match_date_et"] = pd.to_datetime(
+            df["match_datetime"], utc=True, errors="coerce"
+        ).dt.tz_convert("America/New_York").dt.strftime("%Y-%m-%d")
+        day = df[(df["match_date_et"] == date) & (df["season"] == season)]
+
+        match_results = []
+        generated_at = datetime.now(timezone.utc).isoformat()
+
+        if pipeline_module is not None:
+            # Use full composite prior + reconciliation
+            try:
+                from wc2026.ratings.composite import build_composite_prior
+                from wc2026.models.ladder import ModelLadder
+                from wc2026.models.baselines import EloBaseline
+
+                hist = matches_df[matches_df["status"] == "completed"].dropna(
+                    subset=["home_goals", "away_goals"]
+                )
+                ladder = ModelLadder(hist, max_goals=15, include_bayesian=False)
+                ladder.fit(["negative_binomial", "dixon_coles", "poisson"])
+                composite_prior = build_composite_prior(matches_df, odds_df, markets_df)
+                elo_baseline = EloBaseline()
+                elo_baseline.fit(hist)
+                team_priors = {}
+
+                champion_nll = pipeline_module._select_champions([])
+                parametric_champ = champion_nll.get("parametric_champion", "negative_binomial")
+
+                for _, row in day.iterrows():
+                    home = str(row.get("home_team", ""))
+                    away = str(row.get("away_team", ""))
+                    mid = int(row.get("match_id", 0))
+                    if pipeline_module._is_tbd(home) or pipeline_module._is_tbd(away):
+                        continue
+                    try:
+                        pred = pipeline_module._predict_one_match(
+                            home, away, mid,
+                            str(row.get("stage", "")),
+                            str(row.get("stadium", "")),
+                            row.get("match_datetime"),
+                            odds_df, markets_df, ladder, parametric_champ,
+                            composite_prior, elo_baseline, team_priors,
+                        )
+                        if pred:
+                            match_results.append(pred)
+                    except Exception as exc:
+                        log.warning("Pipeline predict failed for %s v %s: %s", home, away, exc)
+                        match_results.append({
+                            "match_id": mid, "home_team": home, "away_team": away,
+                            "prediction": None, "warning": str(exc),
+                        })
+            except Exception as exc:
+                log.warning("Full pipeline failed, falling back: %s", exc)
+                return self._predict_date_simple(date, season)
+        else:
+            return self._predict_date_simple(date, season)
+
+        return {
+            "schema_version": _DAILY_SCHEMA_VERSION,
+            "generated_at": generated_at,
+            "date": date,
+            "season": season,
+            "data_version": self._data_version,
+            "model_version": self._model_version,
+            "n_matches": len(match_results),
+            "matches": match_results,
+        }
+
+    def _predict_date_simple(self, date: str, season: int) -> dict:
+        """Fallback: simple engine predict (less accurate, no composite prior)."""
+        if self._matches_df is None:
+            self.load_data()
+        df = self._matches_df.copy()
+        df["date_str"] = pd.to_datetime(
+            df["match_datetime"], utc=True, errors="coerce"
+        ).dt.strftime("%Y-%m-%d")
+        day_matches = df[(df["date_str"] == date) & (df["season"] == season)]
         match_results = []
         for _, row in day_matches.iterrows():
             home = row.get("home_team")
             away = row.get("away_team")
-
-            if home is None or away is None:
-                match_results.append({
-                    "match_id": row.get("match_id"),
-                    "home_team": "TBD",
-                    "away_team": "TBD",
-                    "status": row.get("status"),
-                    "prediction": None,
-                    "warning": "Teams not yet determined.",
-                })
+            if not home or not away:
                 continue
-
             try:
                 pred_doc = self.predict_match(
                     str(home), str(away),
@@ -287,36 +419,28 @@ class PredictionEngine:
                 )
                 match_results.append({
                     "match_id": row.get("match_id"),
-                    "home_team": home,
-                    "away_team": away,
+                    "home_team": home, "away_team": away,
                     "status": row.get("status"),
                     "match_datetime": str(row.get("match_datetime", "")),
-                    "stadium": row.get("stadium"),
-                    "stage": row.get("stage"),
                     "prediction": pred_doc,
+                    "warning": "simple_engine_fallback",
                 })
             except Exception as exc:
-                log.warning("Failed to predict %s v %s: %s", home, away, exc)
                 match_results.append({
                     "match_id": row.get("match_id"),
-                    "home_team": home,
-                    "away_team": away,
+                    "home_team": home, "away_team": away,
                     "status": row.get("status"),
-                    "prediction": None,
-                    "warning": str(exc),
+                    "prediction": None, "warning": str(exc),
                 })
-
-        doc = {
+        return {
             "schema_version": _DAILY_SCHEMA_VERSION,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "date": date,
-            "season": season,
+            "date": date, "season": season,
             "data_version": self._data_version,
             "model_version": self._model_version,
             "n_matches": len(match_results),
             "matches": match_results,
         }
-        return doc
 
     def publish_date(self, date: str, season: int = 2026) -> Path:
         """Write daily prediction JSON to data/published/{date}.json."""

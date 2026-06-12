@@ -222,6 +222,21 @@ def predict_date(ctx, date, season, data_version, out):
     """Predict all matches on a given date."""
     _setup_logging(ctx.obj.get("verbose", False))
     from wc2026.engine import PredictionEngine
+    from wc2026.config import PUBLISHED_DIR
+    import json as _json
+    # Fast path: serve pre-computed published JSON without fitting models
+    cached = PUBLISHED_DIR / f"{date}.json"
+    if cached.exists():
+        with open(cached) as _f:
+            doc = _json.load(_f)
+        doc["_served_from_cache"] = True
+        output = _json.dumps(doc, indent=2, default=str)
+        if out:
+            Path(out).write_text(output)
+            click.echo(f"Predictions written → {out}")
+        else:
+            click.echo(output)
+        return
     engine = PredictionEngine(data_version=data_version)
     engine.load_data().fit_models()
     doc = engine.predict_date(date, season)
