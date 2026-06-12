@@ -179,7 +179,11 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
      the model computes P(final home = h, away = a) for every regulation-time outcome using
      the <strong>non-homogeneous hazard model</strong>. All markets re-derived from this single distribution.</p>
   <div class="refresh-info">
-    <span>Auto-refresh in <span class="countdown" id="countdown">60s</span></span>
+    <span id="mode-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:3px;border:1px solid var(--border);background:rgba(255,255,255,.04);">
+      <span id="mode-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text-muted);"></span>
+      <span id="mode-label">Connecting…</span>
+    </span>
+    <span id="countdown-wrap">Polling in <span class="countdown" id="countdown">60s</span></span>
     <span id="last-updated">—</span>
   </div>
 </section>
@@ -205,9 +209,11 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
-const LIVE_URLS = ['./wc-live.json','../wc-live.json'];
-const PRE_URLS  = ['../pre-match/wc-predictions.json','../wc-predictions.json','../../predictions/world%20cup/wc-predictions.json'];
-const REFRESH_INTERVAL = 60 * 1000;   // 60 seconds
+const WS_URL    = 'wss://sportsodds.wizardofodds.com/ws/live';
+const API_LIVE  = 'https://sportsodds.wizardofodds.com/api/live';
+const LIVE_URLS = ['./wc-live.json','../wc-live.json', API_LIVE];
+const PRE_URLS  = ['../pre-match/wc-predictions.json','../wc-predictions.json','../../predictions/world%20cup/wc-predictions.json','https://sportsodds.wizardofodds.com/api/pre-match'];
+const REFRESH_INTERVAL = 60 * 1000;   // 60 seconds (polling fallback only)
 
 // ── Win probability history (session-local) ────────────────────────────────
 const WIN_HISTORY = {};  // match_id → [{minute, hw, dr, aw}]
@@ -227,6 +233,8 @@ let PRE_GAME_DATA = null;
 let TIMER = null;
 let COUNTDOWN_TIMER = null;
 let COUNTDOWN_SECS = REFRESH_INTERVAL / 1000;
+let WS = null;
+let WS_MODE = false;   // true = WebSocket active, false = polling
 
 // ── Load pre-game data for comparison ─────────────────────────────────────
 async function loadPreGame(){
@@ -235,17 +243,46 @@ async function loadPreGame(){
   }
 }
 
+// ── Mode badge ────────────────────────────────────────────────────────────
+function setModeBadge(mode){
+  const dot=document.getElementById('mode-dot');
+  const label=document.getElementById('mode-label');
+  const wrap=document.getElementById('countdown-wrap');
+  if(mode==='ws'){
+    dot.style.background='#4ade80';
+    label.textContent='WebSocket ●';
+    label.style.color='#4ade80';
+    wrap.style.display='none';
+  } else if(mode==='polling'){
+    dot.style.background='#facc15';
+    label.textContent='Polling ○';
+    label.style.color='#facc15';
+    wrap.style.display='';
+  } else {
+    dot.style.background='var(--text-muted)';
+    label.textContent='Connecting…';
+    label.style.color='var(--text-muted)';
+    wrap.style.display='none';
+  }
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 async function checkHealth(){
-  const urls=['./wc-health.json','../pre-match/wc-health.json'];
+  const urls=[
+    'https://sportsodds.wizardofodds.com/health',
+    './wc-health.json',
+    '../pre-match/wc-health.json',
+  ];
   for(const url of urls){
     try{
-      const r=await fetch(url+'?t='+Date.now());
+      const r=await fetch(url+'?t='+Date.now(),{signal:AbortSignal.timeout(3000)});
       if(r.ok){
         const h=await r.json();
-        if(!h.ok){
+        const staleMs=Date.now()-new Date(h.updated_at||h.last_update||0).getTime();
+        if(!h.ok||staleMs>4*60*60*1000){
+          const msg=!h.ok?h.message:'Live engine data is over 4 hours old — may be stale.';
           document.getElementById('health-warn').style.display='block';
-          document.getElementById('health-warn').textContent='⚠ Pipeline alert: '+esc(h.message||'Unknown issue');
+          document.getElementById('health-warn').textContent='⚠ '+msg;
         }
         return;
       }
@@ -520,7 +557,7 @@ function render(data){
   }
 }
 
-// ── Countdown timer ────────────────────────────────────────────────────────
+// ── Countdown timer (polling mode only) ───────────────────────────────────
 function startCountdown(){
   COUNTDOWN_SECS=REFRESH_INTERVAL/1000;
   clearInterval(COUNTDOWN_TIMER);
@@ -530,28 +567,104 @@ function startCountdown(){
   },1000);
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────
-async function init(){
-  clearTimeout(TIMER);
+// ── Update last-updated tag ────────────────────────────────────────────────
+function updateTimestamp(gen){
+  if(!gen) return;
+  const d=new Date(gen);
+  document.getElementById('last-updated').textContent='Updated '+d.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true})+' ET';
+}
+
+// ── Polling fallback ───────────────────────────────────────────────────────
+async function pollOnce(){
   let data=null;
   for(const url of LIVE_URLS){
-    try{const r=await fetch(url+'?t='+Date.now());if(r.ok){data=await r.json();break;}}catch(e){}
+    try{
+      const r=await fetch(url+'?t='+Date.now(),{signal:AbortSignal.timeout(5000)});
+      if(r.ok){data=await r.json();break;}
+    }catch(e){}
   }
-
   if(!data){
     document.getElementById('match-cards').innerHTML=`<div class="loading-state">Live engine offline — no data available yet. Retrying in 60s.</div>`;
   } else {
     render(data);
-    const gen=data.generated_at;
-    if(gen){
-      const d=new Date(gen);
-      document.getElementById('last-updated').textContent='Updated '+d.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true})+' ET';
-    }
+    updateTimestamp(data.generated_at);
+  }
+}
+
+async function startPolling(){
+  WS_MODE=false;
+  setModeBadge('polling');
+  clearTimeout(TIMER);
+  await pollOnce();
+  startCountdown();
+  TIMER=setTimeout(startPolling, REFRESH_INTERVAL);
+}
+
+// ── WebSocket connection ───────────────────────────────────────────────────
+function connectWebSocket(){
+  if(WS && WS.readyState===WebSocket.OPEN) return;
+  setModeBadge('connecting');
+
+  try{
+    WS=new WebSocket(WS_URL);
+  }catch(e){
+    console.warn('WebSocket unavailable, using polling:', e);
+    startPolling();
+    return;
   }
 
+  let wsConnected=false;
+
+  WS.onopen=()=>{
+    wsConnected=true;
+    WS_MODE=true;
+    setModeBadge('ws');
+    clearTimeout(TIMER);
+    clearInterval(COUNTDOWN_TIMER);
+    console.log('WC2026 Live: WebSocket connected');
+  };
+
+  WS.onmessage=(evt)=>{
+    try{
+      const msg=JSON.parse(evt.data);
+      if(msg.type==='pmf_update'&&msg.data){
+        render(msg.data);
+        updateTimestamp(msg.data.generated_at);
+      }
+      // ping/keepalive — no action needed
+    }catch(e){ console.warn('WS parse error:', e); }
+  };
+
+  WS.onerror=(err)=>{
+    console.warn('WebSocket error — falling back to polling');
+  };
+
+  WS.onclose=()=>{
+    WS_MODE=false;
+    if(wsConnected){
+      console.log('WS closed — switching to polling, will retry WS in 30s');
+      startPolling();
+      // Try to reconnect WebSocket after 30s
+      setTimeout(connectWebSocket, 30000);
+    } else {
+      // Never connected — stay on polling
+      startPolling();
+    }
+  };
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init(){
   await checkHealth();
-  startCountdown();
-  TIMER=setTimeout(init,REFRESH_INTERVAL);
+  // Try WebSocket first; it handles fallback internally
+  connectWebSocket();
+  // Timeout: if WebSocket doesn't connect in 5s, start polling anyway
+  setTimeout(()=>{
+    if(!WS_MODE){
+      console.log('WebSocket timeout — starting polling');
+      startPolling();
+    }
+  }, 5000);
 }
 
 // Load pre-game data in parallel, then init

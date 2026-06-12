@@ -1,18 +1,27 @@
-name: Daily Update
+name: Daily Update (Fallback)
+
+# This workflow is a FALLBACK. The primary pipeline now runs on the server
+# via wc2026-daily.timer (systemd). This workflow:
+#   1. Checks if the server already ran today (via /health endpoint)
+#   2. If server is healthy and up-to-date, only commits any new artifacts
+#   3. If server is unreachable/stale, runs the full pipeline as fallback
+#   4. Always alerts on persistent failures
 
 on:
-  # Run daily at 04:00 UTC (midnight ET) during World Cup group stage
   schedule:
-    - cron: "0 4 * * *"
-  # Also allow manual trigger
+    - cron: "0 4 * * *"   # 4:00 AM UTC daily (30 min after server timer at 4:30)
   workflow_dispatch:
     inputs:
       date:
-        description: "Date to predict (YYYY-MM-DD, default: tomorrow)"
+        description: "Date to predict (YYYY-MM-DD, default: tomorrow ET)"
         required: false
         default: ""
       post_match:
-        description: "Run post-match mode (record outcomes)"
+        description: "Run post-match mode"
+        required: false
+        default: "false"
+      force_pipeline:
+        description: "Force pipeline even if server reports healthy"
         required: false
         default: "false"
 
@@ -26,33 +35,59 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "DATE=${{ github.event.inputs.date }}" >> $GITHUB_ENV
+          else
+            echo "DATE=$(TZ=America/New_York date -d '+1 day' +%Y-%m-%d 2>/dev/null || date -v+1d +%Y-%m-%d)" >> $GITHUB_ENV
+          fi
+
+      - name: Check server health
+        id: health
+        run: |
+          HEALTH=$(curl -sf --max-time 10 https://sportsodds.wizardofodds.com/health 2>/dev/null || echo '{"ok":false}')
+          echo "HEALTH=$HEALTH" >> $GITHUB_ENV
+          SERVER_OK=$(echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print('true' if h.get('ok') else 'false')" 2>/dev/null || echo 'false')
+          STALE=$(echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print('true' if h.get('snapshot_stale',True) else 'false')" 2>/dev/null || echo 'true')
+          echo "SERVER_OK=$SERVER_OK" >> $GITHUB_ENV
+          echo "SERVER_STALE=$STALE" >> $GITHUB_ENV
+          echo "Server status: ok=$SERVER_OK stale=$STALE"
+        continue-on-error: true
+
+      - name: Skip if server is healthy (unless forced)
+        id: skip_check
+        run: |
+          FORCE="${{ github.event.inputs.force_pipeline }}"
+          if [ "$SERVER_OK" = "true" ] && [ "$SERVER_STALE" = "false" ] && [ "$FORCE" != "true" ]; then
+            echo "Server is healthy and up-to-date — skipping pipeline, committing only"
+            echo "SKIP_PIPELINE=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_PIPELINE=false" >> $GITHUB_ENV
+          fi
+
       - name: Set up Python 3.10
+        if: env.SKIP_PIPELINE != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
       - name: Install dependencies
+        if: env.SKIP_PIPELINE != 'true'
         run: make install
 
-      - name: Set date
-        id: date
-        run: |
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            echo "DATE=${{ github.event.inputs.date }}" >> $GITHUB_ENV
-          else
-            # Default: tomorrow ET
-            echo "DATE=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -v +1d +%Y-%m-%d)" >> $GITHUB_ENV
-          fi
-
       - name: Create .env for CI
+        if: env.SKIP_PIPELINE != 'true'
         run: |
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
           echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
           echo "FTP_USER=${{ secrets.FTP_USER }}" >> .env
           echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
+          echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}" >> .env
 
       - name: Fetch latest BDL data
+        if: env.SKIP_PIPELINE != 'true'
         id: fetch
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
@@ -60,20 +95,24 @@ jobs:
         continue-on-error: true
 
       - name: Warn on fetch failure
-        if: steps.fetch.outcome != 'success'
+        if: env.SKIP_PIPELINE != 'true' && steps.fetch.outcome != 'success'
         run: echo "::warning::BDL fetch had errors — continuing with cached data"
 
       - name: Rebuild dataset
-        id: build
+        if: env.SKIP_PIPELINE != 'true'
         run: make build-dataset
 
       - name: Run prediction pipeline
+        if: env.SKIP_PIPELINE != 'true'
+        id: pipeline
         run: python scripts/run_real_pipeline.py
 
       - name: Validate published artifacts
+        if: env.SKIP_PIPELINE != 'true'
         run: make validate-published
 
       - name: Deploy HTML pages
+        if: env.SKIP_PIPELINE != 'true'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -81,12 +120,8 @@ jobs:
         run: python scripts/deploy_html.py
         continue-on-error: true
 
-      - name: Run post-match update (if requested)
-        if: github.event.inputs.post_match == 'true'
-        run: python scripts/daily_update.py --date $DATE --post-match
-        continue-on-error: true
-
-      - name: Upload predictions to sportsodds.wizardofodds.com
+      - name: Upload predictions to server
+        if: env.SKIP_PIPELINE != 'true'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -94,22 +129,46 @@ jobs:
         run: python scripts/upload_predictions.py --date $DATE
         continue-on-error: true
 
+      - name: Notify server to reload lambdas
+        if: env.SKIP_PIPELINE != 'true'
+        run: |
+          curl -sf -X GET \
+            -H "X-Internal-Token: ${{ secrets.WEBHOOK_SECRET }}" \
+            https://sportsodds.wizardofodds.com/api/reload-lambdas || true
+        continue-on-error: true
+
+      - name: Run post-match update (if requested)
+        if: github.event.inputs.post_match == 'true'
+        uses: actions/setup-python@v5
+        continue-on-error: true
+
       - name: Write pipeline health status
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
-        run: |
-          python scripts/live_snapshot.py --health-only || true
+        run: python scripts/live_snapshot.py --health-only || true
         continue-on-error: true
+
+      - name: Alert on server unreachable
+        if: env.SERVER_OK == 'false'
+        run: |
+          echo "::warning::Production server is unreachable or unhealthy — pipeline ran as fallback"
+          # If SLACK_WEBHOOK_URL is set, send alert
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -sf -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H 'Content-type: application/json' \
+              --data "{\"text\":\"⚠ WC2026: Server unreachable — GitHub Actions ran as fallback ($(date -u))\"}" || true
+          fi
 
       - name: Commit updated predictions
         run: |
           git config user.name "wc2026-bot"
           git config user.email "wc2026-bot@users.noreply.github.com"
-          git add data/published/ data/clv/ reports/
+          git add data/published/ data/clv/ reports/ || true
           git diff --cached --quiet || \
-            git commit -m "Daily update $DATE: regenerate predictions and reports [skip ci]"
-          git push
+            git commit -m "Daily update $DATE: predictions [skip ci]"
+          git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

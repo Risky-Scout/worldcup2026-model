@@ -61,6 +61,50 @@ logging.basicConfig(
 )
 log = logging.getLogger("daily_update")
 
+
+def _send_alert(subject: str, body: str) -> None:
+    """Send an alert via Slack webhook or email (whichever is configured in .env)."""
+    import urllib.request, urllib.error
+
+    slack_url = os.environ.get("SLACK_WEBHOOK_URL", "")
+    if slack_url:
+        try:
+            payload = f'{{"text": "🚨 WC2026 Alert: {subject}\\n{body}"}}'.encode()
+            req = urllib.request.Request(slack_url, data=payload,
+                                         headers={"Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=5)
+            log.info("Alert sent to Slack: %s", subject)
+        except Exception as exc:
+            log.warning("Slack alert failed: %s", exc)
+
+    alert_email = os.environ.get("ALERT_EMAIL", "")
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_from = os.environ.get("SMTP_FROM", "wc2026-bot@wizardofodds.com")
+    if alert_email and smtp_host:
+        import smtplib
+        from email.message import EmailMessage
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = f"WC2026 Alert: {subject}"
+            msg["From"] = smtp_from
+            msg["To"] = alert_email
+            msg.set_content(body)
+            port = int(os.environ.get("SMTP_PORT", "587"))
+            smtp_user = os.environ.get("SMTP_USER", smtp_from)
+            smtp_pass = os.environ.get("SMTP_PASS_MAIL", "")
+            with smtplib.SMTP(smtp_host, port, timeout=10) as s:
+                if port != 25:
+                    s.starttls()
+                if smtp_pass:
+                    s.login(smtp_user, smtp_pass)
+                s.send_message(msg)
+            log.info("Alert email sent to %s", alert_email)
+        except Exception as exc:
+            log.warning("Email alert failed: %s", exc)
+
+
+import os
+
 PYTHON = sys.executable
 
 
@@ -364,6 +408,11 @@ def main():
         pipeline_ok = step_pipeline()
         if not pipeline_ok:
             log.error("Pipeline failed — published artifacts not updated")
+            _send_alert(
+                f"Pipeline FAILED for {date}",
+                f"The prediction pipeline failed on {date}.\n"
+                f"Server: check journalctl -u wc2026-daily or GitHub Actions logs."
+            )
             sys.exit(1)
 
     # Record closing lines for today (odds won't move after kickoff)
@@ -373,6 +422,11 @@ def main():
         validate_ok = step_validate()
         if not validate_ok:
             log.error("Artifact validation FAILED — check data/published/*.json")
+            _send_alert(
+                f"Artifact validation FAILED for {date}",
+                f"Published prediction artifacts failed validation on {date}.\n"
+                f"Check data/published/{date}.json for consistency errors."
+            )
             sys.exit(1)
 
     # Generate matchday briefing report for today

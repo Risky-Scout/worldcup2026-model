@@ -21,6 +21,9 @@ dependencies = [
     "python-dateutil>=2.8",
     "orjson>=3.9",
     "structlog>=23.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "websockets>=12.0",
 ]
 
 [project.optional-dependencies]

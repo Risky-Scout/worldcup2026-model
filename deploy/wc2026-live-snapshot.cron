@@ -1,0 +1,3 @@
+# WC2026 Live Snapshot — runs every minute during World Cup
+# Add via: crontab -l | cat - deploy/wc2026-live-snapshot.cron | crontab -
+* * * * * /var/www/wc2026/.venv/bin/python /var/www/wc2026/scripts/live_snapshot.py >> /var/log/wc2026-live.log 2>&1

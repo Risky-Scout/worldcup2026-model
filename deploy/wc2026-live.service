@@ -1,0 +1,27 @@
+[Unit]
+Description=WC2026 Live PMF FastAPI Server
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/wc2026
+EnvironmentFile=/var/www/wc2026/.env
+ExecStart=/var/www/wc2026/.venv/bin/uvicorn wc2026.live_server:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 1 \
+    --log-level info \
+    --access-log
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wc2026-live
+
+# Allow 30s for graceful shutdown
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

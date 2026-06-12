@@ -301,15 +301,100 @@ def write_health_status(ok: bool, message: str, extra: dict | None = None) -> No
         log.warning("Health write failed: %s", exc)
 
 
+def push_to_live_server(snapshot: dict) -> bool:
+    """
+    Push a computed snapshot to the local FastAPI live server via the
+    /api/refresh-snapshot endpoint so WebSocket clients get instant updates.
+    Falls back gracefully if the server is not running.
+    """
+    import urllib.request
+    import urllib.error
+    server_url = os.environ.get("LIVE_SERVER_URL", "http://127.0.0.1:8000")
+    secret = os.environ.get("WEBHOOK_SECRET", "")
+    try:
+        payload = json.dumps(snapshot).encode("utf-8")
+        req = urllib.request.Request(
+            f"{server_url}/api/refresh-snapshot",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Internal-Token": secret,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            result = json.loads(resp.read())
+            log.info("Pushed to live server: ws_clients=%d", result.get("ws_clients", 0))
+            return True
+    except Exception as exc:
+        log.debug("Live server push skipped (not running?): %s", exc)
+        return False
+
+
+def register_bdl_webhook(endpoint_url: str) -> dict:
+    """
+    Register a webhook endpoint with BDL for World Cup events.
+    Requires BDL_API_KEY in environment.
+    """
+    import requests as _req
+    api_key = os.environ.get("BDL_API_KEY", "")
+    if not api_key:
+        raise ValueError("BDL_API_KEY not set")
+
+    # BDL webhook registration endpoint (check BDL docs for exact path)
+    base_url = "https://api.balldontlie.io/fifa/v1"
+    headers = {"Authorization": api_key, "Content-Type": "application/json"}
+
+    # First check existing endpoints
+    try:
+        r = _req.get(f"{base_url}/webhooks", headers=headers, timeout=10)
+        r.raise_for_status()
+        existing = r.json()
+        log.info("Existing webhooks: %s", existing)
+    except Exception as exc:
+        log.warning("Could not list existing webhooks: %s", exc)
+        existing = {}
+
+    # Register our endpoint
+    payload = {
+        "url": endpoint_url,
+        "events": [
+            "goal.scored",
+            "match.started",
+            "match.halftime",
+            "match.ended",
+            "match.status_changed",
+        ],
+        "description": "WC2026 Live PMF Engine",
+    }
+    r = _req.post(f"{base_url}/webhooks", json=payload, headers=headers, timeout=10)
+    r.raise_for_status()
+    result = r.json()
+    log.info("Webhook registered: %s", result)
+    return result
+
+
 def main() -> None:
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="WC2026 live match PMF snapshot")
     parser.add_argument("--health-only", action="store_true",
                         help="Only write a health-OK status file, skip live snapshot")
+    parser.add_argument("--register-webhook", metavar="URL",
+                        help="Register BDL webhook for this endpoint URL and exit")
     args = parser.parse_args()
 
     log.info("=== WC2026 Live Snapshot ===")
     t0 = time.time()
+
+    if args.register_webhook:
+        log.info("Registering BDL webhook endpoint: %s", args.register_webhook)
+        try:
+            result = register_bdl_webhook(args.register_webhook)
+            print(json.dumps(result, indent=2))
+        except Exception as exc:
+            log.error("Webhook registration failed: %s", exc)
+            sys.exit(1)
+        return
 
     if args.health_only:
         write_health_status(True, "Daily pipeline completed successfully")
@@ -320,10 +405,12 @@ def main() -> None:
         snapshot = run_live_snapshot()
         log.info("Snapshot: status=%s, %d live matches", snapshot["status"], snapshot["n_live"])
         upload_snapshot(snapshot)
-        # Also write to local data/live/ for debugging
+        # Write to local data/live/ for the FastAPI server to serve
         live_dir = REPO_ROOT / "data" / "live"
         live_dir.mkdir(parents=True, exist_ok=True)
         (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
+        # Push to live server for instant WebSocket broadcast
+        push_to_live_server(snapshot)
         write_health_status(True, f"Live snapshot OK — {snapshot['n_live']} live matches",
                             {"n_live": snapshot["n_live"], "snapshot_status": snapshot["status"]})
     except Exception as exc:

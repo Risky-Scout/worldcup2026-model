@@ -1,0 +1,13 @@
+[Unit]
+Description=WC2026 Daily Pipeline Timer (04:30 UTC)
+Requires=wc2026-daily.service
+
+[Timer]
+# Run daily at 04:30 UTC
+OnCalendar=*-*-* 04:30:00 UTC
+# Run immediately if the last run was missed (e.g. server was down)
+Persistent=true
+Unit=wc2026-daily.service
+
+[Install]
+WantedBy=timers.target

@@ -727,16 +727,24 @@ async function init() {
 }
 
 async function checkHealth() {
-  const urls = ['./wc-health.json', '../pre-match/wc-health.json', '../wc-health.json'];
+  const urls = [
+    'https://sportsodds.wizardofodds.com/health',
+    './wc-health.json',
+    '../pre-match/wc-health.json',
+    '../wc-health.json',
+  ];
   for (const url of urls) {
     try {
-      const r = await fetch(url + '?t=' + Date.now());
+      const r = await fetch(url + '?t=' + Date.now(), { signal: AbortSignal.timeout(3000) });
       if (r.ok) {
         const h = await r.json();
-        const staleMs = Date.now() - new Date(h.updated_at || 0).getTime();
+        // /health endpoint uses last_update; wc-health.json uses updated_at
+        const lastUpdate = h.last_update || h.updated_at || 0;
+        const staleMs = Date.now() - new Date(lastUpdate).getTime();
         const isStale = staleMs > 4 * 60 * 60 * 1000; // > 4 hours
         if (!h.ok || isStale) {
-          const msg = !h.ok ? h.message : 'Pipeline data is over 4 hours old — predictions may be stale.';
+          const msg = !h.ok ? (h.message || 'Pipeline issue detected.')
+                            : 'Pipeline data is over 4 hours old — predictions may be stale.';
           document.getElementById('health-warn').textContent = '⚠ ' + msg;
           document.getElementById('health-banner').style.display = 'block';
         }

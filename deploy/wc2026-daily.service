@@ -1,0 +1,26 @@
+[Unit]
+Description=WC2026 Daily Prediction Pipeline
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/wc2026
+EnvironmentFile=/var/www/wc2026/.env
+ExecStart=/var/www/wc2026/.venv/bin/python scripts/daily_update.py
+ExecStartPost=/var/www/wc2026/.venv/bin/python scripts/upload_predictions.py --date %I
+ExecStartPost=/var/www/wc2026/.venv/bin/python scripts/deploy_html.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wc2026-daily
+# On failure: write health status
+ExecStopPost=/bin/bash -c 'if [ "$$SERVICE_RESULT" != "success" ]; then \
+    /var/www/wc2026/.venv/bin/python -c "\
+import sys; sys.path.insert(0,\"/var/www/wc2026/src\"); \
+sys.path.insert(0,\"/var/www/wc2026/scripts\"); \
+from live_snapshot import write_health_status; \
+write_health_status(False, \"Daily pipeline failed — check journalctl -u wc2026-daily\")"; \
+fi'
+
+[Install]
+WantedBy=multi-user.target

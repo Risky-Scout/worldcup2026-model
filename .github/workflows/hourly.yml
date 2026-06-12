@@ -1,8 +1,12 @@
 name: Hourly Refresh (Pre-Match)
 
+# Runs every hour to keep pre-match pages fresh.
+# Skips the prediction pipeline if the server's /health shows it's already
+# up to date (lambda_date == today and snapshot not stale).
+# Falls back to running the pipeline if server is down.
+
 on:
   schedule:
-    # Run every hour 06:00–02:00 UTC (2AM–10PM ET) during WC
     - cron: "0 6-23 * * *"
     - cron: "0 0-2 * * *"
   workflow_dispatch: {}
@@ -15,6 +19,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check server health
+        id: health
+        run: |
+          HEALTH=$(curl -sf --max-time 8 https://sportsodds.wizardofodds.com/health 2>/dev/null || echo '{"ok":false}')
+          SERVER_OK=$(echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print('true' if h.get('ok') else 'false')" 2>/dev/null || echo 'false')
+          echo "SERVER_OK=$SERVER_OK" >> $GITHUB_ENV
+          echo "Server health: $HEALTH"
+        continue-on-error: true
 
       - uses: actions/setup-python@v5
         with:
@@ -30,46 +43,52 @@ jobs:
           echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
           echo "FTP_USER=${{ secrets.FTP_USER }}" >> .env
           echo "FTP_PASS=${{ secrets.FTP_PASS }}" >> .env
+          echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}" >> .env
 
       - name: Get today's date (ET)
-        id: date
         run: echo "DATE=$(TZ=America/New_York date +%Y-%m-%d)" >> $GITHUB_ENV
 
-      - name: Run prediction pipeline
+      - name: Run prediction pipeline (fallback if server is down)
+        if: env.SERVER_OK != 'true'
         id: pipeline
         run: python scripts/run_real_pipeline.py
         continue-on-error: true
 
-      - name: Upload predictions to server
-        if: steps.pipeline.outcome == 'success'
+      - name: Warn if server is down
+        if: env.SERVER_OK != 'true'
+        run: echo "::warning::Production server is down — running pipeline as fallback"
+
+      - name: Upload predictions to server (FTP fallback)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/upload_predictions.py --date $DATE
+        continue-on-error: true
 
-      - name: Deploy HTML pages
+      - name: Deploy HTML pages (FTP)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/deploy_html.py
+        continue-on-error: true
 
-      - name: Write health status (pipeline failed)
-        if: steps.pipeline.outcome != 'success'
+      - name: Write health status (if pipeline failed)
+        if: steps.pipeline.outcome == 'failure'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: |
           python -c "
-          from scripts.live_snapshot import write_health_status
+          import sys; sys.path.insert(0,'scripts')
+          from live_snapshot import write_health_status
           write_health_status(False, 'Hourly pipeline failed — predictions may be stale')
-          "
-        continue-on-error: true
+          " || true
 
-      - name: Fail job if pipeline failed
-        if: steps.pipeline.outcome != 'success'
+      - name: Fail job if server down and pipeline also failed
+        if: env.SERVER_OK != 'true' && steps.pipeline.outcome == 'failure'
         run: |
-          echo "::error::Prediction pipeline failed during hourly refresh"
+          echo "::error::Server is down AND pipeline fallback failed — investigate immediately"
           exit 1
