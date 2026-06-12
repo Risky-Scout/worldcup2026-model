@@ -82,22 +82,10 @@ post-match: ## Post-match update for a completed date (record CLV outcomes, upda
 	$(PYTHON) scripts/daily_update.py --date $(DATE) --post-match
 
 clv-close: ## Record closing lines in CLV store for matches kicking off today
-	$(PYTHON) -c " \
-from wc2026.markets.clv import CLVStore; \
-from wc2026.config import DATA_DIR; \
-store = CLVStore(str(DATA_DIR / 'clv' / '2026' / 'records.jsonl')); \
-s = store.summary(); \
-print(s.to_markdown()); \
-print(f'CLV records: {s.n_records}  with closing: {s.n_with_closing}  beat close: {s.n_beat_close}') \
-"
+	$(PYTHON) scripts/clv_ops.py close --date $(DATE)
 
 clv-summary: ## Print current CLV summary report
-	$(PYTHON) -c " \
-from wc2026.markets.clv import CLVStore; \
-from wc2026.config import DATA_DIR; \
-store = CLVStore(str(DATA_DIR / 'clv' / '2026' / 'records.jsonl')); \
-print(store.summary().to_markdown()) \
-"
+	$(PYTHON) scripts/clv_ops.py summary
 
 ##@@ Docker
 docker-build: ## Build the Docker image
