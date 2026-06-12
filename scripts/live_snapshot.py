@@ -31,28 +31,6 @@ try:
 except ImportError:
     pass
 
-LOG_PATH = REPO_ROOT / ".cursor" / "debug-3f8dcc.log"
-
-def _dbg(msg: str, data: dict, hypothesis: str = "", run_id: str = "live-run-1"):
-    """Append a debug NDJSON line to the session log file."""
-    import json as _j, time as _t
-    rec = {
-        "sessionId": "3f8dcc",
-        "id": f"log_{int(_t.time()*1000)}",
-        "timestamp": int(_t.time()*1000),
-        "location": "live_snapshot.py",
-        "message": msg,
-        "data": data,
-        "runId": run_id,
-        "hypothesisId": hypothesis,
-    }
-    try:
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(LOG_PATH, "a") as f:
-            f.write(_j.dumps(rec) + "\n")
-    except Exception:
-        pass
-
 
 logging.basicConfig(level=logging.INFO,
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s")
@@ -91,7 +69,7 @@ def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
     """
     pub_path = REPO_ROOT / "data" / "published" / f"{date}.json"
     if not pub_path.exists():
-        _dbg("pregame JSON not found", {"date": date, "path": str(pub_path)}, "H-C")
+        log.warning("Pregame JSON not found: %s", pub_path)
         return {}
     doc = json.loads(pub_path.read_text())
     result = {}
@@ -109,7 +87,7 @@ def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
         if mid:
             result[mid] = (pregame_lh, pregame_la)
         result[f"{home}|{away}"] = (pregame_lh, pregame_la)
-    _dbg("pregame lambdas loaded", {"date": date, "n_matches": len(doc.get("matches",[]))}, "H-C")
+    log.debug("Pregame lambdas loaded: date=%s n=%d", date, len(doc.get("matches",[])))
     return result
 
 
@@ -122,15 +100,11 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
         all_matches = provider.fetch_matches(seasons=[2026])
     except Exception as exc:
         log.error("BDL fetch failed: %s", exc)
-        _dbg("BDL fetch failed", {"error": str(exc)}, "H-A")
+        log.error("BDL fetch failed: %s", exc)
         return []
 
-    _dbg("BDL fetch complete", {
-        "total_matches": len(all_matches),
-        "sample_fields": list(all_matches[0].keys()) if all_matches else [],
-        "sample_status": all_matches[0].get("status") if all_matches else None,
-        "sample_score": f"{all_matches[0].get('home_score')}-{all_matches[0].get('away_score')}" if all_matches else None,
-    }, "H-A")
+    log.info("BDL fetch complete: %d total matches, sample_status=%s",
+             len(all_matches), all_matches[0].get("status") if all_matches else None)
 
     live, upcoming, finished = [], [], []
     for m in all_matches:
@@ -145,24 +119,19 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
             upcoming.append(m)
         elif clock_seconds > 60:
             # Clock is running but status string is unrecognized → treat as live
-            _dbg("unknown status with clock > 60s — treating as live", {
-                "status": raw_status, "clock_seconds": clock_seconds,
-                "match": f"{m.get('home_team', {}).get('full_name','')} vs {m.get('away_team', {}).get('full_name','')}",
-            }, "H-B")
+            home_name = (m.get("home_team") or {}).get("full_name", "?")
+            away_name = (m.get("away_team") or {}).get("full_name", "?")
+            log.warning("Unknown status '%s' clock=%ds — treating as live: %s vs %s",
+                        raw_status, clock_seconds, home_name, away_name)
             live.append(m)
         else:
-            _dbg("unclassified match status", {
-                "status": raw_status, "clock_seconds": clock_seconds,
-            }, "H-B")
+            log.debug("Unclassified match status '%s' (clock=%ds) — treating as upcoming",
+                      raw_status, clock_seconds)
             upcoming.append(m)
 
-    _dbg("match status distribution", {
-        "live": len(live),
-        "upcoming": len(upcoming),
-        "finished": len(finished),
-        "unknown": len(all_matches) - len(live) - len(upcoming) - len(finished),
-        "unique_statuses": list({str(m.get("status","")).lower() for m in all_matches}),
-    }, "H-B")
+    unique_statuses = list({str(m.get("status", "")).lower() for m in all_matches})
+    log.info("Status distribution: live=%d upcoming=%d finished=%d unique=%s",
+             len(live), len(upcoming), len(finished), unique_statuses)
 
     log.info("BDL: %d total, %d live, %d upcoming, %d finished",
              len(all_matches), len(live), len(upcoming), len(finished))
@@ -197,14 +166,10 @@ def run_live_snapshot() -> dict:
         # Look up pregame lambdas
         lh, la = pregame_lambdas.get(mid, pregame_lambdas.get(f"{home}|{away}", (1.35, 1.00)))
 
-        _dbg("processing live match", {
-            "match_id": mid, "home": home, "away": away,
-            "status": bdl_m.get("status"),
-            "clock": bdl_m.get("clock_display"),
-            "score": f"{bdl_m.get('home_score')}-{bdl_m.get('away_score')}",
-            "pregame_lh": lh, "pregame_la": la,
-            "lambda_source": "published" if mid in pregame_lambdas else "fallback",
-        }, "H-C")
+        log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s lambda_src=%s",
+                 home, away, bdl_m.get("status"), bdl_m.get("clock_display"),
+                 bdl_m.get("home_score"), bdl_m.get("away_score"),
+                 "published" if mid in pregame_lambdas else "fallback")
 
         try:
             result = predictor.predict_from_bdl(bdl_m, pregame_lh=lh, pregame_la=la)
@@ -214,15 +179,12 @@ def run_live_snapshot() -> dict:
                 d["pregame_la"] = la
                 d["bdl_status"] = bdl_m.get("status")
                 results.append(d)
-                _dbg("live PMF computed", {
-                    "match": f"{home} vs {away}",
-                    "minute": result.regulation_minute,
-                    "score": result.current_score if hasattr(result, 'current_score') else f"{result.current_home_goals}-{result.current_away_goals}",
-                    "hw": result.home_win_prob, "dr": result.draw_prob, "aw": result.away_win_prob,
-                }, "H-A")
+                log.info("  Live PMF OK: %s vs %s  min=%.0f score=%d-%d hw=%.3f dr=%.3f aw=%.3f",
+                         home, away, result.regulation_minute,
+                         result.current_home_goals, result.current_away_goals,
+                         result.home_win_prob, result.draw_prob, result.away_win_prob)
         except Exception as exc:
             log.warning("LivePMF failed for %s vs %s: %s", home, away, exc)
-            _dbg("live PMF failed", {"match": f"{home} vs {away}", "error": str(exc)}, "H-A")
 
     # Build upcoming section (pre-game matches today)
     upcoming_today = []
@@ -302,11 +264,8 @@ def upload_snapshot(snapshot: dict) -> None:
                 pass
         log.info("✓ Uploaded wc-live.json to both paths")
 
-    _dbg("FTP upload complete", {
-        "bytes": len(payload),
-        "n_live": snapshot.get("n_live", 0),
-        "status": snapshot.get("status"),
-    }, "H-D")
+    log.info("FTP upload complete: %d bytes, %d live matches, status=%s",
+             len(payload), snapshot.get("n_live", 0), snapshot.get("status"))
 
 
 def write_health_status(ok: bool, message: str, extra: dict | None = None) -> None:
@@ -369,7 +328,6 @@ def main() -> None:
                             {"n_live": snapshot["n_live"], "snapshot_status": snapshot["status"]})
     except Exception as exc:
         log.error("Snapshot failed: %s", exc)
-        _dbg("snapshot top-level failure", {"error": str(exc)}, "H-A")
         write_health_status(False, f"Live snapshot failed: {exc}")
         sys.exit(1)
     log.info("Done in %.1fs", time.time() - t0)
