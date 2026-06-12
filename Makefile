@@ -80,10 +80,17 @@ validate-published: ## Validate all committed published JSON artifacts for PMF i
 	    && echo "✓ All published artifact tests PASSED" \
 	    || (echo "✗ ARTIFACT VALIDATION FAILED — published JSON has integrity violations" && exit 1)
 
-validate-live: ## Validate live replay (stub — live engine not yet implemented)
-	@echo "Live replay validation: NOT YET IMPLEMENTED"
-	@echo "Required: src/wc2026/live/ modules and data/predictions/live_replay_2022.parquet"
-	@exit 1
+validate-live: ## Validate live engine (smoke-tests + replay parquet if present)
+	@echo "Running live engine smoke tests..."
+	$(PYTEST) tests/test_live.py -v --tb=short --no-cov \
+	    && echo "✓ Live engine tests PASSED" \
+	    || (echo "✗ Live engine tests FAILED" && exit 1)
+	@if [ -f data/predictions/live_replay_2022.parquet ]; then \
+	    echo "✓ live_replay_2022.parquet exists"; \
+	    $(PYTHON) -c "import pandas as pd; df=pd.read_parquet('data/predictions/live_replay_2022.parquet'); print(f'Replay rows: {len(df)}, matches: {df.match_id.nunique()}')"; \
+	else \
+	    echo "⚠ live_replay_2022.parquet missing — run: make fetch-bdl && python scripts/run_real_pipeline.py"; \
+	fi
 
 ##@@ Cleanup
 clean: ## Remove compiled files and caches

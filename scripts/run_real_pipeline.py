@@ -1,7 +1,5 @@
 """
 Full real-data pipeline: fetch BDL → build dataset → backtest → predict → reports.
-# DEBUG SESSION 3f8dcc — instrumentation active
-"""
 
 Prediction modes:
   pure_model          best parametric model (diagnostic, no odds)
@@ -30,20 +28,6 @@ import datetime as dt
 import json
 import logging
 import sys
-# #region agent log — debug session 3f8dcc
-import os as _os, time as _time
-_DBG_LOG = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
-def _dbg(msg, data=None, hyp="", loc=""):
-    import subprocess
-    _git_hash = "unknown"
-    try:
-        _git_hash = subprocess.check_output(["git","rev-parse","--short","HEAD"],cwd="/Users/josephshackelford/worldcup2026-model",text=True).strip()
-    except Exception: pass
-    entry = {"sessionId":"3f8dcc","timestamp":int(_time.time()*1000),"location":loc,"message":msg,"hypothesisId":hyp,"data":{**(data or {}), "git_hash":_git_hash}}
-    try:
-        with open(_DBG_LOG,"a") as _f: _f.write(json.dumps(entry)+"\n")
-    except Exception: pass
-# #endregion agent log
 from pathlib import Path
 
 import numpy as np
@@ -550,22 +534,6 @@ def _predict_one_match(
 
     # ── 5. Validate and build output ─────────────────────────────────────
     publish_pmf = rec.publish_pmf
-    # #region agent log — debug session 3f8dcc
-    _n = publish_pmf.shape[0]
-    _p49  = float(publish_pmf[4,9])  if _n>9  else 0.0
-    _p115 = float(publish_pmf[11,5]) if _n>11 else 0.0
-    _p112 = float(publish_pmf[1,12]) if _n>12 else 0.0
-    _recon_method = getattr(rec, "_best_reconciliation_method", "unknown")
-    _dbg("PREDICT_ONE_MATCH_PMF", {
-        "home":home,"away":away,
-        "publish_mode":rec.publish_mode,
-        "reconciliation_method":_recon_method,
-        "P_4_9":_p49,"P_11_5":_p115,"P_1_12":_p112,
-        "pmf_sum":float(publish_pmf.sum()),
-        "top3":[{"h":int(hh),"a":int(aa),"p":float(publish_pmf[hh,aa])} for _,hh,aa in sorted(
-            [(publish_pmf[hh,aa],hh,aa) for hh in range(min(_n,8)) for aa in range(min(_n,8))],reverse=True)[:3]],
-    }, hyp="H-B,H-C,H-D", loc="run_real_pipeline.py:predict_one_match")
-    # #endregion agent log
     _validate_pmf(publish_pmf, f"{home} v {away}", model_warnings)
     publish_markets = _pmf_to_markets(publish_pmf)
     composite_markets = _pmf_to_markets(comp_pmf)
@@ -787,18 +755,6 @@ def write_published_json(all_preds: list, generated_at: str) -> None:
     }
     (PUBLISHED_DIR / "2026-06-11.json").write_text(json.dumps(june11_doc, indent=2, default=str))
     log.info("Written 2026-06-11.json (%d matches)", len(june11))
-    # #region agent log — debug session 3f8dcc
-    _dbg("JSON_WRITTEN_2026_06_11", {
-        "n_matches":len(june11),
-        "file": str(PUBLISHED_DIR / "2026-06-11.json"),
-        "match_summaries":[{
-            "home":m.get("home_team"),"away":m.get("away_team"),
-            "reconciliation_method":m.get("prediction",{}).get("reconciliation_method"),
-            "tail_mass_exact":m.get("prediction",{}).get("tail_mass_exact"),
-            "P_4_9":m.get("prediction",{}).get("regulation_score_pmf_grid",[[]*16]*16)[4][9] if len(m.get("prediction",{}).get("regulation_score_pmf_grid",[]))>4 else None,
-        } for m in june11],
-    }, hyp="H-A,H-B", loc="run_real_pipeline.py:write_json_june11")
-    # #endregion agent log
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -2007,6 +1963,83 @@ def _write_june11_analysis(all_preds, generated_at):
     log.info("Written: june11_analysis.md")
 
 
+def _run_live_replay(matches_df: pd.DataFrame, tables: dict, generated_at: str) -> None:
+    """Run 2022 minute-by-minute live replay and write validation report."""
+    log.info("── STEP 6: Live replay validation (2022) ──")
+    try:
+        from wc2026.live.replay import run_2022_replay
+        from wc2026.live.validation import compute_metrics, write_live_replay_report
+
+        events_df = tables.get("events")
+        stats_df = tables.get("team_stats")
+
+        parquet_path = str(PREDICTIONS_DIR / "live_replay_2022.parquet")
+        replay_df = run_2022_replay(
+            matches_df=matches_df,
+            events_df=events_df,
+            stats_df=stats_df,
+            output_path=parquet_path,
+        )
+
+        if len(replay_df) > 0:
+            metrics = compute_metrics(replay_df)
+            report_path = str(REPORTS_DIR / "live_replay_validation.md")
+            write_live_replay_report(replay_df, metrics, report_path, generated_at)
+            log.info(
+                "Live replay: %d checkpoints across %d matches",
+                len(replay_df), metrics.get("n_matches", 0),
+            )
+            # Log key metrics
+            overall = metrics.get("overall", {})
+            log.info(
+                "Live metrics: score_NLL=%.4f  1X2_RPS=%.4f  BTTS_Brier=%.4f",
+                overall.get("mean_score_nll", float("nan")),
+                overall.get("mean_1x2_rps", float("nan")),
+                overall.get("mean_btts_brier", float("nan")),
+            )
+        else:
+            log.warning("Live replay produced 0 rows — no completed 2022 matches in dataset")
+            _write_live_replay_stub(generated_at)
+
+    except Exception as exc:
+        log.warning("Live replay failed: %s", exc)
+        _write_live_replay_stub(generated_at)
+
+
+def _write_live_replay_stub(generated_at: str) -> None:
+    """Write a stub live_replay_validation.md when replay data is unavailable."""
+    stub = [
+        "# Live Model Replay Validation — 2022 World Cup",
+        "",
+        f"**Generated**: {generated_at}",
+        "**Status**: STUB — 2022 match data insufficient for full replay",
+        "",
+        "## Implementation status",
+        "",
+        "| Module | Status |",
+        "|--------|--------|",
+        "| src/wc2026/live/state.py | ✓ Implemented |",
+        "| src/wc2026/live/features.py | ✓ Implemented |",
+        "| src/wc2026/live/hazard.py | ✓ Implemented |",
+        "| src/wc2026/live/predictor.py | ✓ Implemented |",
+        "| src/wc2026/live/replay.py | ✓ Implemented |",
+        "| src/wc2026/live/validation.py | ✓ Implemented |",
+        "",
+        "## Readiness",
+        "",
+        "| Dimension | Status |",
+        "|-----------|--------|",
+        "| Pre-game probabilities | **READY** |",
+        "| Pre-game betting edge screening | **NOT READY** |",
+        "| Live probabilities | **PROTOTYPE** |",
+        "| Live betting edge | **NOT READY** |",
+        "",
+        "Replay metrics will be populated once `make fetch-bdl` fetches 2022 event data.",
+    ]
+    (REPORTS_DIR / "live_replay_validation.md").write_text("\n".join(stub))
+    log.info("Written live_replay_validation.md (stub)")
+
+
 def _update_readme(generated_at: str) -> None:
     """Update README to match actual current status."""
     readme_path = Path("README.md")
@@ -2035,13 +2068,6 @@ def main():
     log.info("═" * 60)
     log.info("WC2026 REAL DATA PIPELINE  (%s)", generated_at)
     log.info("═" * 60)
-    # #region agent log — debug session 3f8dcc
-    import subprocess as _sp
-    _hash = "unknown"
-    try: _hash = _sp.check_output(["git","rev-parse","--short","HEAD"],cwd="/Users/josephshackelford/worldcup2026-model",text=True).strip()
-    except Exception: pass
-    _dbg("PIPELINE_START", {"generated_at":generated_at,"git_hash":_hash,"script_path":__file__,"python_path":sys.executable}, hyp="H-A,H-E", loc="run_real_pipeline.py:main")
-    # #endregion agent log
 
     tables = fetch_and_build()
     matches_df = tables["matches"]
@@ -2058,6 +2084,7 @@ def main():
     all_preds, champions, composite_prior = predict_all_2026(matches_df, odds_df, markets_df, hist_df, results)
     write_published_json(all_preds, generated_at)
     write_reports(tables, results, champions, all_preds, composite_prior, generated_at)
+    _run_live_replay(matches_df, tables, generated_at)
     _update_readme(generated_at)
 
     log.info("═" * 60)
