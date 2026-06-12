@@ -377,6 +377,88 @@ def results(ctx, date, show_all):
 
 
 # ---------------------------------------------------------------------------
+# Standings — show live group standings from BDL snapshots
+# ---------------------------------------------------------------------------
+
+@cli.command("standings")
+@click.option("--group", default=None, help="Filter by group name e.g. 'Group A'")
+@click.pass_context
+def standings(ctx, group):
+    """Show current group standings from the latest BDL snapshot."""
+    import json
+    from pathlib import Path
+    from wc2026.config import DATA_DIR
+
+    _setup_logging(ctx.obj.get("verbose", False))
+
+    gs_dir = DATA_DIR / "raw" / "bdl" / "multi" / "group_standings"
+    if not gs_dir.exists():
+        click.echo("No group standings snapshots found. Run: make fetch-bdl", err=True)
+        return
+
+    snapshots = sorted(gs_dir.glob("*.jsonl"))
+    if not snapshots:
+        click.echo("No group standings snapshots found.", err=True)
+        return
+
+    latest = snapshots[-1]
+    records = []
+    with open(latest) as f:
+        for line in f:
+            try:
+                records.append(json.loads(line))
+            except Exception:
+                pass
+
+    recs_2026 = [r for r in records if r.get("season", {}).get("year") == 2026]
+    if not recs_2026:
+        click.echo("No 2026 standings data available yet.", err=True)
+        return
+
+    recs_2026.sort(key=lambda x: (x["group"]["name"], x["position"]))
+    ts = latest.stem  # e.g. 20260612T035925Z
+
+    # Group filter
+    all_groups = sorted({r["group"]["name"] for r in recs_2026})
+    if group:
+        filtered = [r for r in recs_2026 if r["group"]["name"].lower() == group.lower()]
+        groups_to_show = [group] if filtered else []
+        recs_2026 = filtered
+    else:
+        groups_to_show = all_groups
+
+    if not recs_2026:
+        click.echo(f"Group '{group}' not found. Available: {', '.join(all_groups)}", err=True)
+        return
+
+    click.echo()
+    click.echo(f"WC 2026 Group Standings  (snapshot: {ts})")
+    click.echo("=" * 68)
+
+    for gname in groups_to_show:
+        group_rows = [r for r in recs_2026 if r["group"]["name"] == gname]
+        if not group_rows:
+            continue
+        has_played = any(r["played"] > 0 for r in group_rows)
+        click.echo(f"\n  {gname}")
+        click.echo(f"  {'Pos':<4} {'Team':<26} {'P':>2} {'W':>2} {'D':>2} {'L':>2} {'GF':>3} {'GA':>3} {'GD':>4} {'Pts':>4}")
+        click.echo("  " + "-" * 60)
+        for r in group_rows:
+            gd = r["goal_difference"]
+            gd_str = f"+{gd}" if gd > 0 else str(gd)
+            qualifier = "→ " if r["position"] <= 2 else "   "
+            click.echo(
+                f"  {qualifier}{r['position']:<3} {r['team']['name']:<26} "
+                f"{r['played']:>2} {r['won']:>2} {r['drawn']:>2} {r['lost']:>2} "
+                f"{r['goals_for']:>3} {r['goals_against']:>3} {gd_str:>4} {r['points']:>4}"
+            )
+
+    click.echo()
+    click.echo("  → = advances to Round of 32 if current position holds")
+    click.echo()
+
+
+# ---------------------------------------------------------------------------
 # Audit
 # ---------------------------------------------------------------------------
 
