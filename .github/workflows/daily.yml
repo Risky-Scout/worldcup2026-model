@@ -1,27 +1,21 @@
-name: Daily Update (Fallback)
+name: Daily Update
 
-# This workflow is a FALLBACK. The primary pipeline now runs on the server
-# via wc2026-daily.timer (systemd). This workflow:
-#   1. Checks if the server already ran today (via /health endpoint)
-#   2. If server is healthy and up-to-date, only commits any new artifacts
-#   3. If server is unreachable/stale, runs the full pipeline as fallback
-#   4. Always alerts on persistent failures
+# Runs every day at 4:00 AM UTC.
+# This IS the primary pipeline — not a fallback.
+# Fetches fresh BDL data, rebuilds the dataset, regenerates all predictions,
+# validates artifacts, deploys to WOO, and commits updated data to the repo.
 
 on:
   schedule:
-    - cron: "0 4 * * *"   # 4:00 AM UTC daily (30 min after server timer at 4:30)
+    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       date:
         description: "Date to predict (YYYY-MM-DD, default: tomorrow ET)"
         required: false
         default: ""
-      post_match:
-        description: "Run post-match mode"
-        required: false
-        default: "false"
-      force_pipeline:
-        description: "Force pipeline even if server reports healthy"
+      force_refetch:
+        description: "Force re-fetch from BDL even if cache exists"
         required: false
         default: "false"
 
@@ -41,50 +35,19 @@ jobs:
             echo "DATE=${{ github.event.inputs.date }}" >> $GITHUB_ENV
             echo "TODAY=${{ github.event.inputs.date }}" >> $GITHUB_ENV
           else
-            # DATE = tomorrow ET (used by pipeline to pre-generate next day predictions)
-            # TODAY = today ET (used for FTP upload so the live page shows current-day matches)
-            # Without this split, the midnight UTC run uploaded tomorrow's file, hiding
-            # late-night ET games (e.g. 9 PM ET kickoffs) until the hourly corrected at 2 AM ET.
             echo "DATE=$(TZ=America/New_York date -d '+1 day' +%Y-%m-%d 2>/dev/null || date -v+1d +%Y-%m-%d)" >> $GITHUB_ENV
             echo "TODAY=$(TZ=America/New_York date +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)" >> $GITHUB_ENV
           fi
 
-      - name: Check server health
-        id: health
-        run: |
-          HEALTH=$(curl -sf --max-time 10 https://sportsodds.wizardofodds.com/health 2>/dev/null || echo '{"ok":false}')
-          echo "HEALTH=$HEALTH" >> $GITHUB_ENV
-          SERVER_OK=$(echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print('true' if h.get('ok') else 'false')" 2>/dev/null || echo 'false')
-          STALE=$(echo "$HEALTH" | python3 -c "import sys,json; h=json.load(sys.stdin); print('true' if h.get('snapshot_stale',True) else 'false')" 2>/dev/null || echo 'true')
-          echo "SERVER_OK=$SERVER_OK" >> $GITHUB_ENV
-          echo "SERVER_STALE=$STALE" >> $GITHUB_ENV
-          echo "Server status: ok=$SERVER_OK stale=$STALE"
-        continue-on-error: true
-
-      - name: Skip if server is healthy (unless forced)
-        id: skip_check
-        run: |
-          FORCE="${{ github.event.inputs.force_pipeline }}"
-          if [ "$SERVER_OK" = "true" ] && [ "$SERVER_STALE" = "false" ] && [ "$FORCE" != "true" ]; then
-            echo "Server is healthy and up-to-date — skipping pipeline, committing only"
-            echo "SKIP_PIPELINE=true" >> $GITHUB_ENV
-          else
-            echo "SKIP_PIPELINE=false" >> $GITHUB_ENV
-          fi
-
-      - name: Set up Python 3.10
-        if: env.SKIP_PIPELINE != 'true'
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
       - name: Install dependencies
-        if: env.SKIP_PIPELINE != 'true'
         run: make install
 
-      - name: Create .env for CI
-        if: env.SKIP_PIPELINE != 'true'
+      - name: Create .env
         run: |
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
           echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
@@ -93,7 +56,6 @@ jobs:
           echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}" >> .env
 
       - name: Fetch latest BDL data
-        if: env.SKIP_PIPELINE != 'true'
         id: fetch
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
@@ -101,29 +63,34 @@ jobs:
         continue-on-error: true
 
       - name: Warn on fetch failure
-        if: env.SKIP_PIPELINE != 'true' && steps.fetch.outcome != 'success'
-        run: echo "::warning::BDL fetch had errors — continuing with cached data"
+        if: steps.fetch.outcome != 'success'
+        run: echo "::warning::BDL fetch failed — pipeline will use committed cached data"
 
       - name: Rebuild dataset
-        if: env.SKIP_PIPELINE != 'true' && steps.fetch.outcome == 'success'
+        if: steps.fetch.outcome == 'success'
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: make build-dataset
         continue-on-error: true
 
       - name: Run prediction pipeline
-        if: env.SKIP_PIPELINE != 'true'
         id: pipeline
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: python scripts/run_real_pipeline.py
 
       - name: Validate published artifacts
-        if: env.SKIP_PIPELINE != 'true'
         run: make validate-published
 
-      - name: Deploy HTML pages
-        if: env.SKIP_PIPELINE != 'true'
+      - name: Upload today's predictions to WOO (FTP)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/upload_predictions.py --date $TODAY
+        continue-on-error: true
+
+      - name: Deploy HTML pages (FTP)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -131,48 +98,12 @@ jobs:
         run: python scripts/deploy_html.py
         continue-on-error: true
 
-      - name: Upload predictions to server
-        if: env.SKIP_PIPELINE != 'true'
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-        # Upload TODAY ET as wc-predictions.json (the live page file).
-        # DATE is tomorrow (used for archive/commit) but the page must always show today's matches.
-        run: python scripts/upload_predictions.py --date $TODAY
-        continue-on-error: true
-
-      - name: Notify server to reload lambdas
-        if: env.SKIP_PIPELINE != 'true'
+      - name: Notify live server to reload lambdas
         run: |
           curl -sf -X GET \
             -H "X-Internal-Token: ${{ secrets.WEBHOOK_SECRET }}" \
             https://sportsodds.wizardofodds.com/api/reload-lambdas || true
         continue-on-error: true
-
-      - name: Run post-match update (if requested)
-        if: github.event.inputs.post_match == 'true'
-        uses: actions/setup-python@v5
-        continue-on-error: true
-
-      - name: Write pipeline health status
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-        run: python scripts/live_snapshot.py --health-only || true
-        continue-on-error: true
-
-      - name: Alert on server unreachable
-        if: env.SERVER_OK == 'false'
-        run: |
-          echo "::warning::Production server is unreachable or unhealthy — pipeline ran as fallback"
-          # If SLACK_WEBHOOK_URL is set, send alert
-          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            curl -sf -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
-              -H 'Content-type: application/json' \
-              --data "{\"text\":\"⚠ WC2026: Server unreachable — GitHub Actions ran as fallback ($(date -u))\"}" || true
-          fi
 
       - name: Commit updated predictions and processed data
         run: |
@@ -180,7 +111,7 @@ jobs:
           git config user.email "wc2026-bot@users.noreply.github.com"
           git add data/published/ data/clv/ data/calibration/ data/processed/ reports/ || true
           git diff --cached --quiet || \
-            git commit -m "Daily update $DATE: predictions + processed data [skip ci]"
+            git commit -m "Daily update $DATE: predictions + data [skip ci]"
           git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

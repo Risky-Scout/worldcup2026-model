@@ -1,0 +1,101 @@
+name: Deploy Live Server
+
+# Deploys the FastAPI live predictions service to the WOO production server.
+# Run manually whenever the server needs to be set up or restarted.
+# Requires SSH_PRIVATE_KEY secret to be configured in GitHub repository secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform on the server"
+        required: true
+        default: "restart"
+        type: choice
+        options:
+          - restart        # Restart wc2026-live.service only (fastest)
+          - full-setup     # Full server_setup.sh (first-time or major update)
+          - status         # Just print service status and health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 45.79.0.107 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Server status check
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+            echo "=== Service Status ==="
+            systemctl is-active wc2026-live.service 2>/dev/null && echo "wc2026-live: active" || echo "wc2026-live: NOT RUNNING"
+            systemctl is-active wc2026-daily.timer 2>/dev/null && echo "wc2026-daily.timer: active" || echo "wc2026-daily.timer: NOT RUNNING"
+            echo "=== Health Check ==="
+            curl -sf http://127.0.0.1:8000/health 2>/dev/null || echo "FastAPI: NOT RESPONDING (port 8000)"
+            echo "=== Nginx ==="
+            systemctl is-active nginx && echo "nginx: active" || echo "nginx: down"
+          '
+
+      - name: Restart live service
+        if: github.event.inputs.action == 'restart'
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+            set -e
+            echo "=== Pulling latest code ==="
+            cd /var/www/wc2026 && git pull origin main
+
+            echo "=== Restarting wc2026-live ==="
+            systemctl daemon-reload
+            systemctl restart wc2026-live.service
+            sleep 3
+            systemctl is-active wc2026-live.service && echo "✓ Live service restarted" || {
+              echo "✗ Restart failed — last 20 log lines:"
+              journalctl -u wc2026-live -n 20 --no-pager
+              exit 1
+            }
+
+            echo "=== Health ==="
+            sleep 2
+            curl -sf http://127.0.0.1:8000/health || echo "WARNING: health check failed"
+          '
+
+      - name: Full setup
+        if: github.event.inputs.action == 'full-setup'
+        run: |
+          # Write the .env to the server first
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 "
+            cat > /tmp/wc2026.env << 'ENVEOF'
+          BDL_API_KEY=${{ secrets.BDL_API_KEY }}
+          FTP_HOST=${{ secrets.FTP_HOST }}
+          FTP_USER=${{ secrets.FTP_USER }}
+          FTP_PASS=${{ secrets.FTP_PASS }}
+          WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
+          ENVEOF
+            mkdir -p /var/www/wc2026
+            cp /tmp/wc2026.env /var/www/wc2026/.env
+          "
+          # Run the full setup script
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+            cd /var/www/wc2026 2>/dev/null || git clone https://github.com/Risky-Scout/worldcup2026-model.git /var/www/wc2026
+            cd /var/www/wc2026
+            git pull origin main
+            bash deploy/server_setup.sh
+          '
+
+      - name: Verify health after deploy
+        if: github.event.inputs.action != 'status'
+        run: |
+          sleep 5
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+            echo "=== Final Health Check ==="
+            curl -sf http://127.0.0.1:8000/health && echo "✓ FastAPI healthy" || echo "✗ FastAPI still down"
+            systemctl is-active wc2026-live.service
+            systemctl is-active wc2026-daily.timer 2>/dev/null || true
+          '
