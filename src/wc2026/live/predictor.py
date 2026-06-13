@@ -438,7 +438,7 @@ class LivePMFPredictor:
                 match_id=match_id,
                 home_team=home,
                 away_team=away,
-                season=int(bdl_match.get("season", 2026)),
+                season=int((bdl_match.get("season") or {}).get("year", 2026) if isinstance(bdl_match.get("season"), dict) else bdl_match.get("season", 2026)),
                 stage=str(bdl_match.get("stage", "group")),
                 status=status,
                 clock_display=clock_str,
