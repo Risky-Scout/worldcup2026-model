@@ -939,17 +939,28 @@ def predict_all_2026(
             else:
                 n_pure_model += 1
 
-            # Record CLV entry for post-match closing line comparison
+            # Record CLV entry: upsert by (match_id, market) so each match×market
+            # has exactly one record. Opening odds come from market_implied_markets
+            # at prediction time; they are preserved on subsequent upserts.
             if clv_store is not None:
                 try:
+                    _pred_dict = pred.get("prediction", {})
+                    _mim = _pred_dict.get("market_implied_markets", {}) or {}
+                    # Normalize keys: "over_0.5" → "over_0_5" and prob → decimal odds
+                    _opening_odds: dict = {}
+                    for _k, _v in _mim.items():
+                        _norm_k = _k.replace(".", "_")  # over_0.5 → over_0_5
+                        if _v and float(_v) > 0:
+                            _opening_odds[_norm_k] = round(1.0 / float(_v), 4)
                     clv_recs = build_clv_records_from_prediction(
                         match_id=str(mid),
                         home_team=home,
                         away_team=away,
-                        prediction=pred.get("prediction", {}),
+                        prediction=_pred_dict,
+                        opening_odds=_opening_odds or None,
                     )
                     for cr in clv_recs:
-                        clv_store.append(cr)
+                        clv_store.upsert(cr)
                 except Exception as _exc:
                     log.debug("CLV record failed for %s v %s: %s", home, away, _exc)
 

@@ -288,9 +288,64 @@ class CLVStore:
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def append(self, record: CLVRecord) -> None:
-        """Append a new prediction record."""
+        """Append a new prediction record (legacy; prefer upsert)."""
         with open(self._path, "a") as f:
             f.write(json.dumps(record.to_dict()) + "\n")
+
+    def upsert(self, record: CLVRecord) -> None:
+        """Insert or update a CLV record keyed by (match_id, market).
+
+        - First insertion: stores record as-is (opening_prob set from record).
+        - Subsequent calls: refreshes model_prob/model_fair_odds/prediction_timestamp
+          with the latest values, but PRESERVES opening_prob from first observation
+          so the opening line is never overwritten by later odds movements.
+        - Closing line and outcome fields are preserved from any prior set_closing /
+          set_outcome calls.
+        """
+        if not self._path.exists():
+            with open(self._path, "w") as f:
+                f.write(json.dumps(record.to_dict()) + "\n")
+            return
+
+        records = self.load_all()
+        key = (record.match_id, record.market)
+        found = False
+        for existing in records:
+            if (existing.match_id, existing.market) == key:
+                # Preserve opening_prob from first observation
+                if existing.opening_prob is not None and record.opening_prob is not None:
+                    record.opening_prob = existing.opening_prob
+                    record.opening_odds_decimal = existing.opening_odds_decimal
+                    record.opening_timestamp = existing.opening_timestamp
+                elif existing.opening_prob is not None:
+                    record.opening_prob = existing.opening_prob
+                    record.opening_odds_decimal = existing.opening_odds_decimal
+                    record.opening_timestamp = existing.opening_timestamp
+                # Preserve closing/outcome from prior calls
+                if existing.closing_prob is not None and record.closing_prob is None:
+                    record.closing_prob = existing.closing_prob
+                    record.closing_odds_decimal = existing.closing_odds_decimal
+                    record.closing_timestamp = existing.closing_timestamp
+                    record.clv_raw = existing.clv_raw
+                    record.clv_pct = existing.clv_pct
+                    record.clv_bits = existing.clv_bits
+                    record.beat_close = existing.beat_close
+                    record.opening_drift = existing.opening_drift
+                    record.model_vs_opening = existing.model_vs_opening
+                if existing.outcome is not None and record.outcome is None:
+                    record.outcome = existing.outcome
+                    record.outcome_timestamp = existing.outcome_timestamp
+                # Replace in-place
+                records[records.index(existing)] = record
+                found = True
+                break
+
+        if not found:
+            records.append(record)
+
+        with open(self._path, "w") as f:
+            for r in records:
+                f.write(json.dumps(r.to_dict()) + "\n")
 
     def load_all(self) -> list[CLVRecord]:
         """Load all records from the store."""
