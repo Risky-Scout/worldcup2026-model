@@ -1,13 +1,16 @@
 name: Daily Update
 
-# Runs every day at 4:00 AM UTC.
+# Runs every day at 8:00 AM UTC (4:00 AM ET).
+# Scheduled 8 hours after midnight UTC to ensure BDL has marked all
+# previous-night ET games (e.g. 9 PM ET kickoffs finishing ~11:30 PM ET = 3:30 AM UTC)
+# as completed before the pipeline fetches and retrains on them.
 # This IS the primary pipeline — not a fallback.
 # Fetches fresh BDL data, rebuilds the dataset, regenerates all predictions,
 # validates artifacts, deploys to WOO, and commits updated data to the repo.
 
 on:
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "0 8 * * *"
   workflow_dispatch:
     inputs:
       date:
