@@ -19,7 +19,16 @@ Priority stack (highest first):
   5. confederation_average  — hard floor when all above are missing
 
 Blending weights when market odds exist (n=3 group matches per team):
-  market_implied: 0.70, penaltyblog_pi: 0.15, penaltyblog_elo: 0.10, massey: 0.05
+  Default market_weight=0.0 (pure penaltyblog; see below for rationale).
+  market_implied: 0.00, fifa_ranking: 0.30, qualifying: 0.25, penaltyblog_pi/elo/massey: rest
+
+  Weights last set: 2026-06-12.
+  Rationale: CLV (Closing Line Value) is maximised when the model prior is independent
+  of the opening market. A high market weight anchors the prior to opening odds,
+  suppressing divergence vs the closing line. 0% market weight preserves full
+  independence so market-reconciliation is the only place market signal enters.
+  Reassess after more group-stage matches complete (target: 2026-06-13 or 2026-06-14).
+  Use CompositeTeamPrior(market_weight=0.6) to restore the original blending.
 
 Blending weights when NO market odds exist:
   penaltyblog_elo: 0.45, penaltyblog_pi: 0.30, massey: 0.15, confederation: 0.10
@@ -383,7 +392,26 @@ class CompositeTeamPrior:
     4. Applies host-nation adjustments
     """
 
-    def __init__(self):
+    # Default market weight for the prior blend.
+    # 0.0 = pure penaltyblog (maximises CLV independence).
+    # Set >0 to blend in opening-market-implied lambdas (e.g. 0.6 for the old default).
+    DEFAULT_MARKET_WEIGHT: float = 0.0
+
+    def __init__(self, market_weight: Optional[float] = None):
+        """
+        Parameters
+        ----------
+        market_weight : float or None
+            Fraction of the prior allocated to market-implied lambdas when market
+            odds are available (0.0 = pure penaltyblog, 1.0 = pure market).
+            None → uses DEFAULT_MARKET_WEIGHT (currently 0.0).
+            Must be in [0.0, 1.0].
+        """
+        if market_weight is None:
+            market_weight = self.DEFAULT_MARKET_WEIGHT
+        if not (0.0 <= market_weight <= 1.0):
+            raise ValueError(f"market_weight must be in [0, 1], got {market_weight}")
+        self._market_weight: float = market_weight
         self._priors: dict[str, TeamPrior] = {}
         self._fitted = False
         self._fit_timestamp: Optional[str] = None
@@ -735,20 +763,26 @@ class CompositeTeamPrior:
         has_fifa = tp.fifa_attack_lambda is not None
         has_qual = tp.qualifying_attack_lambda is not None
 
-        if has_market:
-            # Market-implied: dominant when available (3 group matches × 6 vendors)
-            att_inputs.append(("market_implied", tp.market_implied_attack, 0.60))
-            def_inputs.append(("market_implied", tp.market_implied_defense, 0.60))
+        # Whether to use market-implied lambdas in the prior blend.
+        # market_weight=0.0 keeps the prior fully independent of the opening line.
+        effective_market_w = self._market_weight if has_market else 0.0
+
+        if effective_market_w > 0.0:
+            att_inputs.append(("market_implied", tp.market_implied_attack, effective_market_w))
+            def_inputs.append(("market_implied", tp.market_implied_defense, effective_market_w))
             sources.append("market_implied")
 
+        # When market is used, tighten FIFA/qualifying; when absent (or weight=0), expand them.
+        using_market_in_blend = effective_market_w > 0.0
+
         if has_fifa:
-            fifa_w = 0.12 if has_market else 0.30
+            fifa_w = 0.12 if using_market_in_blend else 0.30
             att_inputs.append(("fifa_ranking", tp.fifa_attack_lambda, fifa_w))
             def_inputs.append(("fifa_ranking", tp.fifa_defense_lambda, fifa_w))
             sources.append("fifa_ranking")
 
         if has_qual:
-            qual_w = 0.10 if has_market else 0.25
+            qual_w = 0.10 if using_market_in_blend else 0.25
             att_inputs.append(("qualifying", tp.qualifying_attack_lambda, qual_w))
             def_inputs.append(("qualifying", tp.qualifying_defense_lambda, qual_w))
             sources.append("qualifying")
@@ -756,7 +790,7 @@ class CompositeTeamPrior:
         remaining_w = max(0.0, 1.0 - sum(w for _, _, w in att_inputs))
 
         if tp.pi_attack_lambda is not None:
-            pi_w = remaining_w * (0.40 if not has_market else 0.50)
+            pi_w = remaining_w * (0.40 if not using_market_in_blend else 0.50)
             att_inputs.append(("penaltyblog_pi", tp.pi_attack_lambda, pi_w))
             def_inputs.append(("penaltyblog_pi", tp.pi_defense_lambda, pi_w))
             sources.append("penaltyblog_pi")
@@ -819,9 +853,18 @@ def build_composite_prior(
     matches_df: pd.DataFrame,
     odds_df: pd.DataFrame,
     markets_df: Optional[pd.DataFrame] = None,
+    market_weight: Optional[float] = None,
 ) -> CompositeTeamPrior:
-    """Convenience function: fit and return a CompositeTeamPrior."""
-    prior = CompositeTeamPrior()
+    """Convenience function: fit and return a CompositeTeamPrior.
+
+    Parameters
+    ----------
+    market_weight : float or None
+        Fraction allocated to market-implied lambdas in the prior blend.
+        None → CompositeTeamPrior.DEFAULT_MARKET_WEIGHT (currently 0.0).
+        Pass 0.6 to restore the original blending behaviour.
+    """
+    prior = CompositeTeamPrior(market_weight=market_weight)
     prior.fit(matches_df, odds_df, markets_df)
     return prior
 
