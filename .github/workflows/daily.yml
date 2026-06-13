@@ -39,8 +39,14 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
             echo "DATE=${{ github.event.inputs.date }}" >> $GITHUB_ENV
+            echo "TODAY=${{ github.event.inputs.date }}" >> $GITHUB_ENV
           else
+            # DATE = tomorrow ET (used by pipeline to pre-generate next day predictions)
+            # TODAY = today ET (used for FTP upload so the live page shows current-day matches)
+            # Without this split, the midnight UTC run uploaded tomorrow's file, hiding
+            # late-night ET games (e.g. 9 PM ET kickoffs) until the hourly corrected at 2 AM ET.
             echo "DATE=$(TZ=America/New_York date -d '+1 day' +%Y-%m-%d 2>/dev/null || date -v+1d +%Y-%m-%d)" >> $GITHUB_ENV
+            echo "TODAY=$(TZ=America/New_York date +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)" >> $GITHUB_ENV
           fi
 
       - name: Check server health
@@ -126,7 +132,9 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
-        run: python scripts/upload_predictions.py --date $DATE
+        # Upload TODAY ET as wc-predictions.json (the live page file).
+        # DATE is tomorrow (used for archive/commit) but the page must always show today's matches.
+        run: python scripts/upload_predictions.py --date $TODAY
         continue-on-error: true
 
       - name: Notify server to reload lambdas

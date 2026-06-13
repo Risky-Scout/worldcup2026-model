@@ -2256,13 +2256,17 @@ def main():
     results = run_walkforward(matches_df)
     all_preds, champions, composite_prior = predict_all_2026(matches_df, odds_df, markets_df, hist_df, results)
     write_published_json(all_preds, generated_at)
+    annotate_published_with_results(matches_df)
     write_reports(tables, results, champions, all_preds, composite_prior, generated_at)
     _run_live_replay(matches_df, tables, generated_at)
     _update_readme(generated_at)
 
     log.info("═" * 60)
     log.info("PIPELINE COMPLETE  publish_champion=market_reconciled")
-    log.info("  June 11 JSON: data/published/2026-06-11.json")
+    from zoneinfo import ZoneInfo
+    import datetime as _dt
+    _today_et = _dt.datetime.now(tz=ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    log.info("  Today ET JSON: data/published/%s.json", _today_et)
     log.info("  All 2026 JSON: data/published/all_scheduled_2026.json")
     log.info("═" * 60)
 
