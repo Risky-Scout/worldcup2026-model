@@ -163,6 +163,27 @@ def run_live_snapshot() -> dict:
         log.error("Failed to fetch matches: %s", exc)
         live_matches, upcoming = [], []
 
+    # Fetch live team stats + shots for all live matches in one batch call each
+    live_ids = [m.get("id") for m in live_matches if m.get("id")]
+    live_team_stats: dict[str, list] = {}   # match_id → [team_match_stats rows]
+    live_shots: dict[str, list] = {}        # match_id → [match_shots rows]
+    if live_ids:
+        try:
+            from wc2026.data.providers.bdl import BDLProvider
+            _stats_provider = BDLProvider(snapshot=False)
+            stats_rows = _stats_provider.fetch_team_stats(match_ids=live_ids)
+            for row in stats_rows:
+                key = str(row.get("match_id", ""))
+                live_team_stats.setdefault(key, []).append(row)
+            shots_rows = _stats_provider.fetch_shots(match_ids=live_ids)
+            for row in shots_rows:
+                key = str(row.get("match_id", ""))
+                live_shots.setdefault(key, []).append(row)
+            log.info("Live stats fetched: %d team-stat rows, %d shot rows for %d matches",
+                     len(stats_rows), len(shots_rows), len(live_ids))
+        except Exception as exc:
+            log.warning("Could not fetch live team stats/shots: %s", exc)
+
     results = []
     for bdl_m in live_matches:
         mid = str(bdl_m.get("id", ""))
@@ -171,14 +192,18 @@ def run_live_snapshot() -> dict:
 
         # Look up pregame lambdas
         lh, la = pregame_lambdas.get(mid, pregame_lambdas.get(f"{home}|{away}", (1.35, 1.00)))
+        bdl_stats = live_team_stats.get(mid) or None
+        bdl_shots = live_shots.get(mid) or None
 
-        log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s lambda_src=%s",
+        log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s lambda_src=%s stats=%s",
                  home, away, bdl_m.get("status"), bdl_m.get("clock_display"),
                  bdl_m.get("home_score"), bdl_m.get("away_score"),
-                 "published" if mid in pregame_lambdas else "fallback")
+                 "published" if mid in pregame_lambdas else "fallback",
+                 "yes" if bdl_stats else "none")
 
         try:
-            result = predictor.predict_from_bdl(bdl_m, pregame_lh=lh, pregame_la=la)
+            result = predictor.predict_from_bdl(bdl_m, pregame_lh=lh, pregame_la=la,
+                                                bdl_stats=bdl_stats, bdl_shots=bdl_shots)
             if result:
                 d = result.to_dict()
                 d["pregame_lh"] = lh

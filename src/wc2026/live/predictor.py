@@ -336,9 +336,10 @@ class LivePMFPredictor:
     def predict_from_bdl(
         self,
         bdl_match: dict,
-        bdl_stats: Optional[dict] = None,
+        bdl_stats: Optional[list] = None,
         pregame_lh: float = 1.35,
         pregame_la: float = 1.00,
+        bdl_shots: Optional[list] = None,
     ) -> Optional[LivePMFResult]:
         """
         Build a MatchState from a BDL match dict and call predict().
@@ -426,11 +427,21 @@ class LivePMFPredictor:
                 h_raw = next((r for r in bdl_stats if r.get("is_home") is True), {})
                 a_raw = next((r for r in bdl_stats if r.get("is_home") is False), {})
 
+                # xgot from match_shots: sum xgot per is_home flag
+                h_xgot = a_xgot = None
+                if bdl_shots:
+                    h_xgot_vals = [s.get("xgot") for s in bdl_shots
+                                   if s.get("is_home") is True and s.get("xgot") is not None]
+                    a_xgot_vals = [s.get("xgot") for s in bdl_shots
+                                   if s.get("is_home") is False and s.get("xgot") is not None]
+                    h_xgot = float(sum(h_xgot_vals)) if h_xgot_vals else None
+                    a_xgot = float(sum(a_xgot_vals)) if a_xgot_vals else None
+
                 h_stats = TeamLiveStats(
                     shots_total=h_raw.get("shots_total"),
                     shots_on_target=h_raw.get("shots_on_target"),
                     xg=_safe_float(h_raw, "expected_goals"),
-                    xgot=None,  # not in team_match_stats; only in match_shots
+                    xgot=h_xgot,
                     big_chances=h_raw.get("big_chances"),
                     corners=h_raw.get("corners"),
                     possession_pct=_safe_float(h_raw, "possession_pct"),
@@ -442,7 +453,7 @@ class LivePMFPredictor:
                     shots_total=a_raw.get("shots_total"),
                     shots_on_target=a_raw.get("shots_on_target"),
                     xg=_safe_float(a_raw, "expected_goals"),
-                    xgot=None,
+                    xgot=a_xgot,
                     big_chances=a_raw.get("big_chances"),
                     corners=a_raw.get("corners"),
                     possession_pct=_safe_float(a_raw, "possession_pct"),
