@@ -34,7 +34,10 @@ Blending weights when market odds exist (n=3 group matches per team):
   Use CompositeTeamPrior(market_weight=0.6) to restore the original blending.
 
 Blending weights when NO market odds exist:
-  penaltyblog_elo: 0.45, penaltyblog_pi: 0.30, massey: 0.15, confederation: 0.10
+  penaltyblog_pi: 0.40, penaltyblog_elo: 0.35, massey: 0.15, confederation: 0.10
+  Rationale: Pi is goal-margin sensitive (updates on scoreline) making it more
+  appropriate for score PMF estimation than Elo (win/loss only). Elo provides
+  stable floor. Reassessed 2026-06-13 per user review.
 
 Adjustment layers applied after blending:
   - host/near-host advantage (+0.10 att, -0.10 def for USA/CAN/MEX)
@@ -896,14 +899,18 @@ class CompositeTeamPrior:
         remaining_w = max(0.0, 1.0 - sum(w for _, _, w in att_inputs))
 
         if tp.pi_attack_lambda is not None:
-            pi_w = remaining_w * (0.40 if not using_market_in_blend else 0.50)
+            # Pi is goal-margin sensitive → higher weight than Elo for score PMF estimation.
+            # No-market: 0.40 of remaining; with-market: 0.50 of remaining (unchanged).
+            pi_w = remaining_w * (0.50 if not using_market_in_blend else 0.50)
             att_inputs.append(("penaltyblog_pi", tp.pi_attack_lambda, pi_w))
             def_inputs.append(("penaltyblog_pi", tp.pi_defense_lambda, pi_w))
             sources.append("penaltyblog_pi")
             remaining_w -= pi_w
 
         if tp.elo_attack_lambda is not None:
-            elo_w = remaining_w * (0.70 if tp.pi_attack_lambda is None else 0.60)
+            # Elo is win/loss only — stable floor; lower weight than Pi in no-market path.
+            # No-market: 0.70 of remaining (same as before when Pi absent, else 0.60→0.55).
+            elo_w = remaining_w * (0.70 if tp.pi_attack_lambda is None else 0.55)
             att_inputs.append(("penaltyblog_elo", tp.elo_attack_lambda, elo_w))
             def_inputs.append(("penaltyblog_elo", tp.elo_defense_lambda, elo_w))
             sources.append("penaltyblog_elo")

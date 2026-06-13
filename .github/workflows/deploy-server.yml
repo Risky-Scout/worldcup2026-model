@@ -79,13 +79,13 @@ jobs:
         if: env.AUTH_MODE == 'password'
         run: |
           PUB_KEY=$(ssh-keygen -y -f ~/.ssh/deploy_key)
-          $SSH_CMD root@45.79.0.107 "
-            mkdir -p /root/.ssh
-            chmod 700 /root/.ssh
-            grep -qF '${PUB_KEY}' /root/.ssh/authorized_keys 2>/dev/null || \
-              echo '${PUB_KEY}' >> /root/.ssh/authorized_keys
-            chmod 600 /root/.ssh/authorized_keys
-            echo '✓ Deploy key injected into authorized_keys'
+          $SSH_CMD woo@45.79.0.107 "
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            grep -qF '${PUB_KEY}' ~/.ssh/authorized_keys 2>/dev/null || \
+              echo '${PUB_KEY}' >> ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+            echo '✓ Deploy key injected into woo authorized_keys'
             echo 'Future runs will use key-based auth. You can delete SSH_ROOT_PASSWORD secret.'
           "
 
