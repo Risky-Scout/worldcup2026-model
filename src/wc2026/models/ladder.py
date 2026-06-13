@@ -275,7 +275,18 @@ def _compute_weights(df: pd.DataFrame) -> np.ndarray:
 
     Requires a 'match_datetime' column (datetime with timezone).
     Falls back to uniform weights if the column is missing.
+
+    If the DataFrame contains a '_preset_weight' column with all finite positive
+    values, those weights are used directly (bypasses xi recomputation).
+    This allows callers to blend custom xi values (e.g. xi=0.010 for live 2026
+    matches) before passing the combined DataFrame to ModelLadder.
     """
+    # Honour pre-computed weights when explicitly set by the caller
+    if "_preset_weight" in df.columns:
+        arr = df["_preset_weight"].values.astype(float)
+        if np.all(np.isfinite(arr)) and np.all(arr > 0):
+            return arr
+
     if "match_datetime" not in df.columns:
         return np.ones(len(df), dtype=float)
 

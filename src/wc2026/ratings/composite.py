@@ -230,10 +230,12 @@ _QUALIFYING_STATS: dict[str, tuple] = {
     "Scotland":    (1.45, 0.95, 10, 0.55),
     "Bosnia & Herzegovina": (1.40, 1.00, 10, 0.50),
     "Albania":     (1.30, 1.05, 10, 0.45),
-    # CONCACAF (Octagonal → World Cup qualifying)
-    "Mexico":      (None, None, 0, None),   # host, no qualifying
-    "USA":         (None, None, 0, None),   # host
-    "Canada":      (None, None, 0, None),   # host
+    # CONCACAF hosts — used CONCACAF Nations League A 2022-24, Gold Cup 2023,
+    # and Copa America 2024 competitive match samples as qualifying proxies.
+    # n_games reflects approximate competitive international caps in the window.
+    "Mexico":  (2.00, 1.05, 16, 0.62),   # CNL+GoldCup+CopaAmerica 2022-24
+    "USA":     (1.70, 1.00, 14, 0.57),   # CNL A, Copa America 2024, Gold Cup 2023
+    "Canada":  (1.65, 1.10, 12, 0.58),   # CNL A 2022-24, Gold Cup 2023
     "Jamaica":     (1.30, 1.45, 14, 0.36),
     "Costa Rica":  (1.40, 1.20, 14, 0.43),
     "Panama":      (1.35, 1.25, 14, 0.43),
@@ -336,6 +338,14 @@ class TeamPrior:
     source_weights: dict = field(default_factory=dict)
     fallback_reason: Optional[str] = None
     source_timestamp: Optional[str] = None
+
+    # ── WC2026 live tournament adjustment ─────────────────────────────────
+    # Multiplicative adjustment applied after all blending, based on actual
+    # goals scored/conceded in completed WC2026 group-stage matches.
+    # Shrunk toward 1.0 via Bayesian factor n/(n+k) where k=3.
+    tournament_n_matches: int = 0        # completed WC2026 matches for this team
+    tournament_attack_adj: float = 1.0   # multiplier applied to final_attack_lambda
+    tournament_defense_adj: float = 1.0  # multiplier applied to final_defense_lambda
 
     def to_row(self) -> dict:
         return {
@@ -467,13 +477,21 @@ class CompositeTeamPrior:
             )
             self._priors[team] = tp
 
+        # ── 6. Apply WC2026 tournament performance adjustment ─────────────────
+        # Use actual goals scored/conceded in completed 2026 matches to update
+        # each team's final lambdas.  team_form BDL data has no 2026 rows, so we
+        # derive the signal directly from matches_df (already available as `hist`
+        # which includes all completed matches including 2026).
+        self._apply_tournament_adjustment(matches_df)
+
         self._fitted = True
         n_market = sum(1 for tp in self._priors.values() if "market_implied" in tp.sources_used)
         n_elo = sum(1 for tp in self._priors.values() if "penaltyblog_elo" in tp.sources_used)
         n_fallback = sum(1 for tp in self._priors.values() if tp.fallback_reason)
+        n_adj = sum(1 for tp in self._priors.values() if tp.tournament_n_matches > 0)
         log.info(
-            "CompositeTeamPrior fitted: %d teams  market_implied=%d  elo=%d  fallback=%d",
-            len(self._priors), n_market, n_elo, n_fallback,
+            "CompositeTeamPrior fitted: %d teams  market_implied=%d  elo=%d  fallback=%d  tournament_adj=%d",
+            len(self._priors), n_market, n_elo, n_fallback, n_adj,
         )
         return self
 
@@ -501,6 +519,82 @@ class CompositeTeamPrior:
         return list(self._priors.values())
 
     # ── Private methods ───────────────────────────────────────────────────
+
+    def _apply_tournament_adjustment(self, matches_df: pd.DataFrame) -> None:
+        """
+        Adjust each team's final_attack_lambda and final_defense_lambda based on
+        actual goals scored/conceded in completed WC2026 group-stage matches.
+
+        Shrinkage: ratio = (actual / prior_lambda).  Shrunk ratio = 1 + (ratio-1)*n/(n+k)
+        where k=3 (prior equivalent matches) prevents overreaction from 1–2 games.
+        Cap: adjustment is clamped to [0.70, 1.30] — max ±30%.
+        """
+        _K = 3  # prior strength (number of pseudo-matches anchoring toward 1.0)
+        _CAP_LOW, _CAP_HIGH = 0.70, 1.30
+
+        completed_2026 = matches_df[
+            (matches_df["season"] == 2026) &
+            (matches_df["status"].isin(["completed", "final"])) &
+            matches_df["home_goals"].notna() &
+            matches_df["away_goals"].notna()
+        ]
+
+        if completed_2026.empty:
+            return
+
+        # Accumulate per-team: total goals scored, total goals conceded, match count
+        team_stats: dict[str, dict] = {}
+        for _, row in completed_2026.iterrows():
+            home, away = str(row["home_team"]), str(row["away_team"])
+            hg, ag = float(row["home_goals"]), float(row["away_goals"])
+            for team, scored, conceded in [(home, hg, ag), (away, ag, hg)]:
+                if team not in team_stats:
+                    team_stats[team] = {"scored": 0.0, "conceded": 0.0, "n": 0}
+                team_stats[team]["scored"] += scored
+                team_stats[team]["conceded"] += conceded
+                team_stats[team]["n"] += 1
+
+        n_adjusted = 0
+        for team, tp in self._priors.items():
+            stats = team_stats.get(team)
+            if stats is None or stats["n"] == 0:
+                continue
+
+            n = stats["n"]
+            shrink = n / (n + _K)  # Bayesian shrinkage toward 1.0
+
+            prior_att = max(tp.final_attack_lambda, _EPS)
+            prior_def = max(tp.final_defense_lambda, _EPS)
+
+            att_ratio = (stats["scored"] / n) / prior_att
+            def_ratio = (stats["conceded"] / n) / prior_def
+
+            # Shrink each ratio toward 1.0
+            att_adj = 1.0 + (att_ratio - 1.0) * shrink
+            def_adj = 1.0 + (def_ratio - 1.0) * shrink
+
+            # Cap at ±30%
+            att_adj = float(np.clip(att_adj, _CAP_LOW, _CAP_HIGH))
+            def_adj = float(np.clip(def_adj, _CAP_LOW, _CAP_HIGH))
+
+            tp.tournament_n_matches = n
+            tp.tournament_attack_adj = round(att_adj, 4)
+            tp.tournament_defense_adj = round(def_adj, 4)
+            tp.final_attack_lambda = round(float(tp.final_attack_lambda * att_adj), 4)
+            tp.final_defense_lambda = round(float(max(tp.final_defense_lambda * def_adj, 0.3)), 4)
+
+            if "tournament_wc2026" not in tp.sources_used:
+                tp.sources_used.append("tournament_wc2026")
+
+            log.debug(
+                "tournament_adjustment applied: %s  n=%d  att_adj=%.3f  def_adj=%.3f"
+                "  → att=%.3f  def=%.3f",
+                team, n, att_adj, def_adj, tp.final_attack_lambda, tp.final_defense_lambda,
+            )
+            n_adjusted += 1
+
+        log.info("tournament_adjustment applied: %d teams updated from %d completed WC2026 matches",
+                 n_adjusted, len(completed_2026))
 
     def _fit_elo(self, hist: pd.DataFrame) -> dict[str, float]:
         try:

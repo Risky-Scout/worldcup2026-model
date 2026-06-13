@@ -1,6 +1,6 @@
 config,market_weight,description,n_matches,mean_log_loss,mean_exact_ll,rps_1x2,model_mkt_diverge,run_date,n_completed_matches,winner,recommended_weight
-pure_penaltyblog,0.0,0% market — fully independent prior (CLV-optimal by theory),2,0.8686,2.5286,0.2202,0.3506,2026-06-12,2,pure_penaltyblog,0.0
-market_20,0.2,20% market — light signal,2,0.6259,2.3247,0.1346,0.2724,2026-06-12,2,pure_penaltyblog,0.0
-market_30,0.3,30% market — moderate signal,2,0.5299,2.2614,0.1035,0.2356,2026-06-12,2,pure_penaltyblog,0.0
-market_50,0.5,50% market — balanced,2,0.3772,2.196,0.0603,0.1693,2026-06-12,2,pure_penaltyblog,0.0
-market_60_default,0.6,60% market — previous code default,2,0.3176,2.192,0.046,0.1408,2026-06-12,2,pure_penaltyblog,0.0
+pure_penaltyblog,0.0,0% market — fully independent prior (CLV-optimal by theory),2,0.5098,2.1414,0.0975,0.2273,2026-06-12,2,pure_penaltyblog,0.0
+market_20,0.2,20% market — light signal,2,0.4053,2.0817,0.0682,0.1822,2026-06-12,2,pure_penaltyblog,0.0
+market_30,0.3,30% market — moderate signal,2,0.3556,2.064,0.0555,0.1591,2026-06-12,2,pure_penaltyblog,0.0
+market_50,0.5,50% market — balanced,2,0.2736,2.0612,0.037,0.1189,2026-06-12,2,pure_penaltyblog,0.0
+market_60_default,0.6,60% market — previous code default,2,0.2402,2.0753,0.0302,0.1017,2026-06-12,2,pure_penaltyblog,0.0

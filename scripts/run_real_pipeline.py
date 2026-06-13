@@ -365,8 +365,64 @@ def predict_all_2026(
              parametric_champ,
              champions["publish_champion"])
 
-    # Fit on all historical data
-    ladder = ModelLadder(hist_df, max_goals=15, include_bayesian=False)
+    # ── Augment training set with completed 2026 WC matches ──────────────────
+    # 2026 matches are excluded from the historical backtest (hist_df = 2018+2022)
+    # to avoid leakage, but they carry real tournament signal that improves
+    # parametric model calibration.  We assign xi=0.010 to 2026 rows so they
+    # dominate appropriately, then renormalize all weights together.
+    completed_2026 = matches_df[
+        (matches_df["season"] == 2026) &
+        (matches_df["status"].isin(["completed", "final"])) &
+        matches_df["home_goals"].notna() &
+        matches_df["away_goals"].notna()
+    ].copy()
+
+    if not completed_2026.empty:
+        from penaltyblog.models import dixon_coles_weights as _pbw
+
+        # Weights for the historical base (2018+2022)
+        try:
+            hist_dates = pd.to_datetime(hist_df["match_datetime"], utc=True).dt.tz_localize(None)
+            hist_w = np.asarray(_pbw(hist_dates, xi=DC_WEIGHT_XI), dtype=float)
+            hist_w = np.where(np.isfinite(hist_w) & (hist_w > 0), hist_w, 1.0)
+        except Exception:
+            hist_w = np.ones(len(hist_df), dtype=float)
+
+        # Weights for 2026 completed matches (higher xi = more recency-sensitive)
+        _XI_2026 = 0.010
+        try:
+            wc26_dates = pd.to_datetime(completed_2026["match_datetime"], utc=True).dt.tz_localize(None)
+            wc26_w = np.asarray(_pbw(wc26_dates, xi=_XI_2026), dtype=float)
+            wc26_w = np.where(np.isfinite(wc26_w) & (wc26_w > 0), wc26_w, 1.0)
+        except Exception:
+            wc26_w = np.ones(len(completed_2026), dtype=float)
+
+        # Renormalize together so the total weight sum equals n_hist + n_2026
+        n_total = len(hist_df) + len(completed_2026)
+        all_raw = np.concatenate([hist_w, wc26_w])
+        all_w = all_raw / all_raw.sum() * n_total
+
+        # Force all 2026 matches to is_neutral=True (WC neutral venue)
+        completed_2026 = completed_2026.copy()
+        completed_2026["is_neutral"] = True
+
+        hist_augmented = hist_df.copy()
+        hist_augmented["_preset_weight"] = all_w[: len(hist_df)]
+        completed_2026["_preset_weight"] = all_w[len(hist_df):]
+
+        hist_plus_2026 = pd.concat([hist_augmented, completed_2026], ignore_index=True)
+        hist_plus_2026 = hist_plus_2026.sort_values("match_datetime").reset_index(drop=True)
+        log.info(
+            "2026 completed matches included in parametric training: %d WC2026 + %d hist = %d total"
+            " (xi_2026=%.4f)",
+            len(completed_2026), len(hist_df), len(hist_plus_2026), _XI_2026,
+        )
+    else:
+        hist_plus_2026 = hist_df
+        log.info("No completed 2026 matches yet — parametric training uses 2018+2022 only")
+
+    # Fit on combined training set
+    ladder = ModelLadder(hist_plus_2026, max_goals=15, include_bayesian=False)
     ladder.fit(TIER1_MODELS)
     log.info("Fitted parametric models: %s", ladder.fitted_models())
 
@@ -449,6 +505,18 @@ def predict_all_2026(
     return all_predictions, champions, composite_prior
 
 
+# ── Altitude venue multipliers ────────────────────────────────────────────────
+# Source: research showing ~5-8% scoring-rate reduction at high altitude.
+# Both teams' lambdas are scaled equally (WC = neutral venue, neither team
+# is altitude-acclimatized by default).
+# Keys must match BDL stadium strings exactly (verified 2026-06-13).
+_ALTITUDE_VENUES: dict[str, float] = {
+    "Estadio Azteca":         0.93,   # Mexico City  2,230m  ~7% reduction
+    "Estadio Akron":          0.97,   # Guadalajara  1,560m  ~3% reduction
+    "Estadio BBVA":           1.00,   # Monterrey      530m  negligible
+}
+
+
 def _is_tbd(team: str) -> bool:
     """True if this is a knockout placeholder like W73, L101, 1A, 2B, etc."""
     if not team:
@@ -512,6 +580,28 @@ def _predict_one_match(
         model_warnings.append(f"composite_prior_failed: {exc}")
         home_prior = composite_prior.get_prior(home)
         away_prior = composite_prior.get_prior(away)
+
+    # ── 1b. Altitude venue adjustment ─────────────────────────────────────
+    # Scale both teams' expected goals down for high-elevation venues.
+    # Applied to the parametric prior only; market reconciliation will
+    # absorb the corrected lambda via the SLSQP/blend step.
+    _alt_scale = _ALTITUDE_VENUES.get(stadium, 1.0)
+    if _alt_scale != 1.0:
+        comp_lh = round(comp_lh * _alt_scale, 4)
+        comp_la = round(comp_la * _alt_scale, 4)
+        try:
+            from penaltyblog.models import create_dixon_coles_grid as _dcg
+            _alt_grid = _dcg(comp_lh, comp_la, rho=-0.05, max_goals=14)
+            comp_pmf = np.clip(np.array(_alt_grid.grid, dtype=np.float64), 0, None)
+        except Exception:
+            from scipy.stats import poisson as _pois
+            comp_pmf = np.outer(
+                _pois.pmf(range(15), comp_lh),
+                _pois.pmf(range(15), comp_la),
+            )
+        comp_pmf /= comp_pmf.sum()
+        log.debug("altitude_adjustment: %s → scale=%.3f  lh=%.3f  la=%.3f",
+                  stadium, _alt_scale, comp_lh, comp_la)
 
     # ── 2. Pure parametric PMF (if both teams have WC training history) ───
     pure_pmf = None
