@@ -417,13 +417,19 @@ class LivePMFPredictor:
                     mins_elapsed = 999.0
 
                 if clock_min == 0 and fh_home is not None and fh_away is not None:
-                    if mins_elapsed >= 43.0:
-                        # Clock is None and we're well past the 45-min mark → halftime
-                        clock_min = 45
-                    elif mins_elapsed >= 1.0:
-                        # Match started but BDL clock hasn't arrived yet — use elapsed
-                        # time as proxy (cap at 44 so we don't accidentally skip to HT)
+                    # Estimate match minute from wall-clock elapsed time.
+                    # Rough timeline: kickoff + 45min 1H + ~2min stoppage + 15min HT
+                    #   ≈ 62 minutes elapsed before 2nd half kickoff.
+                    if mins_elapsed < 43.0:
+                        # Match started — BDL clock not yet available; use elapsed as proxy
                         clock_min = min(int(mins_elapsed), 44)
+                    elif mins_elapsed < 62.0:
+                        # Past 45-min mark but before 2nd-half start → halftime break
+                        clock_min = 45
+                    else:
+                        # 2nd half is underway; estimate minute = 45 + (elapsed - 62)
+                        # (assumes ~62 min elapsed when 2nd half kicks off)
+                        clock_min = min(45 + max(0, int(mins_elapsed - 62)), 90)
                 elif clock_min == 0 and mins_elapsed >= 1.0:
                     # No first-half scores yet but match started — use elapsed as proxy
                     clock_min = min(int(mins_elapsed), 44)
