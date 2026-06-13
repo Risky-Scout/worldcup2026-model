@@ -411,39 +411,44 @@ class LivePMFPredictor:
             h_goals = int(bdl_match.get("home_score", 0) or 0)
             a_goals = int(bdl_match.get("away_score", 0) or 0)
 
-            # Live stats (if available)
+            # Live stats (if available).
+            # bdl_stats is a list of team_match_stats rows [{match_id, team_id, is_home, ...}, ...]
+            # Spec fields: shots_total, shots_on_target, expected_goals, big_chances,
+            #   corners, possession_pct, fouls, yellow_cards.
+            # NOTE: xgot does NOT exist in team_match_stats — it lives in match_shots only.
+            # NOTE: red_cards does NOT exist in team_match_stats.
             h_stats = a_stats = None
             if bdl_stats:
-                h_raw = bdl_stats.get("home_team_stats", {})
-                a_raw = bdl_stats.get("away_team_stats", {})
-
                 def _safe_float(d, k):
                     v = d.get(k)
                     return float(v) if v is not None else None
 
+                h_raw = next((r for r in bdl_stats if r.get("is_home") is True), {})
+                a_raw = next((r for r in bdl_stats if r.get("is_home") is False), {})
+
                 h_stats = TeamLiveStats(
-                    shots_total=h_raw.get("shots"),
+                    shots_total=h_raw.get("shots_total"),
                     shots_on_target=h_raw.get("shots_on_target"),
-                    xg=_safe_float(h_raw, "xg"),
-                    xgot=_safe_float(h_raw, "xgot"),
+                    xg=_safe_float(h_raw, "expected_goals"),
+                    xgot=None,  # not in team_match_stats; only in match_shots
                     big_chances=h_raw.get("big_chances"),
                     corners=h_raw.get("corners"),
-                    possession_pct=_safe_float(h_raw, "possession"),
+                    possession_pct=_safe_float(h_raw, "possession_pct"),
                     fouls=h_raw.get("fouls"),
                     yellow_cards=int(h_raw.get("yellow_cards", 0) or 0),
-                    red_cards=int(h_raw.get("red_cards", 0) or 0),
+                    red_cards=0,  # not in team_match_stats
                 )
                 a_stats = TeamLiveStats(
-                    shots_total=a_raw.get("shots"),
+                    shots_total=a_raw.get("shots_total"),
                     shots_on_target=a_raw.get("shots_on_target"),
-                    xg=_safe_float(a_raw, "xg"),
-                    xgot=_safe_float(a_raw, "xgot"),
+                    xg=_safe_float(a_raw, "expected_goals"),
+                    xgot=None,
                     big_chances=a_raw.get("big_chances"),
                     corners=a_raw.get("corners"),
-                    possession_pct=_safe_float(a_raw, "possession"),
+                    possession_pct=_safe_float(a_raw, "possession_pct"),
                     fouls=a_raw.get("fouls"),
                     yellow_cards=int(a_raw.get("yellow_cards", 0) or 0),
-                    red_cards=int(a_raw.get("red_cards", 0) or 0),
+                    red_cards=0,
                 )
 
             state = MatchState(
@@ -451,7 +456,7 @@ class LivePMFPredictor:
                 home_team=home,
                 away_team=away,
                 season=int((bdl_match.get("season") or {}).get("year", 2026) if isinstance(bdl_match.get("season"), dict) else bdl_match.get("season", 2026)),
-                stage=str(bdl_match.get("stage", "group")),
+                stage=(bdl_match.get("stage") or {}).get("name", "Group Stage"),
                 status=status,
                 clock_display=clock_str,
                 match_seconds=match_seconds,

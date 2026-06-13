@@ -241,8 +241,8 @@ def _compute_live_snapshot(bdl_matches: list[dict]) -> dict:
     results = []
     for bdl_m in bdl_matches:
         mid = str(bdl_m.get("id", ""))
-        home = (bdl_m.get("home_team") or {}).get("full_name", "Home")
-        away = (bdl_m.get("away_team") or {}).get("full_name", "Away")
+        home = (bdl_m.get("home_team") or {}).get("name") or (bdl_m.get("home_team") or {}).get("full_name", "Home")
+        away = (bdl_m.get("away_team") or {}).get("name") or (bdl_m.get("away_team") or {}).get("full_name", "Away")
         lh, la = _pregame_lambdas.get(mid, _pregame_lambdas.get(f"{home}|{away}", (1.35, 1.00)))
 
         try:
