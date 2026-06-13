@@ -387,13 +387,25 @@ class LivePMFPredictor:
             }
             status = status_map.get(status_raw, MatchStatus.PREMATCH)
 
-            # Clock
-            clock_str = str(bdl_match.get("clock_display", "0"))
-            try:
-                clock_min = int(clock_str.split("+")[0])
-            except (ValueError, IndexError):
-                clock_min = 0
-            match_seconds = clock_min * 60
+            # Clock — BDL sometimes returns clock_display/clock_seconds as None
+            # (especially at halftime). Infer minute from available fields.
+            clock_str = str(bdl_match.get("clock_display") or "")
+            clock_secs_raw = bdl_match.get("clock_seconds")
+            if clock_secs_raw is not None:
+                match_seconds = int(clock_secs_raw)
+                clock_min = match_seconds // 60
+            else:
+                try:
+                    clock_min = int(clock_str.split("+")[0]) if clock_str else 0
+                except (ValueError, IndexError):
+                    clock_min = 0
+                # Halftime inference: if first-half scores are set but clock is None
+                # and match is in_progress, assume we're at least at minute 45.
+                fh_home = bdl_match.get("first_half_home_score")
+                fh_away = bdl_match.get("first_half_away_score")
+                if clock_min == 0 and fh_home is not None and fh_away is not None:
+                    clock_min = 45
+                match_seconds = clock_min * 60
 
             # Score
             h_goals = int(bdl_match.get("home_score", 0) or 0)

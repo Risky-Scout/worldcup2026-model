@@ -63,31 +63,37 @@ LIVE_FILE = "wc-live.json"
 
 def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
     """
-    Load pregame expected goals (lh, la) from today's published JSON.
-    Returns dict keyed by match_id → (lh, la).
-    Also returns keyed by (home_team, away_team) as fallback.
+    Load pregame expected goals (lh, la) from published JSON files.
+    Scans today + the 3 previous days so lambdas are available even when a
+    match starts AFTER the daily pipeline already excluded it from today's file.
+    Returns dict keyed by match_id → (lh, la) and (home|away) → (lh, la).
     """
-    pub_path = REPO_ROOT / "data" / "published" / f"{date}.json"
-    if not pub_path.exists():
-        log.warning("Pregame JSON not found: %s", pub_path)
-        return {}
-    doc = json.loads(pub_path.read_text())
+    from datetime import date as _date, timedelta
     result = {}
-    for m in doc.get("matches", []):
-        pred = m.get("prediction", {})
-        lh = pred.get("expected_home_goals", 1.35)
-        la = pred.get("expected_away_goals", 1.00)
-        # Index by match_id, home_team, and (home, away) pair
-        mid = str(m.get("match_id", ""))
-        home = m.get("home_team", "")
-        away = m.get("away_team", "")
-        er = pred.get("edge_report", {})
-        pregame_lh = er.get("pregame_lh", lh)
-        pregame_la = er.get("pregame_la", la)
-        if mid:
-            result[mid] = (pregame_lh, pregame_la)
-        result[f"{home}|{away}"] = (pregame_lh, pregame_la)
-    log.debug("Pregame lambdas loaded: date=%s n=%d", date, len(doc.get("matches",[])))
+    # Scan today and 3 prior days — older entries are overwritten by newer ones
+    base = _date.fromisoformat(date)
+    for delta in range(3, -1, -1):  # oldest first so today wins
+        d = (base - timedelta(days=delta)).isoformat()
+        pub_path = REPO_ROOT / "data" / "published" / f"{d}.json"
+        if not pub_path.exists():
+            continue
+        doc = json.loads(pub_path.read_text())
+        for m in doc.get("matches", []):
+            pred = m.get("prediction", {})
+            lh = pred.get("expected_home_goals", 1.35)
+            la = pred.get("expected_away_goals", 1.00)
+            mid = str(m.get("match_id", ""))
+            home = m.get("home_team", "")
+            away = m.get("away_team", "")
+            er = pred.get("edge_report", {})
+            pregame_lh = er.get("pregame_lh", lh)
+            pregame_la = er.get("pregame_la", la)
+            if mid:
+                result[mid] = (pregame_lh, pregame_la)
+            if home and away:
+                result[f"{home}|{away}"] = (pregame_lh, pregame_la)
+        log.debug("Pregame lambdas loaded: date=%s n=%d", d, len(doc.get("matches", [])))
+    log.info("Pregame lambda cache: %d entries across today±3d", len(result))
     return result
 
 
