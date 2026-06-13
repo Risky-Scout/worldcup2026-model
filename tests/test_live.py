@@ -265,14 +265,15 @@ class TestLivePMFPredictor:
         p = LivePMFPredictor()
         bdl_match = {
             "id": 12345,
-            "home_team": {"full_name": "Mexico"},
-            "away_team": {"full_name": "South Africa"},
-            "status": "2h",
-            "clock_display": "67",
+            "home_team": {"name": "Mexico", "abbreviation": "MEX"},
+            "away_team": {"name": "South Africa", "abbreviation": "RSA"},
+            "status": "in_progress",
+            "clock_display": "67:00",
+            "clock_seconds": 4020,
             "home_score": 1,
             "away_score": 0,
-            "season": 2026,
-            "stage": "group",
+            "season": {"id": 1, "year": 2026},
+            "stage": {"id": 1, "name": "Group Stage", "order": 1},
         }
         result = p.predict_from_bdl(bdl_match, pregame_lh=1.8, pregame_la=0.6)
         assert result is not None
