@@ -165,14 +165,33 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     matches_path = PROCESSED_DIR / DATA_VERSION / "matches.parquet"
 
     # Use committed/cached processed data when:
-    #   a) cache exists and refetch not forced, OR
+    #   a) cache exists and refetch not forced and no in_progress matches, OR
     #   b) BDL_API_KEY is not available (CI without secret configured)
+    # Auto-force refetch when cache has in_progress matches (they may have
+    # completed since the last fetch — critical for training accuracy).
     api_key = os.environ.get("BDL_API_KEY", "").strip()
     cache_exists = matches_path.exists()
 
     if cache_exists and not force_refetch:
-        log.info("Loading cached processed data (use --refetch to re-fetch)")
-        return _load_cached_tables()
+        # Check for stale in_progress matches that need a fresh fetch
+        try:
+            _cached = pd.read_parquet(matches_path, columns=["status", "season"])
+            _n_live = int(
+                ((_cached["season"] == 2026) & (_cached["status"] == "in_progress")).sum()
+            )
+            if _n_live > 0:
+                log.info(
+                    "Cache has %d in_progress 2026 match(es) — forcing BDL refetch "
+                    "so completed results are incorporated into training.",
+                    _n_live,
+                )
+                force_refetch = True
+            else:
+                log.info("Loading cached processed data (use --refetch to re-fetch)")
+                return _load_cached_tables()
+        except Exception as _cache_exc:
+            log.warning("Could not read cache to check status; will refetch: %s", _cache_exc)
+            force_refetch = True
 
     if not api_key:
         log.warning(
