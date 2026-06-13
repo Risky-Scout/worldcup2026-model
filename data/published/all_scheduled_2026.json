@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-13T05:45:59Z",
+  "generated_at": "2026-06-13T06:14:24Z",
   "data_source": "balldontlie_api_v1",
   "data_version": "v1",
   "model_version": "v1",
@@ -14306,7 +14306,7 @@
           "over_6.5": 0.16094,
           "under_6.5": 0.83906
         },
-        "pure_model_expected_home_goals": 3.3336,
+        "pure_model_expected_home_goals": 3.3334,
         "pure_model_expected_away_goals": 1.1012,
         "market_implied_markets": {
           "home_win": 0.64889,
@@ -20325,7 +20325,7 @@
           "over_6.5": 0.31679,
           "under_6.5": 0.68321
         },
-        "pure_model_expected_home_goals": 3.9467,
+        "pure_model_expected_home_goals": 3.946,
         "pure_model_expected_away_goals": 1.5707,
         "market_implied_markets": {
           "home_win": 0.45135,
@@ -34209,7 +34209,7 @@
           "over_6.5": 0.08579,
           "under_6.5": 0.91421
         },
-        "pure_model_expected_home_goals": 3.0271,
+        "pure_model_expected_home_goals": 3.027,
         "pure_model_expected_away_goals": 0.7147,
         "market_implied_markets": {
           "home_win": 0.85588,
@@ -43166,7 +43166,7 @@
           "over_6.5": 0.23452,
           "under_6.5": 0.76548
         },
-        "pure_model_expected_home_goals": 3.6608,
+        "pure_model_expected_home_goals": 3.6605,
         "pure_model_expected_away_goals": 1.3152,
         "market_implied_markets": {
           "home_win": 0.71577,
@@ -44184,7 +44184,7 @@
           "under_6.5": 0.78003
         },
         "pure_model_expected_home_goals": 0.7254,
-        "pure_model_expected_away_goals": 4.1496,
+        "pure_model_expected_away_goals": 4.1484,
         "market_implied_markets": {
           "home_win": 0.1492,
           "draw": 0.24126,
@@ -64198,7 +64198,7 @@
           "under_6.5": 0.68675
         },
         "pure_model_expected_home_goals": 0.6876,
-        "pure_model_expected_away_goals": 4.809,
+        "pure_model_expected_away_goals": 4.8042,
         "market_implied_markets": {
           "home_win": 0.09662,
           "draw": 0.15856,

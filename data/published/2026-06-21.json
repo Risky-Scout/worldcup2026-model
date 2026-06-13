@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-13T05:45:59Z",
+  "generated_at": "2026-06-13T06:14:24Z",
   "date": "2026-06-21",
   "date_timezone": "US/Eastern (UTC-4)",
   "data_source": "balldontlie_api_v1",
@@ -1502,7 +1502,7 @@
           "over_6.5": 0.08579,
           "under_6.5": 0.91421
         },
-        "pure_model_expected_home_goals": 3.0271,
+        "pure_model_expected_home_goals": 3.027,
         "pure_model_expected_away_goals": 0.7147,
         "market_implied_markets": {
           "home_win": 0.85588,
