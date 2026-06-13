@@ -117,6 +117,7 @@ jobs:
           git add data/published/ data/clv/ data/calibration/ data/processed/ reports/ || true
           git diff --cached --quiet || \
             git commit -m "Daily update $DATE: predictions + data [skip ci]"
+          git pull --rebase origin main || true
           git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
