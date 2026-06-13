@@ -1381,20 +1381,54 @@ def _build_team_priors(
 # ────────────────────────────────────────────────────────────────────────────
 
 def _safe_write_date_json(date_str: str, matches: list, generated_at: str) -> bool:
-    """Write PUBLISHED_DIR/{date_str}.json only if it doesn't already have predictions.
+    """Write PUBLISHED_DIR/{date_str}.json merging new predictions with any existing ones.
 
-    Returns True if written, False if skipped (file already has n_matches > 0).
-    This guards against overwriting pre-game predictions once matches have kicked off.
+    Pre-game predictions are NEVER lost once written. When a match moves to
+    in_progress/completed the pipeline stops predicting it (status != scheduled),
+    so later pipeline runs would silently drop it from the output. This function
+    preserves existing predictions for such matches and merges them with new ones.
+
+    Returns True if written, False if skipped (file already complete, nothing new).
     """
     out_path = PUBLISHED_DIR / f"{date_str}.json"
-    if out_path.exists() and not matches:
-        existing = json.loads(out_path.read_text())
-        if existing.get("n_matches", 0) > 0:
-            log.info(
-                "%s.json already has %d matches — skipping overwrite (matches in progress/completed)",
-                date_str, existing["n_matches"],
-            )
-            return False
+
+    # Build lookup of new predictions by match_id for fast merging
+    new_by_id: dict[str, dict] = {}
+    for m in matches:
+        mid = str(m.get("match_id", "") or m.get("id", ""))
+        if mid:
+            new_by_id[mid] = m
+
+    if out_path.exists():
+        existing_doc = json.loads(out_path.read_text())
+        existing_matches = existing_doc.get("matches", [])
+
+        # Merge: keep existing predictions for matches no longer in new list
+        merged: list = list(matches)  # start with all new predictions
+        preserved = 0
+        for old_m in existing_matches:
+            mid = str(old_m.get("match_id", "") or old_m.get("id", ""))
+            if mid and mid not in new_by_id:
+                # Match was predicted before but is now in_progress/completed — preserve it
+                merged.append(old_m)
+                preserved += 1
+                log.info(
+                    "_safe_write_date_json: preserving %s vs %s (id=%s) from existing %s.json",
+                    old_m.get("home_team"), old_m.get("away_team"), mid, date_str,
+                )
+
+        if not matches and not preserved:
+            # Nothing to write and nothing to preserve
+            if existing_doc.get("n_matches", 0) > 0:
+                log.info(
+                    "%s.json already has %d matches — skipping (nothing new)",
+                    date_str, existing_doc["n_matches"],
+                )
+                return False
+        if preserved == 0 and set(new_by_id) == {str(m.get("match_id","") or m.get("id","")) for m in existing_matches}:
+            # Exact same match set — still write to refresh generated_at and updated odds
+            pass
+        matches = merged
 
     doc = {
         "schema_version": "1.0",
