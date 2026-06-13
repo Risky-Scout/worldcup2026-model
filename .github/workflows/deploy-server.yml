@@ -2,7 +2,18 @@ name: Deploy Live Server
 
 # Deploys the FastAPI live predictions service to the WOO production server.
 # Run manually whenever the server needs to be set up or restarted.
-# Requires SSH_PRIVATE_KEY secret to be configured in GitHub repository secrets.
+#
+# First-time bootstrap (when only SSH_ROOT_PASSWORD is available):
+#   1. Add SSH_ROOT_PASSWORD to GitHub repo secrets (root password from Linode)
+#   2. Run this workflow with action=full-setup
+#   3. The workflow will SSH in via password, run full setup, AND inject
+#      SSH_PRIVATE_KEY into the server's authorized_keys automatically.
+#   4. After that first run, delete SSH_ROOT_PASSWORD secret (no longer needed).
+#      All future runs use key-based auth via SSH_PRIVATE_KEY.
+#
+# Subsequent runs (after setup, key-based auth):
+#   - Requires only SSH_PRIVATE_KEY secret (already set).
+#   - Use action=restart for quick redeploys, full-setup for major updates.
 
 on:
   workflow_dispatch:
@@ -13,9 +24,9 @@ on:
         default: "restart"
         type: choice
         options:
-          - restart        # Restart wc2026-live.service only (fastest)
-          - full-setup     # Full server_setup.sh (first-time or major update)
-          - status         # Just print service status and health
+          - restart        # git pull + restart wc2026-live.service (fast)
+          - full-setup     # Full server_setup.sh — first-time or major update
+          - status         # Print service status and health only
 
 jobs:
   deploy:
@@ -27,26 +38,60 @@ jobs:
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
           ssh-keyscan -H 45.79.0.107 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Write private key (used after first-time bootstrap)
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Prefer password auth for bootstrap, key-based otherwise
+          if [ -n "${{ secrets.SSH_ROOT_PASSWORD }}" ]; then
+            sudo apt-get install -y -qq sshpass
+            echo "SSHPASS=${{ secrets.SSH_ROOT_PASSWORD }}" >> $GITHUB_ENV
+            echo "SSH_CMD=sshpass -e ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes" >> $GITHUB_ENV
+            echo "SCP_CMD=sshpass -e scp -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+            echo "AUTH_MODE=password" >> $GITHUB_ENV
+          else
+            echo "SSH_CMD=ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+            echo "SCP_CMD=scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+            echo "AUTH_MODE=key" >> $GITHUB_ENV
+          fi
 
       - name: Server status check
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+          echo "Auth mode: $AUTH_MODE"
+          $SSH_CMD root@45.79.0.107 '
             echo "=== Service Status ==="
-            systemctl is-active wc2026-live.service 2>/dev/null && echo "wc2026-live: active" || echo "wc2026-live: NOT RUNNING"
-            systemctl is-active wc2026-daily.timer 2>/dev/null && echo "wc2026-daily.timer: active" || echo "wc2026-daily.timer: NOT RUNNING"
+            systemctl is-active wc2026-live.service 2>/dev/null && echo "wc2026-live: ACTIVE ✓" || echo "wc2026-live: NOT RUNNING ✗"
+            systemctl is-active wc2026-daily.timer 2>/dev/null && echo "wc2026-daily.timer: ACTIVE ✓" || echo "wc2026-daily.timer: NOT RUNNING"
             echo "=== Health Check ==="
-            curl -sf http://127.0.0.1:8000/health 2>/dev/null || echo "FastAPI: NOT RESPONDING (port 8000)"
+            curl -sf http://127.0.0.1:8000/health 2>/dev/null || echo "FastAPI: NOT RESPONDING on port 8000"
             echo "=== Nginx ==="
-            systemctl is-active nginx && echo "nginx: active" || echo "nginx: down"
+            systemctl is-active nginx && echo "nginx: ACTIVE ✓" || echo "nginx: DOWN ✗"
+            echo "=== Disk / Memory ==="
+            df -h / | tail -1
+            free -h | head -2
           '
+
+      - name: Inject deploy key into authorized_keys (bootstrap step)
+        if: env.AUTH_MODE == 'password'
+        run: |
+          PUB_KEY=$(ssh-keygen -y -f ~/.ssh/deploy_key)
+          $SSH_CMD root@45.79.0.107 "
+            mkdir -p /root/.ssh
+            chmod 700 /root/.ssh
+            grep -qF '${PUB_KEY}' /root/.ssh/authorized_keys 2>/dev/null || \
+              echo '${PUB_KEY}' >> /root/.ssh/authorized_keys
+            chmod 600 /root/.ssh/authorized_keys
+            echo '✓ Deploy key injected into authorized_keys'
+            echo 'Future runs will use key-based auth. You can delete SSH_ROOT_PASSWORD secret.'
+          "
 
       - name: Restart live service
         if: github.event.inputs.action == 'restart'
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
+          $SSH_CMD root@45.79.0.107 '
             set -e
             echo "=== Pulling latest code ==="
             cd /var/www/wc2026 && git pull origin main
@@ -54,48 +99,54 @@ jobs:
             echo "=== Restarting wc2026-live ==="
             systemctl daemon-reload
             systemctl restart wc2026-live.service
-            sleep 3
+            sleep 4
             systemctl is-active wc2026-live.service && echo "✓ Live service restarted" || {
-              echo "✗ Restart failed — last 20 log lines:"
-              journalctl -u wc2026-live -n 20 --no-pager
+              echo "✗ Restart failed — last 30 log lines:"
+              journalctl -u wc2026-live -n 30 --no-pager
               exit 1
             }
-
-            echo "=== Health ==="
-            sleep 2
-            curl -sf http://127.0.0.1:8000/health || echo "WARNING: health check failed"
           '
 
       - name: Full setup
         if: github.event.inputs.action == 'full-setup'
         run: |
-          # Write the .env to the server first
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 "
-            cat > /tmp/wc2026.env << 'ENVEOF'
+          # Write .env on the server
+          $SSH_CMD root@45.79.0.107 bash -s << 'REMOTE'
+            mkdir -p /var/www/wc2026
+          REMOTE
+
+          cat > /tmp/wc2026.env << ENVEOF
           BDL_API_KEY=${{ secrets.BDL_API_KEY }}
           FTP_HOST=${{ secrets.FTP_HOST }}
           FTP_USER=${{ secrets.FTP_USER }}
           FTP_PASS=${{ secrets.FTP_PASS }}
           WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
           ENVEOF
-            mkdir -p /var/www/wc2026
-            cp /tmp/wc2026.env /var/www/wc2026/.env
-          "
-          # Run the full setup script
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
-            cd /var/www/wc2026 2>/dev/null || git clone https://github.com/Risky-Scout/worldcup2026-model.git /var/www/wc2026
+          sed -i 's/^[[:space:]]*//' /tmp/wc2026.env
+
+          $SCP_CMD /tmp/wc2026.env root@45.79.0.107:/var/www/wc2026/.env
+          echo "✓ .env written to server"
+
+          # Clone or update repo and run full setup
+          $SSH_CMD root@45.79.0.107 '
+            set -e
+            if [ -d /var/www/wc2026/.git ]; then
+              cd /var/www/wc2026 && git pull origin main
+            else
+              git clone https://github.com/Risky-Scout/worldcup2026-model.git /var/www/wc2026
+            fi
             cd /var/www/wc2026
-            git pull origin main
             bash deploy/server_setup.sh
           '
 
       - name: Verify health after deploy
         if: github.event.inputs.action != 'status'
         run: |
-          sleep 5
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.79.0.107 '
-            echo "=== Final Health Check ==="
-            curl -sf http://127.0.0.1:8000/health && echo "✓ FastAPI healthy" || echo "✗ FastAPI still down"
-            systemctl is-active wc2026-live.service
-            systemctl is-active wc2026-daily.timer 2>/dev/null || true
+          sleep 6
+          $SSH_CMD root@45.79.0.107 '
+            echo "=== Final Health ==="
+            systemctl is-active wc2026-live.service && echo "✓ wc2026-live: active" || echo "✗ wc2026-live: FAILED"
+            curl -sf http://127.0.0.1:8000/health && echo " — FastAPI ✓" || echo "✗ FastAPI still not responding"
+            echo "=== Last 10 service logs ==="
+            journalctl -u wc2026-live -n 10 --no-pager
           '
