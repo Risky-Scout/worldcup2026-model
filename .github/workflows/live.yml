@@ -57,7 +57,8 @@ jobs:
         run: |
           STATUS=$(python3 -c "
           import json, pathlib
-          f = pathlib.Path('data/live/wc-live.json')
+          # live_snapshot.py writes to data/live/latest.json
+          f = pathlib.Path('data/live/latest.json')
           if not f.exists():
               print('quiet')
           else:
