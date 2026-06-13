@@ -189,6 +189,22 @@ class LivePMFPredictor:
                 time_frac = max(minute / 90.0, 0.01)
                 home_xg_rate = float(h_xg) / time_frac
                 away_xg_rate = float(a_xg) / time_frac
+
+                # xT-inspired shot quality adjustment via xGOT/xG ratio.
+                # When xGOT (xG on target) > xG, chances were higher quality
+                # (better positioned, on frame).  Scale the live xG rate by this
+                # quality factor, capped to avoid overreaction on small samples.
+                # Only applies when minute > 20 (enough shots for a stable ratio).
+                if minute >= 20:
+                    h_xgot = state.home_stats.xgot
+                    a_xgot = state.away_stats.xgot
+                    if h_xgot is not None and float(h_xg) > 0.05:
+                        h_quality = float(np.clip(float(h_xgot) / float(h_xg), 0.75, 1.35))
+                        home_xg_rate = home_xg_rate * h_quality
+                    if a_xgot is not None and float(a_xg) > 0.05:
+                        a_quality = float(np.clip(float(a_xgot) / float(a_xg), 0.75, 1.35))
+                        away_xg_rate = away_xg_rate * a_quality
+
         if home_xg_rate is None:
             warnings.append("xg_unavailable_using_pregame")
 

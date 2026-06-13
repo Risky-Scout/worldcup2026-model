@@ -783,6 +783,57 @@ def predict_all_2026(
         log.debug("CLV store init failed: %s", _clv_exc)
         clv_store = None
 
+    # ── predict_many() batch pre-computation (PenaltyBlog 1.11.0) ────────────
+    # predict_many() runs a single vectorised pass over all fixtures instead of
+    # calling predict() per match, skipping repeated team-index lookups and
+    # validation overhead.  We pre-compute the champion PMF for every non-TBD
+    # fixture and pass the result into _predict_one_match via a lookup dict.
+    # Falls back to the per-match predict() path if predict_many() is not
+    # available on the fitted model (older penaltyblog).
+    # ── predict_many() batch pre-computation (PenaltyBlog 1.11.0) ────────────
+    # Batch only fixtures where BOTH teams were in the parametric training set.
+    # Teams like Curaçao or Iraq (WC debuts) are absent from 2018+2022 history
+    # and would cause predict_many() to raise; those fixtures fall through to
+    # the per-match predict() path inside _predict_one_match which gracefully
+    # falls back to the composite prior.
+    _batch_pmfs: dict[tuple[str, str], np.ndarray] = {}
+    try:
+        _champ_model = ladder._models.get(parametric_champ)
+        if _champ_model is not None and hasattr(_champ_model, "predict_many"):
+            _known_teams: set = set(getattr(_champ_model, "teams", []))
+            _batch_rows = sched_2026[
+                ~sched_2026["home_team"].apply(_is_tbd) &
+                ~sched_2026["away_team"].apply(_is_tbd) &
+                sched_2026["home_team"].isin(_known_teams) &
+                sched_2026["away_team"].isin(_known_teams)
+            ]
+            if len(_batch_rows) > 0:
+                # predict_many() requires neutral_venue as an array (one bool per
+                # fixture), not a scalar True — PenaltyBlog 1.11.0 _coerce_neutral_venue.
+                _neutral_arr = np.ones(len(_batch_rows), dtype=bool)
+                _grids = _champ_model.predict_many(
+                    home_teams=_batch_rows["home_team"].tolist(),
+                    away_teams=_batch_rows["away_team"].tolist(),
+                    max_goals=14,
+                    neutral_venue=_neutral_arr,
+                )
+                for (_idx, _row), _grid in zip(_batch_rows.iterrows(), _grids):
+                    _arr = np.array(_grid.grid, dtype=np.float64)
+                    _arr = np.clip(_arr, 0, None)
+                    _s = _arr.sum()
+                    if _s > 1e-9:
+                        _arr /= _s
+                    _batch_pmfs[(_row["home_team"], _row["away_team"])] = _arr[:15, :15]
+                log.info(
+                    "predict_many() batch: %d/%d PMFs pre-computed for %s "
+                    "(%d unknown-team fixtures → per-match fallback)",
+                    len(_batch_pmfs), len(_batch_rows), parametric_champ,
+                    len(sched_2026) - len(_batch_rows),
+                )
+    except Exception as _pm_exc:
+        log.warning("predict_many() batch failed (%s) — using per-match predict()", _pm_exc)
+        _batch_pmfs = {}
+
     for _, row in sched_2026.iterrows():
         home = row["home_team"]
         away = row["away_team"]
@@ -802,6 +853,7 @@ def predict_all_2026(
             composite_prior, elo_baseline, team_priors,
             calib_temperature=calib_temperature,
             calib_rho=calib_rho,
+            batch_pmf=_batch_pmfs.get((home, away)),
         )
         if pred:
             all_predictions.append(pred)
@@ -891,6 +943,7 @@ def _predict_one_match(
     team_priors: dict,
     calib_temperature: float = 1.0,
     calib_rho: float = -0.05,
+    batch_pmf: "np.ndarray | None" = None,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
@@ -979,23 +1032,34 @@ def _predict_one_match(
 
 
     # ── 2. Pure parametric PMF (if both teams have WC training history) ───
+    # Use the batch-pre-computed PMF when available (predict_many, PenaltyBlog
+    # 1.11.0) to skip per-match overhead.  Falls back to per-match predict().
     pure_pmf = None
     pure_lh, pure_la = comp_lh, comp_la
     model_used = composite_model_used  # composite is the new fallback
 
-    for mname in ([parametric_champ] + [m for m in TIER1_MODELS if m != parametric_champ]):
-        try:
-            fpg = ladder._models[mname].predict(home, away, max_goals=14, neutral_venue=True)
-            pmf_obj = FiniteGridPMF(fpg, model_name=mname, published_max_goals=15)
-            pure_pmf = pmf_obj._grid_arr[:15, :15].copy()
-            pure_pmf = np.clip(pure_pmf, 0, None)
-            pure_pmf /= pure_pmf.sum()
-            pure_lh = pmf_obj.lambda_home
-            pure_la = pmf_obj.lambda_away
-            model_used = mname
-            break
-        except Exception:
-            continue
+    if batch_pmf is not None:
+        pure_pmf = batch_pmf.copy()
+        pure_pmf = np.clip(pure_pmf, 0, None)
+        s = pure_pmf.sum()
+        if s > 1e-9:
+            pure_pmf /= s
+        pure_lh, pure_la = _pmf_lambda(pure_pmf)
+        model_used = parametric_champ
+    else:
+        for mname in ([parametric_champ] + [m for m in TIER1_MODELS if m != parametric_champ]):
+            try:
+                fpg = ladder._models[mname].predict(home, away, max_goals=14, neutral_venue=True)
+                pmf_obj = FiniteGridPMF(fpg, model_name=mname, published_max_goals=15)
+                pure_pmf = pmf_obj._grid_arr[:15, :15].copy()
+                pure_pmf = np.clip(pure_pmf, 0, None)
+                pure_pmf /= pure_pmf.sum()
+                pure_lh = pmf_obj.lambda_home
+                pure_la = pmf_obj.lambda_away
+                model_used = mname
+                break
+            except Exception:
+                continue
 
     # If parametric failed, use composite as the pure_model PMF
     if pure_pmf is None:

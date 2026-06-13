@@ -74,6 +74,13 @@ async def lifespan(app: FastAPI):
         log.error("Failed to load LivePMFPredictor: %s", exc)
 
     _load_pregame_lambdas()
+    # After lambdas are loaded, _load_pregame_lambdas already wires the
+    # temperature.  Log the final startup state for diagnostics.
+    if _predictor is not None:
+        log.info(
+            "LivePMFPredictor ready: T=%.4f  xg_blend=%.2f  max_delta=%d",
+            _predictor.temperature, _predictor.xg_blend, _predictor.max_delta,
+        )
 
     # Background: reload lambdas daily at midnight and heartbeat ping
     asyncio.create_task(_daily_reload_task())
@@ -101,6 +108,32 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+# ── Calibration temperature loader ────────────────────────────────────────
+def _load_calib_temperature() -> float:
+    """
+    Read the latest calibration temperature from data/calibration/health.jsonl.
+
+    This is written by run_real_pipeline.py on every daily run and contains
+    the T derived from the Elo OOF walkforward (formula: (T_elo+1)/2, capped
+    [1.0, 1.4]).  Returns 1.0 if the file does not exist or cannot be parsed.
+    """
+    health_path = REPO_ROOT / "data" / "calibration" / "health.jsonl"
+    if not health_path.exists():
+        return 1.0
+    try:
+        lines = health_path.read_text().strip().splitlines()
+        if not lines:
+            return 1.0
+        rec = json.loads(lines[-1])
+        T = float(rec.get("calib_temperature", 1.0))
+        # Sanity clamp: reject implausible values
+        T = max(1.0, min(T, 1.5))
+        return T
+    except Exception as exc:
+        log.warning("Could not read calib temperature from health.jsonl: %s", exc)
+        return 1.0
 
 
 # ── Pregame lambda loader ──────────────────────────────────────────────────
@@ -135,6 +168,21 @@ def _load_pregame_lambdas() -> None:
         _lambda_date = today
         log.info("Pregame lambdas loaded from %s: %d matches", pub_path.name,
                  len(doc.get("matches", [])))
+
+        # Wire calibrated temperature from daily pipeline into live predictor.
+        # The pipeline writes T to data/calibration/health.jsonl each run.
+        # Without this, the live model defaults to T=1.0 (uncalibrated).
+        if _predictor is not None:
+            new_T = _load_calib_temperature()
+            if abs(new_T - _predictor.temperature) > 0.005:
+                old_T = _predictor.temperature
+                _predictor.temperature = new_T
+                log.info(
+                    "Live predictor calibration temperature updated: %.4f → %.4f",
+                    old_T, new_T,
+                )
+            else:
+                log.info("Live predictor temperature unchanged: T=%.4f", _predictor.temperature)
     except Exception as exc:
         log.warning("Failed to load pregame lambdas: %s", exc)
 
