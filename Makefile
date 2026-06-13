@@ -1,4 +1,4 @@
-PYTHON       := /opt/homebrew/bin/python3.10
+PYTHON       ?= python3.10
 PIP          := $(PYTHON) -m pip
 WC2026       := $(PYTHON) -m wc2026.cli
 PYTEST       := $(PYTHON) -m pytest
