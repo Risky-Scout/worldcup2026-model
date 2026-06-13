@@ -741,9 +741,10 @@ class CompositeTeamPrior:
             try:
                 from penaltyblog.models import goal_expectancy_extended, goal_expectancy
                 if ou25 is not None:
-                    res = goal_expectancy_extended(hw, dr, aw, ou25, 1.0 - ou25)
+                    res = goal_expectancy_extended(hw, dr, aw, ou25, 1.0 - ou25,
+                                                   objective="cross_entropy")
                 else:
-                    res = goal_expectancy(hw, dr, aw)
+                    res = goal_expectancy(hw, dr, aw, objective="cross_entropy")
                 lh = float(res["home_exp"])
                 la = float(res["away_exp"])
             except Exception:

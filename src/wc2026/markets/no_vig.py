@@ -60,7 +60,7 @@ def strip_vig_1x2(
     home_odds: int,
     draw_odds: int,
     away_odds: int,
-    method: str = "multiplicative",
+    method: str = "shin",
 ) -> NoVigResult:
     """
     Remove bookmaker margin from 1X2 American odds.
@@ -102,7 +102,7 @@ def strip_vig_1x2(
 def strip_vig_total(
     over_odds: int,
     under_odds: int,
-    method: str = "multiplicative",
+    method: str = "shin",
 ) -> tuple[float, float]:
     """
     Remove bookmaker margin from over/under American odds.
@@ -127,7 +127,7 @@ def strip_vig_total(
 
 def consensus_no_vig_1x2(
     rows: list[dict],
-    method: str = "multiplicative",
+    method: str = "shin",
     stale_minutes: float = 240.0,
 ) -> Optional[NoVigResult]:
     """

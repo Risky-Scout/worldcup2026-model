@@ -75,6 +75,7 @@ def build_market_pmf(
                 hw, dr, aw, over25, under25,
                 remove_overround=True,
                 max_goals=max_goals,
+                objective="cross_entropy",
             )
             mu_h = result["home_exp"]
             mu_a = result["away_exp"]
@@ -86,7 +87,7 @@ def build_market_pmf(
         else:
             from penaltyblog.models import goal_expectancy
             result = goal_expectancy(hw, dr, aw, dc_adj=True, remove_overround=True,
-                                     max_goals=max_goals)
+                                     max_goals=max_goals, objective="cross_entropy")
             mu_h = result["home_exp"]
             mu_a = result["away_exp"]
             rho = 0.0

@@ -417,7 +417,8 @@ def build_market_implied_pmf(
     try:
         from penaltyblog.models import goal_expectancy_extended, create_dixon_coles_grid
         if over_25 is not None:
-            result = goal_expectancy_extended(hw, dr, aw, over_25, under_25)
+            result = goal_expectancy_extended(hw, dr, aw, over_25, under_25,
+                                              objective="cross_entropy")
             # penaltyblog returns a dict
             if isinstance(result, dict):
                 lh = float(result["home_exp"])
@@ -430,7 +431,7 @@ def build_market_implied_pmf(
         else:
             # 1X2 only: use simpler goal_expectancy
             from penaltyblog.models import goal_expectancy
-            result = goal_expectancy(hw, dr, aw)
+            result = goal_expectancy(hw, dr, aw, objective="cross_entropy")
             if isinstance(result, dict):
                 lh = float(result.get("home_exp", 1.3))
                 la = float(result.get("away_exp", 1.0))

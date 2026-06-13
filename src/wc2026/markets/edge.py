@@ -44,6 +44,12 @@ from typing import Optional
 
 import numpy as np
 
+try:
+    from penaltyblog.betting import kelly_criterion as _pb_kelly_criterion
+    _HAS_PB_KELLY = True
+except Exception:
+    _HAS_PB_KELLY = False
+
 log = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -136,12 +142,20 @@ def _prob_to_decimal_odds(prob: float) -> float:
 
 def _half_kelly(model_p: float, market_odds_dec: float) -> float:
     """
-    Compute half-Kelly bet fraction.
-    f* = (model_p * market_odds_dec - 1) / (market_odds_dec - 1)  [full Kelly]
-    Return f*/2, capped at MAX_KELLY_FRACTION.
+    Compute half-Kelly bet fraction using penaltyblog.betting.kelly_criterion.
+    Falls back to the manual formula if penaltyblog is unavailable.
+    Capped at MAX_KELLY_FRACTION (5% of bankroll).
     """
     if market_odds_dec <= 1.01:
         return 0.0
+    if _HAS_PB_KELLY:
+        try:
+            result = _pb_kelly_criterion(market_odds_dec, model_p, fraction=0.5)
+            stake = float(result.stake)
+            return min(max(stake, 0.0), MAX_KELLY_FRACTION)
+        except Exception:
+            pass
+    # Manual fallback: standard Kelly formula halved
     full_kelly = (model_p * market_odds_dec - 1.0) / (market_odds_dec - 1.0)
     half = max(full_kelly / 2.0, 0.0)
     return min(half, MAX_KELLY_FRACTION)

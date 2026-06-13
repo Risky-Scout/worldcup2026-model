@@ -746,6 +746,7 @@ def market_implied_pmf(
             over_2_5, under_2_5,
             remove_overround=True,
             max_goals=max_goals,
+            objective="cross_entropy",
         )
         mu_h = result["home_exp"]
         mu_a = result["away_exp"]
@@ -756,6 +757,7 @@ def market_implied_pmf(
             dc_adj=True,
             remove_overround=True,
             max_goals=max_goals,
+            objective="cross_entropy",
         )
         mu_h = result["home_exp"]
         mu_a = result["away_exp"]

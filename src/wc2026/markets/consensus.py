@@ -71,7 +71,7 @@ class ConsensusMarkets:
 def build_consensus(
     odds_df: pd.DataFrame,
     match_id: int,
-    method: str = "multiplicative",
+    method: str = "shin",
     stale_minutes: float = DEFAULT_STALE_MINUTES,
 ) -> ConsensusMarkets:
     """
