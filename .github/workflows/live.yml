@@ -17,6 +17,9 @@ jobs:
   live-snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    permissions:
+      actions: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -42,3 +45,30 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/live_snapshot.py
+
+      - name: Re-trigger if live matches active (self-chain)
+        # During live matches, re-trigger this workflow immediately so the
+        # snapshot stays fresh without depending on GitHub's cron scheduler.
+        # The concurrency cancel-in-progress ensures only one run at a time.
+        # Chain stops automatically when no live matches remain.
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=$(python3 -c "
+          import json, pathlib
+          f = pathlib.Path('data/live/wc-live.json')
+          if not f.exists():
+              print('quiet')
+          else:
+              d = json.loads(f.read_text())
+              print(d.get('status', 'quiet'))
+          " 2>/dev/null || echo "quiet")
+          echo "Live status: $STATUS"
+          if [ "$STATUS" = "live" ]; then
+            sleep 90
+            gh workflow run live.yml --repo ${{ github.repository }}
+            echo "Re-triggered for next update (live match active)"
+          else
+            echo "No live matches — chain stops here"
+          fi
