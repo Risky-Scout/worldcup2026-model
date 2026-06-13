@@ -185,7 +185,7 @@ class LivePMFPredictor:
         if state.home_stats and state.away_stats:
             h_xg = state.home_stats.xg
             a_xg = state.away_stats.xg
-            if h_xg is not None and a_xg is not None and minute > 5:
+            if h_xg is not None and a_xg is not None and minute >= 15:
                 time_frac = max(minute / 90.0, 0.01)
                 home_xg_rate = float(h_xg) / time_frac
                 away_xg_rate = float(a_xg) / time_frac

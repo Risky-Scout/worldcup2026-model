@@ -217,7 +217,7 @@ def compute_live_rates(
     (home_rate_per_min, away_rate_per_min)
     """
     # Base rates per 90 min
-    if home_xg_rate is not None and away_xg_rate is not None and minute >= 10:
+    if home_xg_rate is not None and away_xg_rate is not None and minute >= 15:
         # Blend pregame and live xG, with blend weight increasing over time
         effective_blend = min(xg_blend, minute / 90.0 * xg_blend * 2.0)
         base_lh = (1.0 - effective_blend) * pregame_lh + effective_blend * home_xg_rate
