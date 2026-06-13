@@ -347,6 +347,215 @@ def _pmf_lambda(pmf: np.ndarray) -> tuple[float, float]:
     return round(lh, 4), round(la, 4)
 
 
+def _auto_select_market_weight(
+    matches_df: pd.DataFrame,
+    odds_df: pd.DataFrame,
+    markets_df: pd.DataFrame,
+    n_required: int = 8,
+) -> float:
+    """
+    Run an inline grid search over market_weight candidates and return the value
+    that minimises mean exact-score log-loss on completed 2026 WC matches.
+
+    Returns DEFAULT_MARKET_WEIGHT unchanged when fewer than n_required completed
+    matches exist (result would be statistically noise-dominated).
+    """
+    import math as _math
+    from wc2026.ratings.composite import (
+        CompositeTeamPrior as _CTP,
+        build_composite_prior as _bcp,
+        predict_match_from_composite as _pmc,
+    )
+
+    completed = matches_df[
+        (matches_df["season"] == 2026) &
+        (matches_df["status"].isin(["completed", "final"])) &
+        matches_df["home_goals"].notna() &
+        matches_df["away_goals"].notna()
+    ]
+    n = len(completed)
+    default_w = _CTP.DEFAULT_MARKET_WEIGHT
+
+    if n < n_required:
+        log.info(
+            "Auto market_weight: %d completed matches (need %d) — retaining %.2f",
+            n, n_required, default_w,
+        )
+        return default_w
+
+    candidates = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50]
+    scores: dict[float, float] = {}
+    best_w = default_w
+    best_ll = float("inf")
+
+    for w in candidates:
+        try:
+            _prior = _bcp(matches_df, odds_df, markets_df, market_weight=w)
+            total_ll, cnt = 0.0, 0
+            for _, row in completed.iterrows():
+                home_t, away_t = str(row["home_team"]), str(row["away_team"])
+                hg, ag = int(row["home_goals"]), int(row["away_goals"])
+                try:
+                    pmf, _, _ = _pmc(home_t, away_t, _prior, max_goals=15)
+                    if hg < pmf.shape[0] and ag < pmf.shape[1]:
+                        p = max(float(pmf[hg, ag]), 1e-9)
+                        total_ll -= _math.log(p)
+                        cnt += 1
+                except Exception:
+                    pass
+            if cnt > 0:
+                mean_ll = total_ll / cnt
+                scores[w] = round(mean_ll, 4)
+                # Require >0.02 improvement over current best to switch
+                if mean_ll < best_ll - 0.02:
+                    best_ll = mean_ll
+                    best_w = w
+        except Exception as _exc:
+            log.warning("Auto market_weight: w=%.2f evaluation failed: %s", w, _exc)
+
+    log.info(
+        "Auto market_weight search (n=%d completed): %s → selected=%.2f (ll=%.4f)",
+        n, scores, best_w, best_ll,
+    )
+    return best_w
+
+
+def _supplement_T_from_wc2026(
+    completed_df: pd.DataFrame,
+    composite_prior: "CompositeTeamPrior",
+    calib_rho: float,
+    base_T: float,
+    n_required: int = 10,
+) -> float:
+    """
+    Supplement the heuristic Elo-derived calibration temperature with a direct
+    temperature estimate from completed WC2026 match outcomes.
+
+    Blends base_T (stable, from 2018+2022 OOF) with T_2026 (noisy but
+    tournament-specific) using a 70/30 weighting.
+
+    Only runs when n_required completed matches are available.
+    """
+    import math as _math
+    from scipy.optimize import minimize_scalar as _ms
+    from wc2026.ratings.composite import predict_match_from_composite as _pmc
+
+    if len(completed_df) < n_required:
+        return base_T
+
+    hw_probs: list[float] = []
+    dr_probs: list[float] = []
+    outcomes: list[int] = []  # 0=home win, 1=draw, 2=away win
+
+    for _, row in completed_df.iterrows():
+        home_t, away_t = str(row["home_team"]), str(row["away_team"])
+        hg, ag = float(row["home_goals"]), float(row["away_goals"])
+        try:
+            pmf, _, _ = _pmc(home_t, away_t, composite_prior, max_goals=15, rho=calib_rho)
+            g = pmf.shape[0]
+            hw = float(sum(pmf[h, a] for h in range(g) for a in range(g) if h > a))
+            dr = float(sum(pmf[h, a] for h in range(g) for a in range(g) if h == a))
+            hw_probs.append(hw)
+            dr_probs.append(dr)
+            outcomes.append(0 if hg > ag else (1 if hg == ag else 2))
+        except Exception:
+            pass
+
+    if len(outcomes) < n_required:
+        return base_T
+
+    aw_probs = [max(1.0 - hw - dr, 1e-9) for hw, dr in zip(hw_probs, dr_probs)]
+
+    def neg_ll(T: float) -> float:
+        total = 0.0
+        for i, outcome in enumerate(outcomes):
+            hw_t = max(hw_probs[i], 1e-9) ** (1.0 / T)
+            dr_t = max(dr_probs[i], 1e-9) ** (1.0 / T)
+            aw_t = max(aw_probs[i], 1e-9) ** (1.0 / T)
+            s = hw_t + dr_t + aw_t
+            if s < 1e-9:
+                continue
+            p_outcome = [hw_t / s, dr_t / s, aw_t / s][outcome]
+            total -= _math.log(max(p_outcome, 1e-9))
+        return total
+
+    try:
+        res = _ms(neg_ll, bounds=(0.8, 3.0), method="bounded")
+        T_2026 = float(np.clip(res.x, 1.0, 1.5))
+        blended = round(0.7 * base_T + 0.3 * T_2026, 3)
+        log.info(
+            "T supplement from %d WC2026 outcomes: T_direct=%.3f  T_heuristic=%.3f  T_blended=%.3f",
+            len(outcomes), T_2026, base_T, blended,
+        )
+        return blended
+    except Exception as _exc:
+        log.warning("T supplement from 2026 failed (%s). Using base T=%.3f.", _exc, base_T)
+        return base_T
+
+
+def _write_calibration_health(
+    data_dir: "Path",
+    n_completed: int,
+    wc_avg_actual: "float | None",
+    wc_avg_scale: "float | None",
+    market_weight: float,
+    calib_temperature: float,
+    calib_rho: float,
+    predictions: list,
+) -> None:
+    """
+    Append a single daily calibration health record to data/calibration/health.jsonl.
+
+    Computes mean |comp_pmf_hw - market_hw| across all predictions where market
+    odds exist, then flags a drift_alert if the mean exceeds 0.15.
+    """
+    import datetime as _dt
+
+    health_dir = data_dir / "calibration"
+    health_dir.mkdir(parents=True, exist_ok=True)
+    health_path = health_dir / "health.jsonl"
+
+    diffs: list[float] = []
+    for p in predictions:
+        cvm = (p.get("prediction") or {}).get("composite_vs_market_differences")
+        if isinstance(cvm, dict) and cvm.get("home_win") is not None:
+            diffs.append(abs(float(cvm["home_win"])))
+
+    mean_drift = round(float(np.mean(diffs)), 4) if diffs else None
+    drift_alert = mean_drift is not None and mean_drift > 0.15
+
+    record = {
+        "date": _dt.date.today().isoformat(),
+        "timestamp_utc": _dt.datetime.utcnow().isoformat(),
+        "n_completed_2026": n_completed,
+        "wc_avg_actual_goals": round(wc_avg_actual, 4) if wc_avg_actual else None,
+        "wc_avg_scale_applied": round(wc_avg_scale, 4) if wc_avg_scale else None,
+        "market_weight": market_weight,
+        "calib_temperature": round(calib_temperature, 4),
+        "calib_rho": round(calib_rho, 4),
+        "n_predictions": len(predictions),
+        "n_with_market_comp": len(diffs),
+        "mean_comp_market_hw_abs_diff": mean_drift,
+        "drift_alert": drift_alert,
+    }
+
+    with open(health_path, "a") as _hf:
+        _hf.write(json.dumps(record) + "\n")
+
+    alert_tag = " ⚠ DRIFT ALERT" if drift_alert else ""
+    log.info(
+        "Calibration health: n_completed=%d  wc_avg=%.3f  mkt_wt=%.2f  T=%.3f  "
+        "mean_drift=%s  n_mkt=%d%s",
+        n_completed,
+        wc_avg_actual or 1.30,
+        market_weight,
+        calib_temperature,
+        f"{mean_drift:.3f}" if mean_drift is not None else "N/A",
+        len(diffs),
+        alert_tag,
+    )
+
+
 def predict_all_2026(
     matches_df: pd.DataFrame,
     odds_df: pd.DataFrame,
@@ -469,9 +678,74 @@ def predict_all_2026(
         log.warning("Could not extract Elo OOF temperature (%s). Using T=%.3f.",
                     _T_exc, calib_temperature)
 
+    # ── H3: Auto-select market_weight from completed 2026 match outcomes ─────────
+    # Runs an inline log-loss grid search when n_completed ≥ 8.  Result is used
+    # only for this run; no persistent file is modified.  Defaults to 0.20 (the
+    # evidence-backed value from 2026-06-13 calibration session) until data is
+    # sufficient.
+    _completed_2026_df = matches_df[
+        (matches_df["season"] == 2026) &
+        (matches_df["status"].isin(["completed", "final"])) &
+        matches_df["home_goals"].notna() &
+        matches_df["away_goals"].notna()
+    ]
+    _n_completed = len(_completed_2026_df)
+
+    _adaptive_market_weight = _auto_select_market_weight(
+        matches_df, odds_df, markets_df, n_required=8,
+    )
+
+    # ── H1: Dynamic WC_AVG_ATTACK from 2026 goal rates ───────────────────────
+    # When ≥10 completed matches are available, compute the actual WC2026 average
+    # goals per team per match and blend it with the historical constant 1.30.
+    # This corrects for a different scoring environment (defensive or open play)
+    # without overreacting to early-tournament noise.
+    _wc_avg_actual: float | None = None
+    _wc_avg_scale: float | None = None
+    if _n_completed >= 10:
+        raw_avg = float(
+            (_completed_2026_df["home_goals"].sum() + _completed_2026_df["away_goals"].sum())
+            / (_n_completed * 2)
+        )
+        _WC_HIST_CONST = 1.30
+        _wc_avg_actual = round(raw_avg, 4)
+        if abs(raw_avg - _WC_HIST_CONST) > 0.02:
+            _wc_avg_scale = round(raw_avg / _WC_HIST_CONST, 4)
+            log.info(
+                "Dynamic WC_AVG: actual=%.3f  historical_const=%.2f  "
+                "scale_factor=%.4f (from %d completed matches)",
+                raw_avg, _WC_HIST_CONST, _wc_avg_scale, _n_completed,
+            )
+        else:
+            log.info(
+                "Dynamic WC_AVG: actual=%.3f within tolerance of const %.2f — no scaling",
+                raw_avg, _WC_HIST_CONST,
+            )
+
     # Fit composite team prior (replaces Elo=1500 fallback for new teams)
-    log.info("Fitting composite team prior (market-implied + Elo + Pi + Massey) ...")
-    composite_prior = build_composite_prior(matches_df, odds_df, markets_df)
+    log.info(
+        "Fitting composite team prior (market_weight=%.2f) ...", _adaptive_market_weight,
+    )
+    composite_prior = build_composite_prior(
+        matches_df, odds_df, markets_df, market_weight=_adaptive_market_weight,
+    )
+
+    # Apply dynamic WC_AVG scaling to all team lambdas when 2026 goal rate
+    # diverges from the 2018+2022 historical constant.  Multiplying all lambdas
+    # by the same factor preserves relative team rankings while shifting the
+    # overall expected-goals level toward the observed tournament environment.
+    if _wc_avg_scale is not None:
+        scaled_n = 0
+        for _tp in composite_prior.priors():
+            _tp.final_attack_lambda = round(_tp.final_attack_lambda * _wc_avg_scale, 4)
+            _tp.final_defense_lambda = round(
+                max(_tp.final_defense_lambda * _wc_avg_scale, 0.3), 4
+            )
+            scaled_n += 1
+        log.info(
+            "Applied dynamic WC_AVG scaling (×%.4f) to %d team lambdas",
+            _wc_avg_scale, scaled_n,
+        )
 
     # Keep EloBaseline for diagnostics only
     elo_baseline = EloBaseline()
@@ -479,6 +753,15 @@ def predict_all_2026(
 
     # Legacy team priors (now superseded by composite_prior)
     team_priors = _build_team_priors(matches_df, odds_df, markets_df)
+
+    # ── H4: Supplement T with direct WC2026 outcome calibration ──────────────
+    # When ≥10 completed 2026 matches exist, re-derive T by finding the temperature
+    # that minimises log-loss on the composite PMF's 1X2 predictions vs actual
+    # outcomes.  Blended 70% base_T / 30% T_2026 to prevent overfitting noise.
+    calib_temperature = _supplement_T_from_wc2026(
+        _completed_2026_df, composite_prior, calib_rho, calib_temperature,
+        n_required=10,
+    )
 
     sched_2026 = matches_df[
         (matches_df["season"] == 2026) &
@@ -546,6 +829,22 @@ def predict_all_2026(
 
     log.info("Predictions: %d total  market_reconciled=%d  market_implied=%d  pure_model=%d  skipped=%d",
              len(all_predictions), n_market_reconciled, n_market_implied, n_pure_model, n_skipped)
+
+    # ── H5: Daily calibration health log ─────────────────────────────────────
+    # Writes a JSONL record to data/calibration/health.jsonl every run.
+    # Computes mean |comp_hw - market_hw| across all market_reconciled predictions
+    # and flags drift_alert if the mean exceeds 0.15 (the threshold validated
+    # against the June 2026 post-fix evidence).
+    _write_calibration_health(
+        DATA_DIR,
+        n_completed=_n_completed,
+        wc_avg_actual=_wc_avg_actual,
+        wc_avg_scale=_wc_avg_scale,
+        market_weight=_adaptive_market_weight,
+        calib_temperature=calib_temperature,
+        calib_rho=calib_rho,
+        predictions=all_predictions,
+    )
 
     return all_predictions, champions, composite_prior
 
