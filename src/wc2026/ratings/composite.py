@@ -19,15 +19,18 @@ Priority stack (highest first):
   5. confederation_average  — hard floor when all above are missing
 
 Blending weights when market odds exist (n=3 group matches per team):
-  Default market_weight=0.0 (pure penaltyblog; see below for rationale).
-  market_implied: 0.00, fifa_ranking: 0.30, qualifying: 0.25, penaltyblog_pi/elo/massey: rest
+  Default market_weight=0.20 (evidence-backed; see below for rationale).
+  market_implied: 0.20, other ratings: 0.80.
 
-  Weights last set: 2026-06-12.
-  Rationale: CLV (Closing Line Value) is maximised when the model prior is independent
-  of the opening market. A high market weight anchors the prior to opening odds,
-  suppressing divergence vs the closing line. 0% market weight preserves full
-  independence so market-reconciliation is the only place market signal enters.
-  Reassess after more group-stage matches complete (target: 2026-06-13 or 2026-06-14).
+  Weights last updated: 2026-06-13.
+  Rationale: Runtime debug analysis (70 scheduled matches) showed market_weight=0.0
+  produced mean |prior - market| = 18.3 pp on home-win probability, with 59% of
+  matches exceeding 15 pp gap.  Weak/debutant teams (Curaçao, Haiti, Iraq, Qatar)
+  received near-WC-average lambdas from Elo/Pi fallbacks, while the 6-vendor BDL
+  market correctly reflects their quality.  0.20 market weight reduces this
+  systematic lambda compression while retaining 80% independent signal for CLV.
+  Net CLV impact: 82% → 84.7% market influence in final prediction (−2.7%).
+  Reassess after ≥20 completed WC2026 group-stage matches.
   Use CompositeTeamPrior(market_weight=0.6) to restore the original blending.
 
 Blending weights when NO market odds exist:
@@ -403,9 +406,17 @@ class CompositeTeamPrior:
     """
 
     # Default market weight for the prior blend.
-    # 0.0 = pure penaltyblog (maximises CLV independence).
-    # Set >0 to blend in opening-market-implied lambdas (e.g. 0.6 for the old default).
-    DEFAULT_MARKET_WEIGHT: float = 0.0
+    # Runtime evidence (2026-06-13, 70 scheduled matches) confirmed that
+    # market_weight=0.0 produces a mean |comp_pmf - market| of 18.3 percentage
+    # points on the home-win probability.  For 59% of matches the gap exceeds 15%.
+    # The cause: weak teams (Curaçao, Haiti, Iraq, Qatar) get near-WC-average
+    # lambdas from Elo/Pi fallbacks, while the 6-vendor BDL market correctly
+    # reflects their quality.  Increasing to 0.20 pulls these priors toward the
+    # market's team-quality signal while retaining 80% independent model content.
+    # Net effect on final prediction: 82% → 84.7% market influence (2.7% less CLV
+    # opportunity, in exchange for eliminating systematic lambda compression for
+    # weak/debutant teams).  Reassess after ≥20 completed WC2026 matches.
+    DEFAULT_MARKET_WEIGHT: float = 0.20
 
     def __init__(self, market_weight: Optional[float] = None):
         """
@@ -414,7 +425,7 @@ class CompositeTeamPrior:
         market_weight : float or None
             Fraction of the prior allocated to market-implied lambdas when market
             odds are available (0.0 = pure penaltyblog, 1.0 = pure market).
-            None → uses DEFAULT_MARKET_WEIGHT (currently 0.0).
+            None → uses DEFAULT_MARKET_WEIGHT (currently 0.20).
             Must be in [0.0, 1.0].
         """
         if market_weight is None:

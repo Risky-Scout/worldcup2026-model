@@ -678,6 +678,7 @@ def _predict_one_match(
         log.debug("temp_calibrated comp_pmf: T=%.3f  lh=%.4f  la=%.4f",
                   calib_temperature, comp_lh, comp_la)
 
+
     # ── 2. Pure parametric PMF (if both teams have WC training history) ───
     pure_pmf = None
     pure_lh, pure_la = comp_lh, comp_la
