@@ -1,6 +1,6 @@
 # Score PMF Calibration Report
 
-**Generated**: 2026-06-13T04:58:28Z
+**Generated**: 2026-06-13T05:27:46Z
 
 ## Temperature calibration methodology
 
@@ -26,10 +26,10 @@ log-loss over out-of-fold predictions only (never training data).
 | historical_base_rate | 118 | 4.0844 | **0.492** | underconfident — calibration sharpens probability mass |
 | negative_binomial | 106 | 4.5159 | **2.997** | overconfident — calibration spreads probability mass |
 | dixon_coles | 86 | 4.8898 | **3.000** | overconfident — calibration spreads probability mass |
+| bivariate_poisson | 106 | 4.9446 | **3.000** | overconfident — calibration spreads probability mass |
+| poisson | 106 | 5.1645 | **3.000** | overconfident — calibration spreads probability mass |
 | zero_inflated_poisson | 106 | 5.1683 | **3.000** | overconfident — calibration spreads probability mass |
-| poisson | 106 | 5.1734 | **3.000** | overconfident — calibration spreads probability mass |
-| bivariate_poisson | 106 | 5.2690 | **3.000** | overconfident — calibration spreads probability mass |
-| weibull_copula | 106 | 7.2233 | **3.000** | overconfident — calibration spreads probability mass |
+| weibull_copula | 106 | 6.6326 | **3.000** | overconfident — calibration spreads probability mass |
 
 ## Interpretation
 
@@ -56,7 +56,7 @@ As 2026 match results accumulate, T will be re-fitted with more OOF data.
 | historical_base_rate | -1.596 | 1.151 | overconfident |
 | negative_binomial | 0.058 | 0.420 | overconfident |
 | dixon_coles | 0.003 | 0.476 | overconfident |
+| bivariate_poisson | -0.000 | 0.444 | overconfident |
+| poisson | 0.045 | 0.424 | overconfident |
 | zero_inflated_poisson | 0.083 | 0.408 | overconfident |
-| poisson | 0.044 | 0.425 | overconfident |
-| bivariate_poisson | -0.016 | 0.450 | overconfident |
-| weibull_copula | 0.077 | 0.411 | overconfident |
+| weibull_copula | 0.100 | 0.400 | overconfident |

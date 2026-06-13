@@ -983,6 +983,7 @@ def predict_match_from_composite(
     prior: CompositeTeamPrior,
     max_goals: int = 15,
     model: str = "dixon_coles",
+    rho: float = -0.05,
 ) -> tuple[np.ndarray, float, float]:
     """
     Produce a composite_rating_pmf from team priors.
@@ -1003,6 +1004,14 @@ def predict_match_from_composite(
         lam_a = 0.918 * 0.864 / 1.30 = 0.610  (SA scores)
     This gives Mexico ~65% home-win, close to the BDL 6-vendor market 67.5%.
 
+    Parameters
+    ----------
+    rho : float
+        Dixon-Coles low-score correlation parameter. Pass the value fitted on
+        historical WC data (extracted from DixonColesGoalModel.get_params()) to
+        improve exact-score calibration. Default -0.05 is a sensible league
+        average; WC data typically yields values closer to -0.03 to -0.06.
+
     Returns
     -------
     (pmf_grid, lambda_home, lambda_away)
@@ -1022,10 +1031,10 @@ def predict_match_from_composite(
     lam_h = float(np.clip(lam_h, 0.3, 5.0))
     lam_a = float(np.clip(lam_a, 0.3, 5.0))
 
-    # Build PMF
+    # Build PMF using calibrated rho from the fitted Dixon-Coles model
     try:
         from penaltyblog.models import create_dixon_coles_grid
-        grid = create_dixon_coles_grid(lam_h, lam_a, rho=-0.05, max_goals=max_goals - 1)
+        grid = create_dixon_coles_grid(lam_h, lam_a, rho=rho, max_goals=max_goals - 1)
         pmf = np.array(grid.grid, dtype=np.float64)
     except Exception:
         from scipy.stats import poisson

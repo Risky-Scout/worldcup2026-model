@@ -158,17 +158,31 @@ class ModelLadder:
         kw_neutral = dict(weights=w, neutral_venue=neutral)
 
         if name == MODEL_POISSON:
-            m = PoissonGoalsModel(h, a, ht, at, **kw_base)
-            m.fit()
+            # Pass neutral_venue per penaltyblog 1.11.0 recommendation; fall back
+            # to kw_base if this version of the model doesn't support the arg.
+            try:
+                m = PoissonGoalsModel(h, a, ht, at, **kw_neutral)
+                m.fit()
+            except TypeError:
+                m = PoissonGoalsModel(h, a, ht, at, **kw_base)
+                m.fit()
         elif name == MODEL_DIXON_COLES:
             m = DixonColesGoalModel(h, a, ht, at, **kw_neutral)
             m.fit()
         elif name == MODEL_BIVARIATE:
-            m = BivariatePoissonGoalModel(h, a, ht, at, **kw_base)
-            m.fit()
+            try:
+                m = BivariatePoissonGoalModel(h, a, ht, at, **kw_neutral)
+                m.fit()
+            except TypeError:
+                m = BivariatePoissonGoalModel(h, a, ht, at, **kw_base)
+                m.fit()
         elif name == MODEL_WEIBULL:
-            m = WeibullCopulaGoalsModel(h, a, ht, at, **kw_base)
-            m.fit()
+            try:
+                m = WeibullCopulaGoalsModel(h, a, ht, at, **kw_neutral)
+                m.fit()
+            except TypeError:
+                m = WeibullCopulaGoalsModel(h, a, ht, at, **kw_base)
+                m.fit()
         elif name == MODEL_NEG_BINOMIAL:
             m = NegativeBinomialGoalModel(h, a, ht, at, **kw_neutral)
             m.fit()

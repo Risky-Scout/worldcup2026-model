@@ -426,6 +426,49 @@ def predict_all_2026(
     ladder.fit(TIER1_MODELS)
     log.info("Fitted parametric models: %s", ladder.fitted_models())
 
+    # ── Extract calibrated rho from fitted Dixon-Coles model ─────────────────
+    # The DC model fits rho on WC data (2018+2022+completed 2026) which is more
+    # accurate than the -0.05 league default used in predict_match_from_composite.
+    calib_rho: float = -0.05
+    try:
+        dc_model = ladder._models.get("dixon_coles")
+        if dc_model is not None:
+            dc_params = dc_model.get_params()
+            raw_rho = float(dc_params.get("rho", -0.05))
+            # Clamp to physically meaningful range; penaltyblog's internal
+            # parameterisation can produce values outside [-0.5, 0.0] on tiny
+            # datasets, so guard against that here.
+            calib_rho = float(np.clip(raw_rho, -0.5, 0.0))
+            log.info("Dixon-Coles calibrated rho from WC data: %.4f (raw=%.4f)",
+                     calib_rho, raw_rho)
+    except Exception as _rho_exc:
+        log.warning("Could not extract DC rho (%s). Using default rho=%.4f.",
+                    _rho_exc, calib_rho)
+
+    # ── Extract calibration temperature for composite prior PMF ──────────────
+    # The walkforward proves parametric models are severely overconfident (T≈3)
+    # at the exact-score level on WC data.  The Elo model (T≈1.25) is a better
+    # proxy for the composite prior because both are rating-based discriminators.
+    # We apply half the Elo correction to avoid over-softening the composite
+    # prior (which uses richer signals than raw Elo): T_comp = (T_elo + 1.0) / 2.
+    # Capped to [1.0, 1.4] so the prior stays meaningful.
+    _DEFAULT_CALIB_T = 1.15  # conservative fallback if Elo result unavailable
+    calib_temperature: float = _DEFAULT_CALIB_T
+    try:
+        for r in results:
+            if r.model_name == "elo":
+                elo_T = float(getattr(r.metrics, "temperature", 1.0))
+                calib_temperature = float(np.clip((elo_T + 1.0) / 2.0, 1.0, 1.4))
+                log.info(
+                    "Calibration temperature for composite prior: T=%.3f "
+                    "(derived from Elo OOF T=%.3f; formula=(T_elo+1)/2, capped [1.0,1.4])",
+                    calib_temperature, elo_T,
+                )
+                break
+    except Exception as _T_exc:
+        log.warning("Could not extract Elo OOF temperature (%s). Using T=%.3f.",
+                    _T_exc, calib_temperature)
+
     # Fit composite team prior (replaces Elo=1500 fallback for new teams)
     log.info("Fitting composite team prior (market-implied + Elo + Pi + Massey) ...")
     composite_prior = build_composite_prior(matches_df, odds_df, markets_df)
@@ -474,6 +517,8 @@ def predict_all_2026(
             home, away, mid, stage, stadium, match_dt,
             odds_df, markets_df, ladder, parametric_champ,
             composite_prior, elo_baseline, team_priors,
+            calib_temperature=calib_temperature,
+            calib_rho=calib_rho,
         )
         if pred:
             all_predictions.append(pred)
@@ -545,6 +590,8 @@ def _predict_one_match(
     composite_prior: CompositeTeamPrior,
     elo_baseline: EloBaseline,
     team_priors: dict,
+    calib_temperature: float = 1.0,
+    calib_rho: float = -0.05,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
@@ -554,6 +601,17 @@ def _predict_one_match(
       pure_model            — best parametric model (if known teams)
       market_implied        — from BDL no-vig odds
       market_reconciled     — DEFAULT publish, blend of market + composite
+
+    Parameters
+    ----------
+    calib_temperature : float
+        Temperature T derived from the Elo OOF walkforward (formula: (T_elo+1)/2,
+        capped [1.0, 1.4]).  Applied to comp_pmf after altitude adjustment and
+        before market reconciliation. T>1 softens overconfident priors.
+    calib_rho : float
+        Dixon-Coles rho extracted from the WC-fitted DC model.  Used when
+        rebuilding the comp_pmf (altitude adjustment) and as the default rho
+        passed to predict_match_from_composite.
     """
 
     model_warnings = []
@@ -561,7 +619,7 @@ def _predict_one_match(
     # ── 1. Composite rating PMF (always available via composite_prior) ────
     try:
         comp_pmf, comp_lh, comp_la = predict_match_from_composite(
-            home, away, composite_prior, max_goals=15,
+            home, away, composite_prior, max_goals=15, rho=calib_rho,
         )
         home_prior = composite_prior.get_prior(home)
         away_prior = composite_prior.get_prior(away)
@@ -573,7 +631,7 @@ def _predict_one_match(
             model_warnings.append(f"away_prior_fallback: {away_prior.fallback_reason}")
     except Exception as exc:
         log.warning("Composite prior failed for %s v %s: %s", home, away, exc)
-        comp_pmf = from_lambdas(1.15, 1.15, rho=-0.05, max_goals=15)._grid_arr[:15, :15]
+        comp_pmf = from_lambdas(1.15, 1.15, rho=calib_rho, max_goals=15)._grid_arr[:15, :15]
         comp_lh, comp_la = 1.15, 1.15
         composite_model_used = "average_prior"
         composite_sources = "fallback"
@@ -591,7 +649,7 @@ def _predict_one_match(
         comp_la = round(comp_la * _alt_scale, 4)
         try:
             from penaltyblog.models import create_dixon_coles_grid as _dcg
-            _alt_grid = _dcg(comp_lh, comp_la, rho=-0.05, max_goals=14)
+            _alt_grid = _dcg(comp_lh, comp_la, rho=calib_rho, max_goals=14)
             comp_pmf = np.clip(np.array(_alt_grid.grid, dtype=np.float64), 0, None)
         except Exception:
             from scipy.stats import poisson as _pois
@@ -602,6 +660,23 @@ def _predict_one_match(
         comp_pmf /= comp_pmf.sum()
         log.debug("altitude_adjustment: %s → scale=%.3f  lh=%.3f  la=%.3f",
                   stadium, _alt_scale, comp_lh, comp_la)
+
+    # ── 1c. Temperature calibration of composite prior PMF ────────────────
+    # The OOF walkforward shows rating-based models (Elo, composite) are
+    # overconfident on WC data: they over-discriminate between teams relative
+    # to the equal-probability baseline (T_elo≈1.25 vs T_equal≈1.08).
+    # We apply T = (T_elo + 1.0) / 2 so the composite prior is softened
+    # proportionally before market reconciliation.  This improves exact-score
+    # and totals calibration and reduces spurious CLV signals.
+    if abs(calib_temperature - 1.0) > 0.01:
+        from wc2026.calibration.score_pmf import _apply_temperature as _temp_scale
+        comp_pmf = _temp_scale(comp_pmf, calib_temperature)
+        comp_pmf = np.clip(comp_pmf, 0, None)
+        s = comp_pmf.sum()
+        if s > 1e-9:
+            comp_pmf /= s
+        log.debug("temp_calibrated comp_pmf: T=%.3f  lh=%.4f  la=%.4f",
+                  calib_temperature, comp_lh, comp_la)
 
     # ── 2. Pure parametric PMF (if both teams have WC training history) ───
     pure_pmf = None
