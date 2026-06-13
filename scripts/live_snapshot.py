@@ -195,7 +195,7 @@ def run_live_snapshot() -> dict:
     # Build upcoming section (pre-game matches today)
     upcoming_today = []
     for m in upcoming[:10]:
-        ko_str = m.get("date_time_utc", "")
+        ko_str = m.get("datetime") or m.get("date_time_utc", "")
         try:
             ko_dt = datetime.fromisoformat(str(ko_str).replace("+00:00", "")).replace(tzinfo=timezone.utc)
             ko_et = ko_dt.astimezone(
