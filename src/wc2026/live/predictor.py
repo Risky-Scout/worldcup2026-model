@@ -354,8 +354,8 @@ class LivePMFPredictor:
         try:
             # Parse BDL fields
             match_id = str(bdl_match.get("id", "unknown"))
-            home = bdl_match.get("home_team", {}).get("full_name", "Home")
-            away = bdl_match.get("away_team", {}).get("full_name", "Away")
+            home = bdl_match.get("home_team", {}).get("name") or bdl_match.get("home_team", {}).get("full_name", "Home")
+            away = bdl_match.get("away_team", {}).get("name") or bdl_match.get("away_team", {}).get("full_name", "Away")
             status_raw = str(bdl_match.get("status", "")).lower()
 
             status_map = {

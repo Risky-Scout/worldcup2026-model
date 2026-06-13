@@ -119,8 +119,8 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
             upcoming.append(m)
         elif clock_seconds > 60:
             # Clock is running but status string is unrecognized → treat as live
-            home_name = (m.get("home_team") or {}).get("full_name", "?")
-            away_name = (m.get("away_team") or {}).get("full_name", "?")
+            home_name = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "?")
+            away_name = (m.get("away_team") or {}).get("name") or (m.get("away_team") or {}).get("full_name", "?")
             log.warning("Unknown status '%s' clock=%ds — treating as live: %s vs %s",
                         raw_status, clock_seconds, home_name, away_name)
             live.append(m)
@@ -160,8 +160,8 @@ def run_live_snapshot() -> dict:
     results = []
     for bdl_m in live_matches:
         mid = str(bdl_m.get("id", ""))
-        home = (bdl_m.get("home_team") or {}).get("full_name", "Home")
-        away = (bdl_m.get("away_team") or {}).get("full_name", "Away")
+        home = (bdl_m.get("home_team") or {}).get("name") or (bdl_m.get("home_team") or {}).get("full_name", "Home")
+        away = (bdl_m.get("away_team") or {}).get("name") or (bdl_m.get("away_team") or {}).get("full_name", "Away")
 
         # Look up pregame lambdas
         lh, la = pregame_lambdas.get(mid, pregame_lambdas.get(f"{home}|{away}", (1.35, 1.00)))
@@ -198,8 +198,8 @@ def run_live_snapshot() -> dict:
             ko_et_str = ko_et.strftime("%-I:%M %p ET")
         except Exception:
             ko_et_str = str(ko_str)
-        home = (m.get("home_team") or {}).get("full_name", "")
-        away = (m.get("away_team") or {}).get("full_name", "")
+        home = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "")
+        away = (m.get("away_team") or {}).get("name") or (m.get("away_team") or {}).get("full_name", "")
         upcoming_today.append({
             "match_id": str(m.get("id", "")),
             "home_team": home,
