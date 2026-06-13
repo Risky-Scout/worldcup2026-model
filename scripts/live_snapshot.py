@@ -61,19 +61,23 @@ FTP_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/live"
 LIVE_FILE = "wc-live.json"
 
 
-def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
+def _load_pregame_data(date: str) -> tuple[dict, dict]:
     """
-    Load pregame expected goals (lh, la) from published JSON files.
-    Scans today + the 3 previous days so lambdas are available even when a
-    match starts AFTER the daily pipeline already excluded it from today's file.
-    Returns dict keyed by match_id → (lh, la) and (home|away) → (lh, la).
+    Load pregame expected goals and win probabilities from published JSON files.
+    Scans today ±3 days so data is always available regardless of pipeline timing.
+
+    Returns
+    -------
+    lambdas : dict keyed by match_id or "home|away" → (lh, la)
+    probs   : dict keyed by match_id or "home|away" → {home_win_prob, draw_prob, away_win_prob}
     """
     from datetime import date as _date, timedelta
-    result = {}
-    # Scan today and 3 prior days — older entries are overwritten by newer ones
+    lambdas: dict = {}
+    probs: dict = {}
     base = _date.fromisoformat(date)
-    for delta in range(3, -1, -1):  # oldest first so today wins
-        d = (base - timedelta(days=delta)).isoformat()
+    # Scan ±3 days (oldest→newest so today wins for same match)
+    for delta in range(-3, 4):
+        d = (base + timedelta(days=delta)).isoformat()
         pub_path = REPO_ROOT / "data" / "published" / f"{d}.json"
         if not pub_path.exists():
             continue
@@ -88,13 +92,24 @@ def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
             er = pred.get("edge_report", {})
             pregame_lh = er.get("pregame_lh", lh)
             pregame_la = er.get("pregame_la", la)
-            if mid:
-                result[mid] = (pregame_lh, pregame_la)
-            if home and away:
-                result[f"{home}|{away}"] = (pregame_lh, pregame_la)
-        log.debug("Pregame lambdas loaded: date=%s n=%d", d, len(doc.get("matches", [])))
-    log.info("Pregame lambda cache: %d entries across today±3d", len(result))
-    return result
+            dm = pred.get("derived_markets", {})
+            hw = pred.get("home_win_prob") or dm.get("home_win") or 0.0
+            dr = pred.get("draw_prob") or dm.get("draw") or 0.0
+            aw = pred.get("away_win_prob") or dm.get("away_win") or 0.0
+            entry_l = (pregame_lh, pregame_la)
+            entry_p = {"home_win_prob": float(hw), "draw_prob": float(dr), "away_win_prob": float(aw)}
+            for key in ([mid] if mid else []) + ([f"{home}|{away}"] if home and away else []):
+                lambdas[key] = entry_l
+                probs[key] = entry_p
+        log.debug("Pregame data loaded: date=%s n=%d", d, len(doc.get("matches", [])))
+    log.info("Pregame cache: %d entries (lambdas+probs) across ±3d", len(lambdas))
+    return lambdas, probs
+
+
+def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
+    """Legacy wrapper — returns only the lambdas dict (callers that don't need probs)."""
+    lambdas, _ = _load_pregame_data(date)
+    return lambdas
 
 
 def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
@@ -155,7 +170,7 @@ def run_live_snapshot() -> dict:
     ).date().isoformat()
 
     predictor = LivePMFPredictor(max_delta=7, max_goals=10)
-    pregame_lambdas = _load_pregame_lambdas(today_et)
+    pregame_lambdas, pregame_probs = _load_pregame_data(today_et)
 
     try:
         live_matches, upcoming = _fetch_live_matches()
@@ -231,13 +246,20 @@ def run_live_snapshot() -> dict:
             ko_et_str = str(ko_str)
         home = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "")
         away = (m.get("away_team") or {}).get("name") or (m.get("away_team") or {}).get("full_name", "")
+        mid_str = str(m.get("id", ""))
+        p = (pregame_probs.get(mid_str)
+             or pregame_probs.get(f"{home}|{away}")
+             or {"home_win_prob": 0.0, "draw_prob": 0.0, "away_win_prob": 0.0})
         upcoming_today.append({
-            "match_id": str(m.get("id", "")),
+            "match_id": mid_str,
             "home_team": home,
             "away_team": away,
             "kickoff_et": ko_et_str,
             "kickoff_utc": ko_str,
             "status": m.get("status", ""),
+            "home_win_prob": round(p["home_win_prob"], 5),
+            "draw_prob": round(p["draw_prob"], 5),
+            "away_win_prob": round(p["away_win_prob"], 5),
         })
 
     snapshot = {
