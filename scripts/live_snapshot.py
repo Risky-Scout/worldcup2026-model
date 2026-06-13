@@ -127,6 +127,7 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
     log.info("BDL fetch complete: %d total matches, sample_status=%s",
              len(all_matches), all_matches[0].get("status") if all_matches else None)
 
+    now_utc = datetime.now(tz=timezone.utc)
     live, upcoming, finished = [], [], []
     for m in all_matches:
         raw_status = str(m.get("status", "") or "").lower().strip()
@@ -137,7 +138,26 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
         elif raw_status in COMPLETED_STATUS_CODES:
             finished.append(m)
         elif raw_status in PREGAME_STATUS_CODES:
-            upcoming.append(m)
+            # Check if kickoff time has passed — BDL often lags 5-15 min before
+            # changing status from "scheduled" to "in_progress".
+            ko_str = m.get("datetime") or m.get("date_time_utc", "")
+            try:
+                ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+                mins_since_ko = (now_utc - ko_dt).total_seconds() / 60.0
+            except Exception:
+                mins_since_ko = -999.0
+            if mins_since_ko >= 3.0:
+                # Kickoff passed ≥3 min ago and BDL still says scheduled → treat as live
+                home_name = (m.get("home_team") or {}).get("name") or "?"
+                away_name = (m.get("away_team") or {}).get("name") or "?"
+                log.warning(
+                    "BDL lag detected: '%s' still 'scheduled' %.1f min after kickoff — "
+                    "treating as live (0-0 min=0): %s vs %s",
+                    m.get("id"), mins_since_ko, home_name, away_name,
+                )
+                live.append(m)
+            else:
+                upcoming.append(m)
         elif clock_seconds > 60:
             # Clock is running but status string is unrecognized → treat as live
             home_name = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "?")

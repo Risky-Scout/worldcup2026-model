@@ -400,12 +400,33 @@ class LivePMFPredictor:
                     clock_min = int(clock_str.split("+")[0]) if clock_str else 0
                 except (ValueError, IndexError):
                     clock_min = 0
-                # Halftime inference: if first-half scores are set but clock is None
-                # and match is in_progress, assume we're at least at minute 45.
+                # Halftime inference: BDL may return clock_display=None during halftime.
+                # Guard: only infer min=45 if at least 43 minutes have elapsed since
+                # kickoff, because BDL also initializes first_half scores to 0 at
+                # kickoff (not None), so a naive non-None check would fire immediately.
                 fh_home = bdl_match.get("first_half_home_score")
                 fh_away = bdl_match.get("first_half_away_score")
+                # Estimate elapsed time from kickoff datetime (used for halftime guard
+                # and as a clock fallback when BDL provides no clock data at all)
+                from datetime import datetime as _dt, timezone as _tz
+                ko_str = bdl_match.get("datetime") or bdl_match.get("date_time_utc", "")
+                try:
+                    ko_dt = _dt.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+                    mins_elapsed = (_dt.now(tz=_tz.utc) - ko_dt).total_seconds() / 60.0
+                except Exception:
+                    mins_elapsed = 999.0
+
                 if clock_min == 0 and fh_home is not None and fh_away is not None:
-                    clock_min = 45
+                    if mins_elapsed >= 43.0:
+                        # Clock is None and we're well past the 45-min mark → halftime
+                        clock_min = 45
+                    elif mins_elapsed >= 1.0:
+                        # Match started but BDL clock hasn't arrived yet — use elapsed
+                        # time as proxy (cap at 44 so we don't accidentally skip to HT)
+                        clock_min = min(int(mins_elapsed), 44)
+                elif clock_min == 0 and mins_elapsed >= 1.0:
+                    # No first-half scores yet but match started — use elapsed as proxy
+                    clock_min = min(int(mins_elapsed), 44)
                 match_seconds = clock_min * 60
 
             # Score
