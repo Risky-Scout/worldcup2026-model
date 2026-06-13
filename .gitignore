@@ -12,7 +12,13 @@ venv/
 env/
 
 data/raw/
-data/processed/
+
+# Keep processed parquets committed so CI can run without BDL API key.
+# They are small (~560 KB total). Raw snapshots (180 MB) stay ignored.
+!data/processed/
+!data/processed/**
+*.parquet
+!data/processed/**/*.parquet
 
 *.ipynb_checkpoints
 .ipynb_checkpoints/
@@ -24,6 +30,5 @@ htmlcov/
 
 *.log
 *.pkl
-*.parquet
 
 .DS_Store

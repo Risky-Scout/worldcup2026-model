@@ -1,6 +1,6 @@
 # Walk-Forward Backtest (Real BDL Data)
 
-**Generated**: 2026-06-13T06:34:43Z
+**Generated**: 2026-06-13T16:03:23Z
 **Training data**: 2018 (64) + 2022 (64) = 128 total
 **Method**: Strict time-ordered OOF — train only on matches before prediction date
 
@@ -16,4 +16,4 @@
 | bivariate_poisson | 106 | 4.9446 | 0.2088 | 0.8572 | 0.3161 | 3.000 | parametric prior |
 | poisson | 106 | 5.1645 | 0.2061 | 0.8450 | 0.3049 | 3.000 | parametric prior |
 | zero_inflated_poisson | 106 | 5.1683 | 0.2057 | 0.8407 | 0.2706 | 3.000 | parametric prior |
-| weibull_copula | 106 | 6.5426 | 0.2111 | 0.8496 | 0.3140 | 3.000 | parametric prior |
+| weibull_copula | 106 | 6.5785 | 0.2173 | 0.8847 | 0.3381 | 3.000 | parametric prior |

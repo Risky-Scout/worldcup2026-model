@@ -105,12 +105,17 @@ jobs:
         run: echo "::warning::BDL fetch had errors — continuing with cached data"
 
       - name: Rebuild dataset
-        if: env.SKIP_PIPELINE != 'true'
+        if: env.SKIP_PIPELINE != 'true' && steps.fetch.outcome == 'success'
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: make build-dataset
+        continue-on-error: true
 
       - name: Run prediction pipeline
         if: env.SKIP_PIPELINE != 'true'
         id: pipeline
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: python scripts/run_real_pipeline.py
 
       - name: Validate published artifacts
@@ -169,13 +174,13 @@ jobs:
               --data "{\"text\":\"⚠ WC2026: Server unreachable — GitHub Actions ran as fallback ($(date -u))\"}" || true
           fi
 
-      - name: Commit updated predictions
+      - name: Commit updated predictions and processed data
         run: |
           git config user.name "wc2026-bot"
           git config user.email "wc2026-bot@users.noreply.github.com"
-          git add data/published/ data/clv/ data/calibration/ reports/ || true
+          git add data/published/ data/clv/ data/calibration/ data/processed/ reports/ || true
           git diff --cached --quiet || \
-            git commit -m "Daily update $DATE: predictions [skip ci]"
+            git commit -m "Daily update $DATE: predictions + processed data [skip ci]"
           git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

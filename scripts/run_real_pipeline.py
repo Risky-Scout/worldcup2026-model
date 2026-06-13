@@ -27,6 +27,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -145,20 +146,45 @@ def _select_champions(results: list) -> dict:
 # 1. FETCH & BUILD DATASET
 # ────────────────────────────────────────────────────────────────────────────
 
+def _load_cached_tables() -> dict[str, pd.DataFrame]:
+    """Load pre-built processed parquet files from disk (committed to repo)."""
+    tables: dict[str, pd.DataFrame] = {}
+    for name in ["matches", "odds", "markets", "correct_score_odds", "team_stats",
+                 "shots", "events", "momentum", "group_standings", "team_form"]:
+        p = PROCESSED_DIR / DATA_VERSION / f"{name}.parquet"
+        if p.exists():
+            tables[name] = pd.read_parquet(p)
+            log.info("Loaded cached %s: %d rows", name, len(tables[name]))
+        else:
+            log.warning("Cached %s not found at %s", name, p)
+    return tables
+
+
 def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     log.info("── STEP 1: Fetching real BDL data ──")
     matches_path = PROCESSED_DIR / DATA_VERSION / "matches.parquet"
 
-    if matches_path.exists() and not force_refetch:
+    # Use committed/cached processed data when:
+    #   a) cache exists and refetch not forced, OR
+    #   b) BDL_API_KEY is not available (CI without secret configured)
+    api_key = os.environ.get("BDL_API_KEY", "").strip()
+    cache_exists = matches_path.exists()
+
+    if cache_exists and not force_refetch:
         log.info("Loading cached processed data (use --refetch to re-fetch)")
-        tables = {}
-        for name in ["matches", "odds", "markets", "correct_score_odds", "team_stats",
-                     "shots", "events", "momentum", "group_standings", "team_form"]:
-            p = PROCESSED_DIR / DATA_VERSION / f"{name}.parquet"
-            if p.exists():
-                tables[name] = pd.read_parquet(p)
-                log.info("Loaded %s: %d rows", name, len(tables[name]))
-        return tables
+        return _load_cached_tables()
+
+    if not api_key:
+        log.warning(
+            "BDL_API_KEY not set — cannot fetch fresh data. "
+            "Using committed processed data as fallback."
+        )
+        if cache_exists:
+            return _load_cached_tables()
+        raise RuntimeError(
+            "No BDL_API_KEY and no cached processed data found. "
+            "Either set BDL_API_KEY or commit data/processed/ parquet files."
+        )
 
     provider = BDLProvider(snapshot=True, req_delay=0.35)
     builder = DatasetBuilder(provider)
