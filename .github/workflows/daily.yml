@@ -102,7 +102,7 @@ jobs:
         run: |
           curl -sf -X GET \
             -H "X-Internal-Token: ${{ secrets.WEBHOOK_SECRET }}" \
-            https://sportsodds.wizardofodds.com/api/reload-lambdas || true
+            https://sportsodds.wizardofodds.com/api/reload-lambdas/index.php || true
         continue-on-error: true
 
       - name: Commit updated predictions and processed data

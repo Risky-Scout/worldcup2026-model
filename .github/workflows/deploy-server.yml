@@ -61,14 +61,15 @@ jobs:
       - name: Server status check
         run: |
           echo "Auth mode: $AUTH_MODE"
-          $SSH_CMD root@45.79.0.107 '
-            echo "=== Service Status ==="
-            systemctl is-active wc2026-live.service 2>/dev/null && echo "wc2026-live: ACTIVE ✓" || echo "wc2026-live: NOT RUNNING ✗"
-            systemctl is-active wc2026-daily.timer 2>/dev/null && echo "wc2026-daily.timer: ACTIVE ✓" || echo "wc2026-daily.timer: NOT RUNNING"
+          # SSH as woo (deploy user) — key is now in /var/www/sportsodds/.ssh/authorized_keys
+          SSH_USER=${{ secrets.SSH_ROOT_PASSWORD && 'root' || 'woo' }}
+          $SSH_CMD ${SSH_USER:-woo}@45.79.0.107 '
+            echo "=== uvicorn process ==="
+            pgrep -a -f "uvicorn wc2026" && echo "uvicorn: RUNNING ✓" || echo "uvicorn: NOT RUNNING ✗"
             echo "=== Health Check ==="
             curl -sf http://127.0.0.1:8000/health 2>/dev/null || echo "FastAPI: NOT RESPONDING on port 8000"
-            echo "=== Nginx ==="
-            systemctl is-active nginx && echo "nginx: ACTIVE ✓" || echo "nginx: DOWN ✗"
+            echo "=== External health.php ==="
+            curl -sf https://sportsodds.wizardofodds.com/health.php 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(\"ok:\",d[\"ok\"],\"uptime:\",d[\"uptime_s\"],\"lambdas:\",d[\"lambdas_loaded\"])" 2>/dev/null || echo "health.php not responding"
             echo "=== Disk / Memory ==="
             df -h / | tail -1
             free -h | head -2
@@ -91,62 +92,65 @@ jobs:
       - name: Restart live service
         if: github.event.inputs.action == 'restart'
         run: |
-          $SSH_CMD root@45.79.0.107 '
+          $SSH_CMD woo@45.79.0.107 '
             set -e
             echo "=== Pulling latest code ==="
-            cd /var/www/wc2026 && git pull origin main
+            cd ~/wc2026 && git pull origin main
 
-            echo "=== Restarting wc2026-live ==="
-            systemctl daemon-reload
-            systemctl restart wc2026-live.service
+            echo "=== Restarting uvicorn ==="
+            pkill -f "uvicorn wc2026.live_server" || true
+            sleep 2
+            nohup ~/.venv/bin/uvicorn wc2026.live_server:app \
+                --host 127.0.0.1 --port 8000 --workers 1 \
+                >> ~/logs/uvicorn.log 2>&1 &
             sleep 4
-            systemctl is-active wc2026-live.service && echo "✓ Live service restarted" || {
-              echo "✗ Restart failed — last 30 log lines:"
-              journalctl -u wc2026-live -n 30 --no-pager
-              exit 1
+            pgrep -f "uvicorn wc2026" && echo "✓ uvicorn restarted" || {
+                echo "✗ Failed — last log lines:"
+                tail -20 ~/logs/uvicorn.log
+                exit 1
             }
+            curl -sf http://127.0.0.1:8000/health && echo " — health ok"
           '
 
       - name: Full setup
         if: github.event.inputs.action == 'full-setup'
         run: |
-          # Write .env on the server
-          $SSH_CMD root@45.79.0.107 bash -s << 'REMOTE'
-            mkdir -p /var/www/wc2026
-          REMOTE
-
-          cat > /tmp/wc2026.env << ENVEOF
-          BDL_API_KEY=${{ secrets.BDL_API_KEY }}
-          FTP_HOST=${{ secrets.FTP_HOST }}
-          FTP_USER=${{ secrets.FTP_USER }}
-          FTP_PASS=${{ secrets.FTP_PASS }}
-          WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
-          ENVEOF
-          sed -i 's/^[[:space:]]*//' /tmp/wc2026.env
-
-          $SCP_CMD /tmp/wc2026.env root@45.79.0.107:/var/www/wc2026/.env
-          echo "✓ .env written to server"
-
-          # Clone or update repo and run full setup
-          $SSH_CMD root@45.79.0.107 '
+          $SSH_CMD woo@45.79.0.107 '
             set -e
-            if [ -d /var/www/wc2026/.git ]; then
-              cd /var/www/wc2026 && git pull origin main
+            echo "=== Pull / clone repo ==="
+            if [ -d ~/wc2026/.git ]; then
+              cd ~/wc2026 && git pull origin main
             else
-              git clone https://github.com/Risky-Scout/worldcup2026-model.git /var/www/wc2026
+              git clone https://github.com/Risky-Scout/worldcup2026-model.git ~/wc2026
             fi
-            cd /var/www/wc2026
-            bash deploy/server_setup.sh
+
+            echo "=== Install / update deps ==="
+            cd ~/wc2026
+            [ -d ~/.venv ] || python3 -m venv ~/.venv --without-pip
+            curl -sS https://bootstrap.pypa.io/get-pip.py | ~/.venv/bin/python 2>/dev/null || true
+            ~/.venv/bin/pip install -q -e . 2>&1 | tail -3
+            ~/.venv/bin/pip install -q fastapi "uvicorn[standard]" websockets 2>&1 | tail -3
+
+            echo "=== Restart uvicorn ==="
+            mkdir -p ~/logs
+            pkill -f "uvicorn wc2026.live_server" || true
+            sleep 2
+            nohup ~/.venv/bin/uvicorn wc2026.live_server:app \
+                --host 127.0.0.1 --port 8000 --workers 1 \
+                >> ~/logs/uvicorn.log 2>&1 &
+            sleep 4
+            pgrep -f "uvicorn wc2026" && echo "✓ uvicorn running" || {
+                tail -20 ~/logs/uvicorn.log; exit 1
+            }
+            curl -sf http://127.0.0.1:8000/health && echo " — health ok"
           '
 
       - name: Verify health after deploy
         if: github.event.inputs.action != 'status'
         run: |
-          sleep 6
-          $SSH_CMD root@45.79.0.107 '
-            echo "=== Final Health ==="
-            systemctl is-active wc2026-live.service && echo "✓ wc2026-live: active" || echo "✗ wc2026-live: FAILED"
-            curl -sf http://127.0.0.1:8000/health && echo " — FastAPI ✓" || echo "✗ FastAPI still not responding"
-            echo "=== Last 10 service logs ==="
-            journalctl -u wc2026-live -n 10 --no-pager
-          '
+          sleep 5
+          echo "=== Internal health ===" 
+          $SSH_CMD woo@45.79.0.107 'curl -sf http://127.0.0.1:8000/health'
+          echo ""
+          echo "=== External health.php ==="
+          curl -sf https://sportsodds.wizardofodds.com/health.php
