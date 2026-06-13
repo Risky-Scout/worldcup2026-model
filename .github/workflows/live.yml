@@ -2,10 +2,16 @@ name: Live Match Snapshot
 
 on:
   schedule:
-    # Every 5 minutes during match hours: 14:00–04:00 UTC (10AM–midnight ET)
-    - cron: "*/5 14-23 * * *"
-    - cron: "*/5 0-4 * * *"
+    # Every 2 minutes during match hours: 14:00–04:00 UTC (10AM–midnight ET)
+    # Using */2 instead of */5 because GitHub Actions throttles low-frequency
+    # crons on active repos — more trigger attempts = more actual runs.
+    - cron: "*/2 14-23 * * *"
+    - cron: "*/2 0-4 * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: live-snapshot
+  cancel-in-progress: true
 
 jobs:
   live-snapshot:
