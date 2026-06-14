@@ -1897,7 +1897,20 @@
               "ci_90_upper": 0.02535,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -0.6% below threshold 4%"
+              "value_reason": "edge -0.3% below threshold 4%"
+            },
+            {
+              "market": "3-0",
+              "model_prob": 0.07981,
+              "market_prob": 0.0801,
+              "edge_pct": -0.37,
+              "fair_odds": 12.53,
+              "market_odds": 12.484,
+              "ci_90_lower": 0.06513,
+              "ci_90_upper": 0.10045,
+              "half_kelly_pct": 0.0,
+              "value_flag": false,
+              "value_reason": "edge -0.4% below threshold 4%"
             },
             {
               "market": "1-1",
@@ -1936,7 +1949,7 @@
               "ci_90_upper": 0.04158,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -5.4% below threshold 4%"
+              "value_reason": "edge -5.3% below threshold 4%"
             },
             {
               "market": "3-2",
@@ -2853,7 +2866,7 @@
               "ci_90_upper": 0.09614,
               "half_kelly_pct": 0.024,
               "value_flag": false,
-              "value_reason": "edge 0.4% below threshold 4%"
+              "value_reason": "edge 0.2% below threshold 4%"
             },
             {
               "market": "home_win",
@@ -2944,7 +2957,7 @@
               "ci_90_upper": 0.04529,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -1.6% below threshold 4%"
+              "value_reason": "edge -1.5% below threshold 4%"
             },
             {
               "market": "2-0",
@@ -5962,7 +5975,7 @@
               "ci_90_upper": 0.02247,
               "half_kelly_pct": 0.036,
               "value_flag": false,
-              "value_reason": "edge 2.8% below threshold 4%"
+              "value_reason": "edge 2.9% below threshold 4%"
             },
             {
               "market": "2-0",
@@ -6014,7 +6027,7 @@
               "ci_90_upper": 0.20642,
               "half_kelly_pct": 0.019,
               "value_flag": false,
-              "value_reason": "edge 0.2% below threshold 4%"
+              "value_reason": "edge 0.3% below threshold 4%"
             },
             {
               "market": "over_2_5",

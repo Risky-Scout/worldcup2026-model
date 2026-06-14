@@ -1758,7 +1758,7 @@
               "ci_90_upper": 0.02091,
               "half_kelly_pct": 0.021,
               "value_flag": false,
-              "value_reason": "edge 2.4% below threshold 4%"
+              "value_reason": "edge 2.3% below threshold 4%"
             },
             {
               "market": "0-2",
@@ -1888,7 +1888,7 @@
               "ci_90_upper": 0.0329,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -1.0% below threshold 4%"
+              "value_reason": "edge -0.3% below threshold 4%"
             },
             {
               "market": "4-0",
@@ -1901,7 +1901,7 @@
               "ci_90_upper": 0.11067,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -1.1% below threshold 4%"
+              "value_reason": "edge -0.6% below threshold 4%"
             },
             {
               "market": "home_win",
@@ -2894,7 +2894,7 @@
               "ci_90_upper": 0.02443,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -1.6% below threshold 4%"
+              "value_reason": "edge -1.3% below threshold 4%"
             },
             {
               "market": "4-1",
@@ -3872,7 +3872,7 @@
               "ci_90_upper": 0.52042,
               "half_kelly_pct": 0.025,
               "value_flag": false,
-              "value_reason": "edge 0.0% below threshold 4%"
+              "value_reason": "edge 0.2% below threshold 4%"
             },
             {
               "market": "draw",
@@ -3911,7 +3911,7 @@
               "ci_90_upper": 0.72587,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -0.1% below threshold 4%"
+              "value_reason": "edge -0.2% below threshold 4%"
             },
             {
               "market": "1-0",

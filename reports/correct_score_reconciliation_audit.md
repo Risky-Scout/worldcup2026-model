@@ -1526,7 +1526,7 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
 
-### Colombia vs Portugal
+### Croatia vs Ghana
 - CS outcomes: 27  |  CS vendors: 1  |  Publish mode: market_reconciled
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |

@@ -806,7 +806,7 @@
               "ci_90_upper": 0.66769,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -0.1% below threshold 4%"
+              "value_reason": "edge -0.2% below threshold 4%"
             },
             {
               "market": "over_2_5",
@@ -2720,7 +2720,7 @@
           "pregame_lh": 3.2463,
           "pregame_la": 0.477,
           "lambda_uncertainty_pct": 12.0,
-          "n_value_markets": 3,
+          "n_value_markets": 4,
           "top_value_market": "2-1",
           "model_vs_market_summary": "Model: H=85.0% D=8.7% A=6.3%  Market: H=86.0% A=4.6%  Value markets: 3",
           "edges": [
