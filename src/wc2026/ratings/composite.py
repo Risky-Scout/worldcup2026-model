@@ -445,15 +445,18 @@ class CompositeTeamPrior:
         matches_df: pd.DataFrame,
         odds_df: pd.DataFrame,
         markets_df: Optional[pd.DataFrame] = None,
+        team_stats_df: Optional[pd.DataFrame] = None,
     ) -> "CompositeTeamPrior":
         """
         Fit all rating systems and extract market-implied lambdas.
 
         Parameters
         ----------
-        matches_df   Full matches table (2018+2022+2026)
-        odds_df      BDL odds table (main odds, 6 vendors)
-        markets_df   Optional markets sub-array table
+        matches_df     Full matches table (2018+2022+2026)
+        odds_df        BDL odds table (main odds, 6 vendors)
+        markets_df     Optional markets sub-array table
+        team_stats_df  Optional BDL team_stats table; used to blend actual goals
+                       with xG in the tournament adjustment (better attack signal)
         """
         self._fit_timestamp = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         hist = matches_df[
@@ -493,10 +496,10 @@ class CompositeTeamPrior:
 
         # ── 6. Apply WC2026 tournament performance adjustment ─────────────────
         # Use actual goals scored/conceded in completed 2026 matches to update
-        # each team's final lambdas.  team_form BDL data has no 2026 rows, so we
-        # derive the signal directly from matches_df (already available as `hist`
-        # which includes all completed matches including 2026).
-        self._apply_tournament_adjustment(matches_df)
+        # each team's final lambdas.  When team_stats_df is provided, the attack
+        # ratio is computed from a 40% actual goals / 60% xG blend, which has
+        # lower variance and better reflects underlying quality.
+        self._apply_tournament_adjustment(matches_df, team_stats_df)
 
         self._fitted = True
         n_market = sum(1 for tp in self._priors.values() if "market_implied" in tp.sources_used)
@@ -534,16 +537,27 @@ class CompositeTeamPrior:
 
     # ── Private methods ───────────────────────────────────────────────────
 
-    def _apply_tournament_adjustment(self, matches_df: pd.DataFrame) -> None:
+    def _apply_tournament_adjustment(
+        self,
+        matches_df: pd.DataFrame,
+        team_stats_df: Optional[pd.DataFrame] = None,
+    ) -> None:
         """
         Adjust each team's final_attack_lambda and final_defense_lambda based on
-        actual goals scored/conceded in completed WC2026 group-stage matches.
+        completed WC2026 match results.
 
-        Shrinkage: ratio = (actual / prior_lambda).  Shrunk ratio = 1 + (ratio-1)*n/(n+k)
-        where k=3 (prior equivalent matches) prevents overreaction from 1–2 games.
-        Cap: adjustment is clamped to [0.70, 1.30] — max ±30%.
+        Attack signal: 40% actual goals + 60% xG when team_stats_df is provided.
+        xG has lower variance than goals and better reflects underlying quality;
+        the 60/40 blend smooths out finishing luck without discarding actual outcomes.
+
+        Defense signal: actual goals conceded only (xG_against = opponent's xG,
+        which introduces extra lookup complexity for marginal benefit).
+
+        Shrinkage: ratio = (effective / prior_lambda).
+                   shrunk = 1 + (ratio - 1) * n / (n + k), k=3.
+        Cap: ±30% maximum adjustment.
         """
-        _K = 3  # prior strength (number of pseudo-matches anchoring toward 1.0)
+        _K = 3  # prior pseudo-match count anchoring ratios toward 1.0
         _CAP_LOW, _CAP_HIGH = 0.70, 1.30
 
         completed_2026 = matches_df[
@@ -556,38 +570,77 @@ class CompositeTeamPrior:
         if completed_2026.empty:
             return
 
-        # Accumulate per-team: total goals scored, total goals conceded, match count
-        team_stats: dict[str, dict] = {}
+        # ── Accumulate goals per team ────────────────────────────────────────
+        team_goals: dict[str, dict] = {}
         for _, row in completed_2026.iterrows():
             home, away = str(row["home_team"]), str(row["away_team"])
             hg, ag = float(row["home_goals"]), float(row["away_goals"])
             for team, scored, conceded in [(home, hg, ag), (away, ag, hg)]:
-                if team not in team_stats:
-                    team_stats[team] = {"scored": 0.0, "conceded": 0.0, "n": 0}
-                team_stats[team]["scored"] += scored
-                team_stats[team]["conceded"] += conceded
-                team_stats[team]["n"] += 1
+                if team not in team_goals:
+                    team_goals[team] = {"scored": 0.0, "conceded": 0.0, "n": 0}
+                team_goals[team]["scored"] += scored
+                team_goals[team]["conceded"] += conceded
+                team_goals[team]["n"] += 1
 
+        # ── Accumulate xG per team from team_stats_df ────────────────────────
+        # team_stats_df has one row per (team, match): expected_goals = team's xG
+        team_xg_scored: dict[str, float] = {}
+        team_xg_n: dict[str, int] = {}
+        if team_stats_df is not None and not team_stats_df.empty:
+            wc26_ids = set(completed_2026["match_id"].astype(str).tolist())
+            for _, row in team_stats_df.iterrows():
+                mid = str(row.get("match_id", ""))
+                if mid not in wc26_ids:
+                    continue
+                tn = str(row.get("team_name", ""))
+                xg = row.get("expected_goals")
+                if not tn or xg is None:
+                    continue
+                try:
+                    xg_f = float(xg)
+                except (TypeError, ValueError):
+                    continue
+                if xg_f < 0:
+                    continue
+                team_xg_scored[tn] = team_xg_scored.get(tn, 0.0) + xg_f
+                team_xg_n[tn] = team_xg_n.get(tn, 0) + 1
+
+        n_xg_used = 0
         n_adjusted = 0
         for team, tp in self._priors.items():
-            stats = team_stats.get(team)
+            stats = team_goals.get(team)
             if stats is None or stats["n"] == 0:
                 continue
 
             n = stats["n"]
-            shrink = n / (n + _K)  # Bayesian shrinkage toward 1.0
+            shrink = n / (n + _K)
 
             prior_att = max(tp.final_attack_lambda, _EPS)
             prior_def = max(tp.final_defense_lambda, _EPS)
 
-            att_ratio = (stats["scored"] / n) / prior_att
-            def_ratio = (stats["conceded"] / n) / prior_def
+            # Attack: blend actual goals (40%) with xG (60%) when available
+            actual_att = stats["scored"] / n
+            xg_n = team_xg_n.get(team, 0)
+            if xg_n > 0 and xg_n >= n:
+                avg_xg = team_xg_scored[team] / xg_n
+                effective_att = 0.4 * actual_att + 0.6 * avg_xg
+                n_xg_used += 1
+                log.debug(
+                    "xG blend: %s  actual_att=%.3f  xg_att=%.3f  blended=%.3f  n=%d",
+                    team, actual_att, avg_xg, effective_att, n,
+                )
+            else:
+                effective_att = actual_att
 
-            # Shrink each ratio toward 1.0
+            # Defense: actual goals conceded only
+            effective_def = stats["conceded"] / n
+
+            att_ratio = effective_att / prior_att
+            def_ratio = effective_def / prior_def
+
             att_adj = 1.0 + (att_ratio - 1.0) * shrink
             def_adj = 1.0 + (def_ratio - 1.0) * shrink
 
-            # Cap at ±30%
             att_adj = float(np.clip(att_adj, _CAP_LOW, _CAP_HIGH))
             def_adj = float(np.clip(def_adj, _CAP_LOW, _CAP_HIGH))
 
@@ -607,8 +660,11 @@ class CompositeTeamPrior:
             )
             n_adjusted += 1
 
-        log.info("tournament_adjustment applied: %d teams updated from %d completed WC2026 matches",
-                 n_adjusted, len(completed_2026))
+        log.info(
+            "tournament_adjustment applied: %d teams updated from %d completed WC2026 matches"
+            "  (xG blend active for %d/%d teams)",
+            n_adjusted, len(completed_2026), n_xg_used, n_adjusted,
+        )
 
     def _fit_elo(self, hist: pd.DataFrame) -> dict[str, float]:
         try:
@@ -967,6 +1023,7 @@ def build_composite_prior(
     odds_df: pd.DataFrame,
     markets_df: Optional[pd.DataFrame] = None,
     market_weight: Optional[float] = None,
+    team_stats_df: Optional[pd.DataFrame] = None,
 ) -> CompositeTeamPrior:
     """Convenience function: fit and return a CompositeTeamPrior.
 
@@ -974,11 +1031,13 @@ def build_composite_prior(
     ----------
     market_weight : float or None
         Fraction allocated to market-implied lambdas in the prior blend.
-        None → CompositeTeamPrior.DEFAULT_MARKET_WEIGHT (currently 0.0).
-        Pass 0.6 to restore the original blending behaviour.
+        None → CompositeTeamPrior.DEFAULT_MARKET_WEIGHT (currently 0.20).
+    team_stats_df : pd.DataFrame or None
+        BDL team_stats table; when provided the tournament adjustment blends
+        actual goals (40%) with xG (60%) for a lower-variance attack signal.
     """
     prior = CompositeTeamPrior(market_weight=market_weight)
-    prior.fit(matches_df, odds_df, markets_df)
+    prior.fit(matches_df, odds_df, markets_df, team_stats_df=team_stats_df)
     return prior
 
 

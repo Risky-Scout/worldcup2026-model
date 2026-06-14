@@ -777,6 +777,71 @@ def market_implied_pmf(
 # Convenience constructors
 # ---------------------------------------------------------------------------
 
+def create_bivariate_poisson_grid(
+    lh: float,
+    la: float,
+    lambda3: float,
+    max_goals: int = PMF_MAX_GOALS,
+) -> np.ndarray:
+    """
+    Bivariate Poisson joint PMF using the Karlis-Ntzoufras (2003) decomposition.
+
+    Replaces the independence assumption P(H=h,A=a) = P(H=h)*P(A=a) with a
+    model where goals for each team share a common Poisson component of size
+    lambda3, giving Cov(H, A) = lambda3.  When lambda3 = 0 this reduces exactly
+    to the independent Poisson product.
+
+    Decomposition:
+        H = W1 + W3,  W1 ~ Poisson(l1)
+        A = W2 + W3,  W2 ~ Poisson(l2)
+        W3 ~ Poisson(lambda3)   (shared component)
+
+    where l1 = max(eps, lh - lambda3), l2 = max(eps, la - lambda3).
+
+    Joint PMF:
+        P(H=h, A=a) = sum_{k=0}^{min(h,a)} Poisson(h-k; l1)
+                                           * Poisson(a-k; l2)
+                                           * Poisson(k; lambda3)
+
+    Parameters
+    ----------
+    lh : float  Composite expected home goals
+    la : float  Composite expected away goals
+    lambda3 : float  Shared Poisson component fitted on WC data; >= 0
+    max_goals : int  Grid is (max_goals x max_goals)
+
+    Returns
+    -------
+    np.ndarray  Normalized (max_goals x max_goals) probability grid, dtype float64
+    """
+    _e = 1e-9
+    l3 = max(0.0, float(lambda3))
+    l1 = max(_e, float(lh) - l3)
+    l2 = max(_e, float(la) - l3)
+    n = int(max_goals)
+
+    # Precompute Poisson PMFs for 0..n-1
+    idx = np.arange(n, dtype=np.float64)
+    p1 = poisson.pmf(idx, l1)  # shape (n,)
+    p2 = poisson.pmf(idx, l2)
+    p3 = poisson.pmf(idx, l3)
+
+    # Vectorized over k via meshgrid.
+    # grid[h, a] = sum_{k=0}^{min(h,a)} p1[h-k] * p2[a-k] * p3[k]
+    # We build a 3-D tensor (n, n, n) and mask invalid k values.
+    H, A, K = np.meshgrid(np.arange(n), np.arange(n), np.arange(n), indexing="ij")
+    valid = (K <= H) & (K <= A)
+    h_k = np.clip(H - K, 0, n - 1)  # clipped so indexing is safe; invalid cells masked
+    a_k = np.clip(A - K, 0, n - 1)
+    contrib = np.where(valid, p1[h_k] * p2[a_k] * p3[K], 0.0)
+    grid = contrib.sum(axis=2).astype(np.float64)
+
+    total = grid.sum()
+    if total > _e:
+        grid /= total
+    return grid
+
+
 def from_penaltyblog_grid(
     grid: FootballProbabilityGrid,
     model_name: str,

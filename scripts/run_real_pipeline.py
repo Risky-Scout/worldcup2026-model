@@ -684,6 +684,7 @@ def predict_all_2026(
     markets_df: pd.DataFrame,
     hist_df: pd.DataFrame,
     results: list,
+    team_stats_df: "pd.DataFrame | None" = None,
 ) -> tuple[list, dict]:
     """Fit models on all 2018+2022 history, predict all 2026 scheduled matches."""
     log.info("── STEP 3: Predicting all 2026 matches ──")
@@ -776,6 +777,32 @@ def predict_all_2026(
         log.warning("Could not extract DC rho (%s). Using default rho=%.4f.",
                     _rho_exc, calib_rho)
 
+    # ── Extract calibrated lambda3 from fitted Bivariate Poisson model ──────────
+    # lambda3 is the shared Poisson component in the Karlis-Ntzoufras decomposition.
+    # Cov(H, A) = lambda3 > 0 means high-scoring games tend to produce goals from
+    # both teams.  We inject this into the composite prior PMF to replace the
+    # independence assumption (which bakes in Cov(H,A) = 0).
+    calib_lambda3: float = 0.0
+    try:
+        bvp_model = ladder._models.get("bivariate_poisson")
+        if bvp_model is not None:
+            _bvp_params = bvp_model.get_params()
+            # penaltyblog stores log(lambda3) as "correlation_log"
+            _raw_l3 = float(np.exp(_bvp_params.get("correlation_log", np.log(1e-9))))
+            # Clamp: lambda3 must stay well below min(avg_lh, avg_la) ~0.9
+            # so that l1 = lh - lambda3 and l2 = la - lambda3 remain positive
+            calib_lambda3 = float(np.clip(_raw_l3, 0.0, 0.50))
+            log.info(
+                "Bivariate Poisson calibrated lambda3 from WC data: %.4f (raw=%.6f) "
+                "— Cov(H,A)=%.4f",
+                calib_lambda3, _raw_l3, calib_lambda3,
+            )
+    except Exception as _l3_exc:
+        log.warning(
+            "Could not extract bivariate lambda3 (%s). "
+            "Using lambda3=0.0 (independent Poisson).", _l3_exc,
+        )
+
     # ── Extract calibration temperature for composite prior PMF ──────────────
     # The walkforward proves parametric models are severely overconfident (T≈3)
     # at the exact-score level on WC data.  The Elo model (T≈1.25) is a better
@@ -849,7 +876,9 @@ def predict_all_2026(
         "Fitting composite team prior (market_weight=%.2f) ...", _adaptive_market_weight,
     )
     composite_prior = build_composite_prior(
-        matches_df, odds_df, markets_df, market_weight=_adaptive_market_weight,
+        matches_df, odds_df, markets_df,
+        market_weight=_adaptive_market_weight,
+        team_stats_df=team_stats_df if team_stats_df is not None else pd.DataFrame(),
     )
 
     # Apply dynamic WC_AVG scaling to all team lambdas when 2026 goal rate
@@ -975,6 +1004,7 @@ def predict_all_2026(
             composite_prior, elo_baseline, team_priors,
             calib_temperature=calib_temperature,
             calib_rho=calib_rho,
+            calib_lambda3=calib_lambda3,
             batch_pmf=_batch_pmfs.get((home, away)),
         )
         if pred:
@@ -1076,13 +1106,14 @@ def _predict_one_match(
     team_priors: dict,
     calib_temperature: float = 1.0,
     calib_rho: float = -0.05,
+    calib_lambda3: float = 0.0,
     batch_pmf: "np.ndarray | None" = None,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
 
     Modes produced:
-      composite_rating_pmf  — composite prior + Dixon-Coles (replaces elo_fallback)
+      composite_rating_pmf  — composite prior + Bivariate Poisson (or DC fallback)
       pure_model            — best parametric model (if known teams)
       market_implied        — from BDL no-vig odds
       market_reconciled     — DEFAULT publish, blend of market + composite
@@ -1097,6 +1128,11 @@ def _predict_one_match(
         Dixon-Coles rho extracted from the WC-fitted DC model.  Used when
         rebuilding the comp_pmf (altitude adjustment) and as the default rho
         passed to predict_match_from_composite.
+    calib_lambda3 : float
+        Shared Poisson component from the WC-fitted Bivariate Poisson model.
+        Cov(H, A) = lambda3.  When > 0.01, the composite prior PMF is rebuilt
+        using the Karlis-Ntzoufras bivariate formula instead of independent
+        Poisson / Dixon-Coles, correcting the independence assumption.
     """
 
     model_warnings = []
@@ -1145,6 +1181,30 @@ def _predict_one_match(
         comp_pmf /= comp_pmf.sum()
         log.debug("altitude_adjustment: %s → scale=%.3f  lh=%.3f  la=%.3f",
                   stadium, _alt_scale, comp_lh, comp_la)
+
+    # ── 1b.5. Replace DC comp_pmf with Bivariate Poisson when lambda3 > 0.01 ──
+    # Injects the WC-fitted correlation structure (Cov(H,A) = lambda3) into the
+    # composite prior PMF without touching the team strength estimates
+    # (comp_lh, comp_la are unchanged — only the joint distribution changes).
+    # Falls back to DC / independent Poisson when lambda3 is negligible.
+    if calib_lambda3 > 0.01:
+        try:
+            from wc2026.models.joint_pmf import create_bivariate_poisson_grid as _bvp_grid
+            _bv = _bvp_grid(comp_lh, comp_la, calib_lambda3, max_goals=15)
+            _bv = np.clip(_bv, 0, None)
+            _bv_sum = _bv.sum()
+            if _bv_sum > 1e-9:
+                _bv /= _bv_sum
+            comp_pmf = _bv
+            log.debug(
+                "bivariate_pmf applied: lambda3=%.4f  lh=%.4f  la=%.4f"
+                "  P(1-1)=%.4f  P(0-0)=%.4f",
+                calib_lambda3, comp_lh, comp_la,
+                float(comp_pmf[1, 1]) if comp_pmf.shape[0] > 1 else 0.0,
+                float(comp_pmf[0, 0]) if comp_pmf.shape[0] > 0 else 0.0,
+            )
+        except Exception as _bvp_exc:
+            log.warning("bivariate_pmf failed (%s); using DC fallback.", _bvp_exc)
 
     # ── 1c. Temperature calibration of composite prior PMF ────────────────
     # The OOF walkforward shows rating-based models (Elo, composite) are
@@ -1203,12 +1263,50 @@ def _predict_one_match(
     # ── 3. Extract market constraints ────────────────────────────────────
     mc = extract_constraints(odds_df, markets_df, match_id)
 
-    # ── 4. Reconcile: use composite as model prior for market_reconciled ──
+    # ── 3b. Blend NB/overdispersed parametric champion into reconciliation prior ──
+    # The Negative Binomial winner captures overdispersion (goal variance > Poisson
+    # mean) that the composite prior underestimates.  A 25% blend of pure_pmf
+    # into comp_pmf introduces this dispersion structure while keeping the
+    # composite prior's team-strength estimates dominant (75%).
+    # Only applied when the champion model is overdispersed (NB, ZIP, Weibull).
+    _OVERDISPERSED_MODELS = {"negative_binomial", "zero_inflated_poisson", "weibull_copula"}
+    if pure_pmf is not None and model_used in _OVERDISPERSED_MODELS:
+        try:
+            # Pad pure_pmf to match comp_pmf dimensions (parametric uses max_goals=14,
+            # composite uses max_goals=15 — pad with zeros to align shapes)
+            target = comp_pmf.shape[0]
+            if pure_pmf.shape[0] < target:
+                pad = target - pure_pmf.shape[0]
+                pure_pmf_padded = np.pad(pure_pmf, ((0, pad), (0, pad)))
+                _s = pure_pmf_padded.sum()
+                if _s > 1e-9:
+                    pure_pmf_padded /= _s
+            else:
+                pure_pmf_padded = pure_pmf[:target, :target]
+            recon_prior = 0.75 * comp_pmf + 0.25 * pure_pmf_padded
+            recon_prior = np.clip(recon_prior, 0, None)
+            _rp_sum = recon_prior.sum()
+            if _rp_sum > 1e-9:
+                recon_prior /= _rp_sum
+            log.debug(
+                "nb_blend applied: model_used=%s  25%%pure+75%%comp"
+                "  P(0-0) comp=%.4f blend=%.4f",
+                model_used,
+                float(comp_pmf[0, 0]) if comp_pmf.shape[0] > 0 else 0.0,
+                float(recon_prior[0, 0]) if recon_prior.shape[0] > 0 else 0.0,
+            )
+        except Exception as _blend_exc:
+            log.warning("nb_blend failed (%s); using comp_pmf only.", _blend_exc)
+            recon_prior = comp_pmf
+    else:
+        recon_prior = comp_pmf
+
+    # ── 4. Reconcile: use blended prior for market_reconciled ─────────────
     rec = reconcile(
         match_id=match_id,
         home_team=home,
         away_team=away,
-        pure_model_pmf=comp_pmf,      # composite is the model prior
+        pure_model_pmf=recon_prior,   # bivariate composite + optional NB blend
         pure_model_lh=comp_lh,
         pure_model_la=comp_la,
         mc=mc,
@@ -3038,7 +3136,10 @@ def main():
     ].copy()
 
     results = run_walkforward(matches_df)
-    all_preds, champions, composite_prior = predict_all_2026(matches_df, odds_df, markets_df, hist_df, results)
+    all_preds, champions, composite_prior = predict_all_2026(
+        matches_df, odds_df, markets_df, hist_df, results,
+        team_stats_df=tables.get("team_stats"),
+    )
     write_published_json(all_preds, generated_at)
     annotate_published_with_results(matches_df)
     _populate_clv_outcomes(matches_df)
