@@ -439,8 +439,8 @@ def build_clv_records_from_prediction(
     markets_to_track = [
         "home_win", "draw", "away_win",
         "btts_yes", "btts_no",
-        "over_0_5", "over_1_5", "over_2_5", "over_3_5",
-        "over_4_5", "over_5_5", "over_6_5",
+        "over_0_5", "over_1_5", "over_2_5", "over_3_5", "over_4_5", "over_5_5", "over_6_5",
+        "under_1_5", "under_2_5", "under_3_5",
     ]
 
     edge_report = prediction.get("edge_report", {}) or {}
@@ -453,7 +453,14 @@ def build_clv_records_from_prediction(
     records: list[CLVRecord] = []
 
     for mkt in markets_to_track:
-        model_p = edge_map.get(mkt) or derived.get(mkt)
+        # derived_markets uses dot notation ("over_2.5") while markets_to_track
+        # uses underscore notation ("over_2_5"). Convert last underscore to dot.
+        # e.g. "over_2_5" → "over_2.5",  "under_1_5" → "under_1.5"
+        if mkt.startswith(("over_", "under_")):
+            derived_key = mkt[:mkt.rfind("_")] + "." + mkt[mkt.rfind("_") + 1:]
+        else:
+            derived_key = mkt
+        model_p = edge_map.get(mkt) or derived.get(mkt) or derived.get(derived_key)
         if model_p is None or float(model_p) <= 0:
             continue
 
