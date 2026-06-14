@@ -9,9 +9,9 @@ Stages
 
 2. Evaluation metrics (using penaltyblog.metrics where possible):
    - Exact-score log loss (primary)
-   - 1X2 RPS (penaltyblog.metrics.compute_average_rps)
-   - Multiclass Brier (penaltyblog.metrics.compute_multiclass_brier_score)
-   - Ignorance score (penaltyblog.metrics.compute_ignorance_score)
+   - 1X2 RPS (penaltyblog.metrics.rps.rps_average)
+   - Multiclass Brier (penaltyblog.metrics.multiclass_brier_score)
+   - Ignorance score (manual log2)
    - ECE (custom — not in penaltyblog)
    - Calibration slope/intercept (custom)
    - Sharpness
@@ -27,11 +27,8 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from penaltyblog.metrics.metrics import (
-    compute_average_rps,
-    compute_ignorance_score,
-    compute_multiclass_brier_score,
-)
+from penaltyblog.metrics import multiclass_brier_score as pb_brier_score
+from penaltyblog.metrics.rps import rps_average as pb_rps_average
 from scipy.optimize import minimize_scalar
 
 from wc2026.config import TEMPERATURE_GRID
@@ -226,12 +223,12 @@ def evaluate_pmf_predictions(
         for ah, aa in actuals
     ], dtype=float)
 
+    # Integer class indices for penaltyblog 1.11.0 API (0=home, 1=draw, 2=away)
+    actual_int = np.argmax(actual_1x2, axis=1)
+
     # ── RPS (penaltyblog) ────────────────────────────────────────────────
     try:
-        rps_arr = np.zeros(n, dtype=float)
-        compute_average_rps(probs_1x2, actual_1x2, n, 3)
-        # penaltyblog's compute_average_rps returns a scalar
-        metrics.rps_1x2 = float(compute_average_rps(probs_1x2, actual_1x2, n, 3))
+        metrics.rps_1x2 = float(pb_rps_average(probs_1x2, actual_int))
     except Exception as exc:
         log.warning("penaltyblog RPS failed: %s. Using manual.", exc)
         cum_p = np.cumsum(probs_1x2, axis=1)
@@ -240,7 +237,7 @@ def evaluate_pmf_predictions(
 
     # ── Brier (penaltyblog) ──────────────────────────────────────────────
     try:
-        metrics.brier_1x2 = float(compute_multiclass_brier_score(actual_1x2, probs_1x2))
+        metrics.brier_1x2 = float(pb_brier_score(probs_1x2, actual_int))
     except Exception as exc:
         log.warning("penaltyblog Brier failed: %s. Using manual.", exc)
         metrics.brier_1x2 = float(np.mean(np.sum((probs_1x2 - actual_1x2) ** 2, axis=1)))
