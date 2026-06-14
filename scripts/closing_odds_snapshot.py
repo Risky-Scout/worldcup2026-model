@@ -42,6 +42,7 @@ log = logging.getLogger("closing_odds")
 
 LOOKAHEAD_MIN = 15      # scan: matches kicking off within this window
 CLOSING_BEFORE_MIN = 3  # capture odds this many minutes before kickoff
+LOOKBACK_MIN = 10       # also capture if match kicked off within last N min (handles late triggers)
 DATA_DIR = REPO_ROOT / "data"
 CLV_PATH = DATA_DIR / "clv" / "2026" / "records.jsonl"
 DEBUG_LOG = REPO_ROOT / ".cursor" / "debug-3f8dcc.log"
@@ -83,7 +84,7 @@ def _load_scheduled_matches() -> list[dict]:
         try:
             data = json.loads(f.read_text())
             for m in data.get("matches", []):
-                if m.get("status") != "scheduled":
+                if m.get("status") not in ("scheduled", "in_progress"):
                     continue
                 ko_raw = m.get("match_datetime_utc") or m.get("datetime")
                 if not ko_raw:
@@ -306,10 +307,12 @@ def main() -> None:
     matches = _load_scheduled_matches()
     log.info("Found %d total scheduled matches", len(matches))
 
-    # Filter to matches kicking off within our lookahead window
+    # Filter to matches kicking off within our lookahead window OR recently started
+    # (handles late workflow triggers — closing odds still valid for ~10 min after KO)
+    lookback_start = now - timedelta(minutes=LOOKBACK_MIN)
     imminent = [
         m for m in matches
-        if now <= m["kickoff_utc"] <= window_end
+        if lookback_start <= m["kickoff_utc"] <= window_end
     ]
 
     # #region agent log
@@ -350,6 +353,11 @@ def main() -> None:
                  "sleep_secs": round(sleep_secs), "capture_at": capture_at.isoformat()}, "D", "pre1")
             # #endregion
             time.sleep(sleep_secs)
+        else:
+            log.info(
+                "Match %s vs %s already past T-%dmin (%.0fs ago) — capturing immediately",
+                m["home_team"], m["away_team"], CLOSING_BEFORE_MIN, abs(sleep_secs),
+            )
 
         ts = datetime.now(tz=timezone.utc).isoformat()
         log.info("Fetching closing odds for match_id=%s (%s vs %s)...",
