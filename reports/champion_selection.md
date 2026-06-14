@@ -1,6 +1,6 @@
 # Champion Policy (Real BDL Data)
 
-**Generated**: 2026-06-14T17:05:59Z
+**Generated**: 2026-06-14T19:04:41Z
 
 ## Six champion tiers
 
@@ -54,4 +54,4 @@ New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 | 6 | bivariate_poisson | 106 | 4.9445 | 0.3131 | 0.8572 | 0.3161 | 3.000 | parametric prior |
 | 7 | poisson | 106 | 5.1645 | 0.3092 | 0.8450 | 0.3049 | 3.000 | parametric prior |
 | 8 | zero_inflated_poisson | 106 | 5.1683 | 0.3085 | 0.8407 | 0.2706 | 3.000 | parametric prior |
-| 9 | weibull_copula | 106 | 6.5654 | 0.3361 | 0.8949 | 0.3233 | 3.000 | parametric prior |
+| 9 | weibull_copula | 106 | 6.5472 | 0.3194 | 0.8671 | 0.3297 | 3.000 | parametric prior |
