@@ -45,28 +45,6 @@ CLOSING_BEFORE_MIN = 3  # capture odds this many minutes before kickoff
 LOOKBACK_MIN = 10       # also capture if match kicked off within last N min (handles late triggers)
 DATA_DIR = REPO_ROOT / "data"
 CLV_PATH = DATA_DIR / "clv" / "2026" / "records.jsonl"
-DEBUG_LOG = REPO_ROOT / ".cursor" / "debug-3f8dcc.log"
-
-# ── debug logging helper ─────────────────────────────────────────────────────
-
-def _dbg(msg: str, data: dict, hyp: str = "A", run_id: str = "pre1") -> None:
-    """Append one NDJSON line to the debug log file."""
-    import time as _t
-    entry = {
-        "sessionId": "3f8dcc",
-        "runId": run_id,
-        "hypothesisId": hyp,
-        "location": "closing_odds_snapshot.py",
-        "message": msg,
-        "data": data,
-        "timestamp": int(_t.time() * 1000),
-    }
-    try:
-        DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
-        with open(DEBUG_LOG, "a") as _f:
-            _f.write(json.dumps(entry) + "\n")
-    except Exception:
-        pass
 
 
 # ── match discovery ──────────────────────────────────────────────────────────
@@ -300,10 +278,6 @@ def main() -> None:
     log.info("closing_odds_snapshot — scan window: %s → %s UTC",
              now.strftime("%H:%M"), window_end.strftime("%H:%M"))
 
-    # #region agent log
-    _dbg("script started", {"now_utc": now.isoformat(), "lookahead_min": LOOKAHEAD_MIN}, "A", "pre1")
-    # #endregion
-
     matches = _load_scheduled_matches()
     log.info("Found %d total scheduled matches", len(matches))
 
@@ -315,12 +289,6 @@ def main() -> None:
         if lookback_start <= m["kickoff_utc"] <= window_end
     ]
 
-    # #region agent log
-    _dbg("imminent matches found", {"count": len(imminent),
-         "matches": [f"{m['home_team']} vs {m['away_team']} @ {m['kickoff_utc'].isoformat()}"
-                     for m in imminent]}, "B", "pre1")
-    # #endregion
-
     if not imminent:
         log.info("No matches kicking off in the next %d minutes — nothing to do", LOOKAHEAD_MIN)
         return
@@ -328,9 +296,6 @@ def main() -> None:
     api_key = os.environ.get("BDL_API_KEY", "")
     if not api_key:
         log.warning("BDL_API_KEY not set — cannot fetch closing odds")
-        # #region agent log
-        _dbg("no api key", {"bdl_key_present": False}, "C", "pre1")
-        # #endregion
         return
 
     from wc2026.data.providers.bdl import BDLProvider
@@ -348,10 +313,6 @@ def main() -> None:
                 m["home_team"], m["away_team"], ko.strftime("%H:%M"),
                 sleep_secs, CLOSING_BEFORE_MIN,
             )
-            # #region agent log
-            _dbg("sleeping until T-3", {"match": f"{m['home_team']} vs {m['away_team']}",
-                 "sleep_secs": round(sleep_secs), "capture_at": capture_at.isoformat()}, "D", "pre1")
-            # #endregion
             time.sleep(sleep_secs)
         else:
             log.info(
@@ -367,25 +328,13 @@ def main() -> None:
             odds_rows = provider.fetch_odds([int(m["match_id"])])
         except Exception as exc:
             log.error("BDL odds fetch failed for match_id=%s: %s", m["match_id"], exc)
-            # #region agent log
-            _dbg("odds fetch failed", {"match_id": m["match_id"], "error": str(exc)}, "C", "pre1")
-            # #endregion
             continue
-
-        # #region agent log
-        _dbg("odds fetched", {"match_id": m["match_id"], "n_vendors": len(odds_rows)}, "C", "pre1")
-        # #endregion
 
         if not odds_rows:
             log.warning("No odds returned for match_id=%s — skipping", m["match_id"])
             continue
 
         closing_probs = _parse_closing_probs(odds_rows)
-
-        # #region agent log
-        _dbg("closing probs computed", {"match_id": m["match_id"],
-             "markets": {k: round(v, 3) for k, v in closing_probs.items()}}, "D", "pre1")
-        # #endregion
 
         if not closing_probs:
             log.warning("Could not parse any closing probabilities — skipping match_id=%s",
@@ -397,11 +346,6 @@ def main() -> None:
             "Closing odds recorded for %s vs %s: %d CLV records updated",
             m["home_team"], m["away_team"], n,
         )
-        # #region agent log
-        _dbg("clv records updated", {"match_id": m["match_id"],
-             "home": m["home_team"], "away": m["away_team"],
-             "n_updated": n, "markets": list(closing_probs.keys())}, "D", "pre1")
-        # #endregion
         captured += 1
 
     log.info("closing_odds_snapshot done — captured closing odds for %d match(es)", captured)
