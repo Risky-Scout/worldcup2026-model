@@ -1,204 +1,232 @@
-WIZARDOFODDS.COM
-A Guide to the WC 2026 Prediction Pages
-What every number, chart, and indicator means — across all three pages.
+---
+title: "A Guide to the World Cup 2026 Prediction Pages"
+subtitle: "What every number, chart, and indicator means -- and why it matters"
+author: "WizardOfOdds.com"
+date: "June 2026"
+---
+
+# A Guide to the World Cup 2026 Prediction Pages
+
+Most football prediction tools give you a win probability and call it a day. This one gives you the entire joint probability distribution over every possible scoreline -- the probability that the match ends 0-0, that it ends 2-1, that it ends 4-3 -- and derives every betting market mechanically from that single distribution. There is no separate model for over/under. No separate model for BTTS. Every number you see on every page flows from one source of truth: a grid of probabilities over final scores.
+
+That architecture matters because it means the numbers are internally consistent. The over 2.5 goals probability and the 1X2 probabilities cannot contradict each other the way they often do on aggregator sites that pull from different sources. When you see an edge on this site, you are seeing a discrepancy between a coherent probability system and the bookmaker's price -- not an artifact of mismatched models.
+
+Three pages build on this foundation. Here is what each one shows, and how to make the most of it.
 
 ---
 
-There are three pages in the WC 2026 prediction section. Each draws from the same underlying joint score probability engine. This guide explains every element visible on each page, in the order it appears.
+## Page 1 -- Pre-Game Predictions
+
+**URL:** sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world%20cup/pre%20match.html
+
+This is the command center. Every World Cup match scheduled for today appears in the main table with the model's probability estimates, expected goals, and edge analysis against live bookmaker prices. The data refreshes automatically and a red banner appears if the underlying prediction file is more than four hours old -- a signal that the automated pipeline may have encountered an issue.
+
+### The KPI Cards
+
+Four summary numbers sit at the top of the page. They compress the entire day's modeling output into a single glance.
+
+**Matches Today** is exactly what it says: the number of regulation kickoffs scheduled for today's date in Eastern Time.
+
+**Value Bets** counts the individual betting markets across all of today's matches that pass all three of the model's edge filters simultaneously: a raw edge of at least 4%, a 90% confidence interval whose lower bound still exceeds the market's no-vig price, and a market-implied probability above 2%. This is a strict filter, and the count is frequently zero or a very small number. That is correct behavior. A well-calibrated model should not be finding edge everywhere, because the market for World Cup games is well-supplied with sharp money. When the number is zero, the model is telling you the market is fairly priced today. When it shows 3 or 4 markets, it is worth reading closely.
+
+**Best Edge** is the single largest edge percentage found across all today's markets, with the specific market and match identified in the sub-label. An edge of, say, +12% on "Over 2.5 Goals, USA vs. Portugal" means the model estimates that outcome is 12% more likely than the bookmaker's no-vig price implies. It does not mean the bet will win -- it means the model believes the price is favorable. Odds move between prediction time and kickoff, so always confirm the current number before acting.
+
+**Avg xG / Match** is the average total expected goals across today's fixtures. Expected goals here are the rate parameters that feed the joint score distribution -- the model's best estimate of how many goals each team will score against a neutral opponent under current conditions. A figure of 2.6 means today's matches are, on average, expected to produce more than two goals per game. A figure of 2.2 reflects a slate of tighter, defensive matchups. It is a fast read on the overall goal-scoring environment before you drill into individual matches.
+
+### The Bankroll Sizing Tool
+
+Enter a bankroll amount and select a Kelly fraction. For every market that passes all three edge filters, the tool computes a recommended dollar stake.
+
+The **Kelly criterion** is a formula for sizing bets to maximize long-run bankroll growth given an edge. The formula is: f* = edge / (decimal odds - 1). If you have a 10% edge on a market paying +200 American odds (3.00 decimal), Full Kelly says bet 10% / (3.00 - 1) = 5% of your bankroll.
+
+**Full Kelly** is theoretically optimal when edge estimates are perfectly accurate. They never are. This model carries inherent uncertainty in its lambda estimates, so Full Kelly tends to overbet and produce large swings. Use it only when you have high confidence in the edge signal for that specific market.
+
+**Half Kelly** divides the computed stake by 2. This is the default and the standard recommendation in the sports modeling literature when working with a model that has non-negligible parameter uncertainty. It retains most of the theoretical compounding advantage while substantially reducing drawdown risk.
+
+**Quarter Kelly** is appropriate when you are less certain about the model's edge -- either because you are early in the tournament with limited completed-match data, or because you are spreading capital across several simultaneous positions.
+
+All three fractions are hard-capped at 5% of your entered bankroll regardless of what the formula computes.
+
+### The Match Table
+
+Each row is one match. Working left to right:
+
+**Match** shows the two teams. Because World Cup 2026 is hosted jointly by the United States, Canada, and Mexico, nearly every match is played far from any team's natural home base. The model treats all fixtures as neutral-venue by default. The three host nations -- USA, Canada, and Mexico -- each receive a small co-host adjustment of +0.10 to attack lambda and -0.10 to defense lambda, reflecting the measurable advantages of familiar geography, minimal travel, and home crowd presence. Every other team plays as though on a neutral pitch.
+
+**1X2 Probability Bars** show the three-segment distribution for regulation-time result: Home Win (gold), Draw (gray), Away Win (blue). These come directly from summing cells of the joint score grid -- home win is all cells where home goals exceed away goals, draw is all cells on the main diagonal (0-0, 1-1, 2-2, and so on), away win is all cells where away goals exceed home goals. The American odds next to each bar are the model's fair prices, derived from those probabilities with no margin added. If the bar is almost entirely gold with a small gray sliver and a thin blue edge, you are looking at a heavy favorite.
+
+**O/U 2.5** is the probability that the match produces 3 or more total goals. It is the sum of all grid cells where home goals plus away goals is at least 3. A number above 55% means the model leans toward a higher-scoring game; below 45% suggests a tight match.
+
+**BTTS** is Both Teams to Score -- the probability that each team scores at least once. It is everything in the joint grid except the first row (home team scores zero) and the first column (away team scores zero). A BTTS probability of 35% means there is a good chance one of these teams gets shut out.
+
+**Top Score** is the single most probable final scoreline and its percentage -- the peak cell of the joint grid. For most World Cup group matches this is 1-0 or 1-1, each typically carrying somewhere between 12% and 18% probability. In a match with extreme expected goals asymmetry, you might see something like 2-0 at the top.
+
+**xG (H-A)** shows the model's expected goals for each team separately -- the rate parameters lambda_home and lambda_away after market reconciliation. These two numbers tell you the entire story of the match. A line of 1.8 - 0.7 is a clear favorite-versus-underdog; the favorite is expected to score more than twice as much. A line of 1.2 - 1.1 is a near coin flip. If you see 2.1 - 0.5, you are looking at a dominant favorite that the model expects will control the match from start to finish -- games like that see heavy action on home win and over markets.
+
+**Best Edge / Fair Odds** shows the highest-edge market for this specific match that passes all three filters. If no market passes, the cell is empty. Fair odds are the model's no-margin American odds for that outcome.
+
+### The Expanded Row
+
+Click any match row to reveal three additional panels.
+
+The **Full Scoreline Distribution** ranks all non-trivial scorelines from most to least likely, with proportion bars showing each one. These are raw joint grid values. For correct-score betting: if a book is offering American odds on scoreline S, first convert to a no-vig fair probability (divide 1 by the decimal equivalent after removing the bookmaker margin), then compare to the model's probability for that cell.
+
+**All Markets** displays every market the engine has priced from the joint grid: 1X2, Both Teams to Score, Over/Under at every standard line from 0.5 through 6.5 goals, Draw No Bet (home/away), Double Chance (1X, X2, 12), Win to Nil (home/away), Asian Handicap -0.5 (home/away), and team-level totals. Every single number here is computed from the same underlying distribution -- there is no separate model feeding any of these markets.
+
+The **Edge Report** is the most actionable panel on the page. For each market it shows the model probability, the market's no-vig implied probability (averaged across up to 6 bookmakers after SHIN normalization), the edge percentage, fair odds, and current market odds. Rows highlighted in gold have passed all three value filters. The Kelly Stake column reflects whatever bankroll and fraction you entered above the table.
+
+**How to use this page:** Start with the KPI cards to calibrate your expectations for the day. Then scan the table for matches where the xG spread is large -- those are the matches where the model has a strong view. Expand any match that shows a non-zero Best Edge, read the full Edge Report, and verify the current odds at your preferred book before placing anything.
 
 ---
 
-PAGE 1 — PRE-GAME PREDICTIONS
-URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world cup/pre match.html
+## Page 2 -- PMF Distributions
 
-This page lists every World Cup match scheduled for the current day, with the model's pre-game probability estimates and edge analysis. Data loads automatically and refreshes every five minutes from the latest prediction JSON. A red banner appears if the underlying data is more than four hours old, indicating a potential pipeline issue.
+**URL:** sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html
 
-KPI CARDS
+Where Page 1 compresses the model output into a single row per match, this page opens it up completely. Select a match using the navigation chips at the top and every chart updates immediately to show the full distribution of outcomes -- not just the most likely result, but the entire probability landscape.
 
-Matches Today: The number of World Cup matches with regulation kickoffs scheduled for today's date in Eastern Time.
+A PMF is a Probability Mass Function: a list of all possible outcomes with a probability assigned to each one. For a football match, the PMF is a grid -- rows for home goals scored (0 through 15+), columns for away goals scored (0 through 15+), and a probability in every cell. Everything on this page is a visualization of that grid from a different angle.
 
-Value Bets: The count of individual betting markets — across all of today's matches — where the model's edge is at least 4% and the 90% confidence interval lower bound still exceeds the market's no-vig probability. Both conditions must hold simultaneously. This is a strict filter; the number is frequently zero or very small, which is the correct behavior of a well-calibrated model, not a malfunction.
+### Chart 1 -- Joint Score PMF Heatmap
 
-Best Edge: The single largest edge found across all of today's markets, expressed as a percentage. The sub-label identifies the specific market and match. A positive edge means the model assigns meaningfully higher probability to that outcome than the market does after removing the bookmaker's margin. This does not guarantee a profitable bet — market odds move between prediction generation and kickoff, and edge estimates carry model uncertainty.
+The heatmap is the model in its purest form. Every cell (h, a) shows the probability that the home team scores exactly h goals and the away team scores exactly a goals. Home goals increase along the vertical axis, away goals along the horizontal.
 
-Avg xG / Match: The average of (λ_home + λ_away) across today's matches — the model's expected total goals per match. These expected-goals figures come from the composite team rating system after market reconciliation and reflect the best available blend of statistical ratings, FIFA rankings, qualifying records, and current bookmaker pricing.
+The color scale uses the square root of each cell's probability relative to the grid maximum. This is deliberate -- without the square root, cells with probabilities above 8% would appear bright and everything else would look uniformly dark, because the distribution is so heavily concentrated in the top-left corner (low-scoring outcomes). The square root transformation separates moderate-probability cells (3-5%) from near-zero ones, giving you a usable visual representation of the entire grid.
 
-BANKROLL SIZING TOOL
+Every betting market you can think of is readable directly from this heatmap. Over 2.5 goals is the upper-right region -- all cells where h + a is at least 3. A home clean sheet is the entire first column (a = 0). Both teams to score is everything except that first column and first row. A correct score bet on 2-1 is a single cell. The model's view of a specific scoreline is whatever shade of green sits in that cell.
 
-Enter a bankroll amount and select a Kelly fraction. The table will display a recommended dollar stake for every market that passes all three value filters. Three fractions are available:
+The tail mass shown below the heatmap is the probability assigned to scores beyond the grid (more than 15 goals per team). In practice this is a vanishingly small number, but it must exist to ensure the grid sums to exactly 100%.
 
-Full Kelly: The theoretically optimal fraction under the Kelly criterion when edge estimates are perfect. In practice, edge estimates are never perfect — the model carries a fixed ±12% uncertainty on its lambda parameters — so Full Kelly tends to overbet and produces large swings. Use it only if your confidence in the edge signal is unusually high.
+### Chart 2 -- Marginal Goal Distributions
 
-Half Kelly: Bet size divided by two. This is the engine's default and the standard recommendation in the sports modeling literature when model uncertainty is non-negligible. It retains most of the theoretical edge while substantially reducing drawdown risk.
+Two bar charts sit side by side. The left one shows the probability the home team scores exactly k goals (for k = 0, 1, 2, 3, and so on). The right shows the same for the away team. These marginal distributions are derived by collapsing the heatmap -- to get the probability the home team scores 2 goals, you add up the entire row h = 2 across all possible away goal values.
 
-Quarter Kelly: A conservative setting appropriate when acknowledging significant uncertainty in the model's probability estimates, or when sizing across a large number of simultaneous positions.
+The shape of each chart tells you a lot quickly. A team with a tall bar at k = 0 is frequently shut out; the model sees a high probability it fails to score. A relatively flat distribution across k = 1 and k = 2 reflects a team with a strong attacking rate. In most World Cup group matches, the tallest bar sits at k = 1 for both teams -- scoring once is more likely than any other individual outcome.
 
-All computed Kelly stakes are hard-capped at 5% of the entered bankroll regardless of the computed fraction.
+### Chart 3 -- Total Goals Distribution
 
-THE MATCH TABLE
+This chart shows the probability of each possible total goal count, from 0 up through 8 or more. It is computed by summing all cells along each anti-diagonal of the joint grid -- all cells where h + a = k contribute to the bar at total goals = k.
 
-Each row represents one match. Columns from left to right:
+Standard over/under lines (0.5, 1.5, 2.5, 3.5, 4.5, 5.5) appear as vertical dividers. The probability to the right of any divider is the Over probability for that line; the probability to the left is the Under. This chart makes the model's view of the entire total-goals market immediately visible. If the bar at 2 goals is nearly as tall as the bar at 1 goal, and the bar at 3 is not far behind, you are looking at a genuinely uncertain total-goals outcome -- a match where the model does not have high conviction on any specific line.
 
-Match: Home team versus away team. Every World Cup 2026 match is treated as a neutral venue — the tournament is hosted jointly by the United States, Canada, and Mexico, and nearly all matches are played far from any team's home crowd. The three host nations (USA, Canada, Mexico) receive a co-host adjustment of +0.10 to attack lambda and −0.10 to defense lambda, reflecting a small but measurable advantage in familiarity, travel distance, and fan support. All other teams play as if on a fully neutral pitch.
+### Chart 4 -- Goal Difference Distribution
 
-1X2 Probability Bars: Three colored segments proportional to the regulation-time probabilities — Home Win (gold), Draw (gray), Away Win (blue). These are derived by summing the appropriate cells of the joint score probability grid: home win is the sum of all cells where home goals exceed away goals; draw is the main diagonal (0–0, 1–1, 2–2, etc.); away win is the sum of all cells where away goals exceed home goals. The three values sum to exactly 100%. Odds are displayed in American format next to each bar.
+Centered on zero, this bar chart shows the probability of each possible goal difference (home goals minus away goals). Gold bars indicate home wins (positive difference), gray indicates a draw (zero), blue indicates away wins (negative difference).
 
-O/U 2.5: The probability that total regulation-time goals exceed 2.5 — that is, three or more goals are scored. Computed by summing all PMF cells where home goals + away goals ≥ 3.
+This is probably the most intuitive single chart on the page. A heavily gold-skewed distribution means the model sees the home team as a clear favorite; a roughly symmetric distribution means the match is genuinely even. The height of the gray bar relative to the gold and blue bars tells you how likely a draw is given the specific offensive and defensive qualities of these two teams. High-scoring expected matches (large lambda values) tend to have shorter gray bars because draws become less probable when both teams are expected to score frequently.
 
-BTTS: Both Teams to Score — the probability that both teams score at least one regulation-time goal. Computed by summing all cells in the joint PMF where home goals ≥ 1 and away goals ≥ 1.
+### Chart 5 -- Top 20 Most Likely Scorelines
 
-Top Score: The single most probable final scoreline and its probability, read directly from the peak cell of the joint PMF grid. For most matches, this is 1–0 or 1–1. The model computes the full distribution across scores up to 15 goals per team; this column shows only the mode.
+A ranked bar chart of the 20 most probable individual final scores, with exact percentages and fair American odds displayed next to each bar.
 
-xG (H–A): The model's expected goals for home and away separately — the Poisson rate parameters λ_home and λ_away after market reconciliation. These are the numbers that feed the joint PMF. A match with xG of 2.1–0.6 is a heavy favorite-versus-underdog contest; a match with xG of 1.2–1.1 is nearly even.
+As a general reference: the top cell in most group-stage matches carries somewhere between 12% and 20% probability. Any score showing above 6% is appearing in the very top tier of the distribution. The fair American odds shown here have no bookmaker margin -- they represent what a perfectly calibrated market would offer for that score. If your sportsbook is offering better odds than those shown, you may have found a value opportunity. If they are offering significantly worse, the book is priced tighter (or more accurately) than the model.
 
-Best Edge / Fair Odds: The highest-edge market for this specific match that passes all three value filters (≥4% edge, CI check, ≥2% market-implied probability). Fair odds represent what the model believes the true no-margin price should be. If no market passes all filters for this match, the cell is blank. Fair odds are displayed in American format.
+### O/U Lines Table
 
-EXPANDED ROW
+A simple table listing Over and Under probabilities for every standard total line from 0.5 through 6.5. This lets you compare across lines without doing any arithmetic from the chart -- the Over 1.5 probability, the Over 2.5, the Over 3.5, and so on, all in one place.
 
-Clicking any row reveals three additional sections:
-
-Full Scoreline Distribution: All scored final-score probabilities from 0–0 through the grid maximum, ranked from most to least likely. The top 20 are displayed with proportion bars. These values are the raw joint PMF grid values — no transformation is applied. For correct-score betting: if a book is offering decimal odds D on scoreline S, the edge is (model_prob − 1/D_no_vig) / (1/D_no_vig), where D_no_vig adjusts for the bookmaker's margin.
-
-All Markets: Every market the engine has priced from the joint PMF. This includes 1X2, Both Teams to Score (Yes/No), Over/Under at every standard line from 0.5 through 6.5 goals, Draw No Bet (Home/Away), Double Chance (1X, X2, 12), Win to Nil (Home/Away), Asian Handicap −0.5 (Home/Away), and team-level totals (Home Over/Under 0.5 and 1.5, Away Over/Under 0.5 and 1.5). Every number on this panel is computed from the same underlying joint PMF — there is no separate model per market type.
-
-Edge Report: For each market: Model Probability, Market Implied probability (no-vig, averaged across available bookmakers via SHIN normalization), Edge %, Fair Odds, and Market Odds. Rows highlighted in gold have passed all three value filters. The Kelly Stake column reflects the bankroll and fraction you selected above the table.
+**How to use this page:** When you find a match on Page 1 that looks interesting, come here for the full picture. The heatmap tells you where the probability is concentrated. The goal difference chart tells you how the result probabilities break down. The top scorelines chart helps you evaluate correct-score prices at your book. If a scoreline your book is offering at +550 American shows a model probability of 12%, that is +550 against a fair price of around +733 -- a meaningful gap worth investigating.
 
 ---
 
-PAGE 2 — PMF DISTRIBUTIONS
-URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/pre-match/Probability Distributions.html
+## Page 3 -- Live In-Play PMF
 
-This page visualizes the complete probability distribution for every match. Select a match using the navigation chips at the top. All charts update immediately on selection and draw from the same joint PMF as Page 1. The fair odds displayed alongside each chart element are in American format.
+**URL:** sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html
 
-CHART 1 — JOINT SCORE PMF HEATMAP
+This page activates when a World Cup match is in progress. When no match is live, it shows the next scheduled kickoff time. All probabilities are regulation time only -- 90 minutes plus stoppage time. Extra time and penalty shootouts are not in scope.
 
-A color-coded grid where each cell (h, a) shows P(Home goals = h, Away goals = a). Home goals increase down the vertical axis; away goals increase across the horizontal axis.
+### How the Live Model Differs
 
-Color scale: dark blue/black represents near-zero probability; warm orange/yellow marks moderate probability (roughly 3–8%); bright green identifies the highest-probability cells, typically above 8%. The mapping uses the square root of each cell's probability relative to the grid maximum, which opens up visual separation between low- and moderate-probability cells that would otherwise appear uniformly dark on a linear scale.
+The pre-game model asks: what will the final score be? The live model asks something more specific: given that the current score is H-A at minute t, what will the final score be?
 
-Every standard betting market can be read directly from this grid. Over 2.5 goals is the sum of all cells where h + a ≥ 3 (the upper-right region). A home clean sheet is the entire first column (a = 0). Both Teams to Score is all cells except the first row and first column. A specific correct score such as 2–1 is a single cell.
+That distinction matters enormously. Once a match is in progress, some final scores have become impossible. If the match is 2-1 in the 70th minute, the final score cannot be 1-0, 0-0, or 2-0. Those cells of the joint grid are locked at zero probability. The remaining probability -- 100% minus whatever was locked -- redistributes entirely across the reachable scores.
 
-The tail mass shown below the heatmap is the probability mass assigned to scores beyond the grid boundary (more than 15 goals per team, a vanishingly small number). The explicit grid values plus this tail mass sum to exactly 100%.
+This is conditional probability in action. It is what separates a proper live model from a pre-game model that simply gets updated every few minutes.
 
-CHART 2 — MARGINAL GOAL DISTRIBUTIONS
+The live model also changes how it estimates remaining goal-scoring rates. Rather than assuming a constant rate across 90 minutes, it uses a non-homogeneous hazard model -- one where the goal-scoring rate varies by minute, calibrated from the minute-by-minute goal distribution across 128 World Cup matches from 2018 and 2022. Scoring rates are below average in the first ten minutes as teams settle in, rise through the mid-half, spike just after half-time kicks off, and peak in the final ten minutes when teams chasing a goal commit more forward. The model knows where in the match it is and applies the appropriate baseline rate.
 
-Two bar charts — one for home, one for away. Each bar shows P(team scores exactly k goals in regulation) for k = 0, 1, 2, 3, ... The home marginal is obtained by summing the joint PMF down each column: P(Home = h) = Σ_a P(Home = h, Away = a). A tall P(0) bar means the model expects the team to be frequently shut out. For most World Cup group matches, the tallest bar is at 1 goal.
+On top of that temporal baseline, score-state multipliers adjust each team's rate based on the current scoreline. A home team losing by one goal at the 70th minute is likely to push forward, increasing both its own attack rate and the away team's counter-attacking opportunities. These multipliers are calibrated from World Cup data and the academic football forecasting literature:
 
-CHART 3 — TOTAL GOALS DISTRIBUTION
+- Draw at minute 60 or later: both teams' rates increase by 10% (matches tend to open up as the clock runs down)
+- Home team losing by 1: home rate x1.25, away rate x1.05
+- Home team losing by 2 or more: home rate x1.40, away rate x1.10
+- Home team winning by 1: home rate x0.90, away rate x1.10
+- Home team winning by 2 or more: home rate x0.80, away rate x1.15
 
-A bar chart showing P(total regulation goals = k) for k = 0, 1, 2, 3, ... Computed by summing all joint PMF cells along each anti-diagonal where h + a = k. Standard over/under lines (0.5, 1.5, 2.5, 3.5, 4.5, 5.5) appear as vertical dividers. The probability to the right of any divider is the Over probability for that line; to the left is Under. This chart makes it easy to verify that the PMF-derived over/under probabilities are internally consistent.
+When live expected goals data is available, the model blends it with the pre-game prior. This blend activates at minute 15 -- before that, live xG is too noisy to be useful from a small number of shots. From minute 15 onward, the live xG-derived rate gets 60% weight and the pre-game prior gets 40%. By the 70th minute, that blend means the live model is genuinely tracking the actual shot volumes and quality observed in the match, not just the pre-game forecast.
 
-CHART 4 — GOAL DIFFERENCE DISTRIBUTION
+### Live KPI Cards
 
-A bar chart centered on zero showing the probability of each possible goal difference (home goals minus away goals). Gold bars indicate home wins (positive difference), gray indicates a draw (zero difference), blue indicates away wins (negative difference). A symmetric distribution signals an even match; a heavily skewed distribution reflects a large favorite. This chart is the clearest visual representation of the match result probability — it aggregates all scorelines that produce each outcome into a single view.
+**Matches Live** is the count of World Cup matches currently in progress.
 
-CHART 5 — TOP 20 MOST LIKELY SCORELINES
+**Next Kickoff** shows the next scheduled match with its Eastern Time kickoff, useful when no match is currently live.
 
-A ranked bar chart of the 20 highest-probability individual final scores with exact percentages shown next to each bar. The fair American odds for each scoreline are also displayed, derived from the model probability alone (no margin). These are the raw joint PMF values for the top 20 cells sorted in descending order. As a general reference: any score with model probability above ~6% is appearing in the top two or three cells of the distribution.
+**Goals Today** is the total goals scored across all live and recently completed matches in the current matchday.
 
-O/U LINES TABLE
+**Data Age** shows how long ago the last live snapshot was generated. Under 2 minutes is normal during a live match. Above 10 minutes triggers a health warning banner, which may indicate a pipeline or API issue.
 
-A table listing the Over and Under probability for every standard total line from 0.5 through 6.5, derived by summing the appropriate region of the joint PMF. This provides a complete view of the model's total-goals distribution across all commonly traded lines without requiring the reader to compute each sum from the heatmap manually.
+### Connection Badge
 
----
+A small indicator in the top-right corner shows how the page is receiving data.
 
-PAGE 3 — LIVE IN-PLAY PMF
-URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/live/Probability Distributions.html
+**WebSocket (green)** means the browser has an active push connection to the live prediction server. When a goal or status change is reported, the server recomputes the full conditional PMF and pushes it to all connected browsers. The target latency from the data source to your browser is under 200 milliseconds. No manual refresh is needed.
 
-This page activates when a World Cup match is in progress. When no matches are live, it displays the next scheduled kickoff time. All probabilities are regulation-time only — 90 minutes plus stoppage time. Extra time and penalty shootouts are not modeled.
+**Polling (yellow)** means the push connection is unavailable and the page is falling back to fetching a static JSON file every 60 seconds. Updates arrive with up to a one-minute delay. This is the automatic fallback mode and requires no user action.
 
-HOW THE LIVE MODEL DIFFERS FROM THE PRE-GAME MODEL
+### Win Probability Bar
 
-The pre-game model asks: what will the final score be from kickoff? The live model asks: given that the current score is H–A at minute t, what will the final score be at the final whistle?
+The same three-segment bar as on Page 1 -- Home Win (gold), Draw (gray), Away Win (blue) -- but now conditional on the current score and minute. Watch this bar during a live match and you see the model's view of the contest shifting in real time. A home goal pushes the gold segment rightward immediately. A late away equalizer can collapse the home win probability from 80% to 30% in a single update.
 
-This is a conditional probability calculation. Once a match is in progress, every final score that is now unreachable from the current state carries zero probability. A match sitting at 2–1 in the 70th minute cannot end 1–0 or 0–0; those cells of the PMF grid are permanently zero, and all remaining probability redistributes across the reachable scores.
+These are conditional probabilities. They represent the probability of each regulation-time outcome given that the match is currently at score H-A at minute t. They are not the probabilities from kickoff -- those are shown in the table directly below.
 
-The live model computes expected remaining goals for each team using a non-homogeneous hazard model — meaning the goal-scoring rate varies across the 90 minutes rather than being fixed. The temporal baseline is calibrated from the minute-by-minute goal distribution across the 2018 and 2022 World Cups:
+### Pre-Game to Live Shift Table
 
- • Minutes 1–10: below-average scoring rate (teams settling into the match)
- • Minutes 25–45: rising rate as play opens up and both teams take more risks
- • Minutes 45–50: elevated rate immediately following the second-half kickoff
- • Minutes 80–90+: above-average rate, especially when a team is chasing an equalizer or a winner
+This table is one of the most informative features on the live page. For each main market it shows three values side by side: the probability from before kickoff, the current live probability, and the arithmetic difference between them.
 
-On top of the temporal baseline, score-state multipliers scale each team's rate depending on the current scoreline. These are calibrated from World Cup data and the football forecasting literature (Dixon & Robinson 1998):
+A large positive shift on Home Win combined with a large negative shift on Draw and Away Win tells you the home team has taken control of a match that was expected to be closer. A large negative shift on BTTS tells you one team has been completely shut out so far, reducing the probability that they score at all. Reading the shift table alongside the current score gives you a clear picture of how the match is deviating from the pre-game expectation.
 
- Score state                      Effect on goal rates
- Draw at minute 60+               Both teams ×1.10 (matches open up as the clock runs down)
- Home team losing by 1            Home ×1.25, Away ×1.05 (counter-attack risk increases for away team)
- Home team losing by 2+           Home ×1.40, Away ×1.10
- Home team winning by 1           Home ×0.90, Away ×1.10 (away team pushes forward)
- Home team winning by 2+          Home ×0.80, Away ×1.15
+### Win Probability Sparkline
 
-When live expected goals (xG) data is available from BallDontLie, the model blends the live xG-derived rate with the pre-game expected rate. This blending activates starting at the 15th minute — early in a match, live xG is too noisy from small samples to be reliable. After minute 15, the blend applies 60% weight to the live xG-derived intensity and 40% to the pre-game prior. By the 70th minute, this makes the live model meaningfully responsive to shot volume and quality actually observed in the match.
+A compact line chart showing the home team's win probability from kickoff to the current minute. This history accumulates within your browser session and resets on page reload -- it is not stored on the server. Sharp upward jumps are home goals; sharp downward drops are away goals. The sparkline makes visible what the current snapshot cannot: whether the home team earned their probability gradually or in a single dramatic moment, how volatile the match has been, and whether the current probability reflects a stable lead or a precarious one.
 
-LIVE KPI CARDS
+### Live Joint Score PMF Heatmap
 
-Matches Live: The number of World Cup matches currently in progress according to BallDontLie.
+The same heatmap structure as on Page 2, but updated with every live snapshot and annotated with two visual cues.
 
-Next Kickoff: The next World Cup match starting today, with kickoff time in Eastern Time.
+The cell corresponding to the current live score is outlined in red. All unreachable cells -- any score where home goals are below the current home tally or away goals are below the current away tally -- are forced to zero and appear dark. As the match progresses, the dark region of the grid grows and the probability concentrates into fewer and fewer bright cells.
 
-Goals Today: Total goals scored across all live and recently completed matches in the current matchday snapshot.
+In stoppage time of a 1-0 match, the heatmap may assign 85-90% probability to the single 1-0 cell. The rest is split between 1-1 (away team equalizes), 2-0 (home team extends the lead), and a handful of other reachable scores. That visual concentration of color into one or two cells in the final minutes is a clear picture of what is at stake.
 
-Data Age: Time elapsed since the last live snapshot was generated. Under two minutes is normal during live matches. A value above ten minutes during a match triggers a health warning banner on the page.
+### Next Goal Probabilities
 
-CONNECTION BADGE
+Three numbers sit below the heatmap, derived from the remaining expected goals for each team.
 
-A small indicator shows how the page is receiving data:
+**Home scores next** is lambda_home_remaining / (lambda_home_remaining + lambda_away_remaining) -- given that at least one more goal is scored, what is the probability it belongs to the home team?
 
-WebSocket (green): The browser has an active push connection to the live prediction server. When BallDontLie reports a goal or a status change, the server recomputes the full conditional PMF and pushes the update to all connected browsers. The target latency from BallDontLie event to browser update is under 200 milliseconds. No manual refresh is needed.
+**Away scores next** is the corresponding fraction for the away team.
 
-Polling (yellow): The real-time push connection is unavailable. The page falls back to fetching a static JSON file every 60 seconds. Updates arrive with up to a one-minute delay. This is the automatic fallback mode and requires no action from the user.
+**No more goals** is the joint probability that both teams produce zero additional goals -- the match ends exactly at the current score. Mathematically, it is the Poisson probability of zero events from two independent processes: e^(-lambda_home_remaining) times e^(-lambda_away_remaining). As the match enters stoppage time with small remaining expected goals, this value typically climbs above 80% or 90%.
 
-WIN PROBABILITY BAR
+### Top 10 Most Likely Final Scores (Live)
 
-The same three-segment bar as on Page 1 — Home Win (gold), Draw (gray), Away Win (blue) — but now conditional on the current live score and minute. As goals are scored, the bar shifts immediately. A goal for the home team pushes the gold segment rightward; a goal for the away team does the opposite. These probabilities represent the probability of each regulation-time outcome given that the match is at score H–A at minute t, not the probability from kickoff.
+The same ranked scoreline list as on Page 2, restricted to reachable outcomes only. The current live score is marked. As the match approaches the final whistle, the probability on the leading score climbs rapidly -- in an 88th-minute 1-0 match, the 1-0 cell may carry 8 or 9 times the probability it held before kickoff. This list tells you not just what is most likely but how much more likely it is than the alternatives.
 
-PRE-GAME TO LIVE SHIFT TABLE
+### Marginal Charts
 
-Directly below the win probability bar, a table shows each main market with three values side by side: the probability the model assigned before kickoff, the current live probability, and the arithmetic difference between them. A large shift indicates that the match state has substantially moved the probability distribution away from the pre-game expectation. A home team leading 2–0 in the 70th minute will show a very large positive shift on Home Win; BTTS will show a large negative shift if the away team has not scored.
+Bar charts for each team showing the probability they score exactly k regulation-time goals, derived from the live PMF. Because goals already scored are facts rather than random events, values below each team's current goal count are zero. A team that has already scored twice sees bars only at k = 2, 3, 4, and so on.
 
-WIN PROBABILITY SPARKLINE
-
-A small line chart showing the history of the home team's win probability from kickoff to the current minute. This history accumulates within the browser session and resets on page reload — it is not transmitted from the server. Sharp upward jumps correspond to home goals; sharp downward drops correspond to away goals. The sparkline makes visible patterns that are invisible from the current snapshot alone: whether a team's lead was earned early or late, how stable the probability has been, and whether the current state reflects a genuine change in match dynamics.
-
-LIVE JOINT SCORE PMF HEATMAP
-
-The same heatmap structure as on Page 2, updated with every snapshot. Two key visual differences from the pre-game version:
-
- • The cell corresponding to the current live score is outlined in red.
- • All cells representing scores that are now unreachable (home goals below current home score, or away goals below current away score) are forced to zero probability and appear dark. The remaining probability mass is distributed only over reachable final scores, ensuring the heatmap still sums to 100%.
-
-As the match progresses toward the final whistle, the reachable region of the grid shrinks, concentrating probability into fewer and fewer cells. In stoppage time of a 1–0 match, the PMF may assign 85–90% probability to the 1–0 cell alone.
-
-NEXT GOAL PROBABILITIES
-
-Three values computed from the remaining expected goals for each team:
-
-Home scores next: λ_h_rem / (λ_h_rem + λ_a_rem). Given that at least one more goal is scored before the final whistle, the probability it belongs to the home team.
-
-Away scores next: λ_a_rem / (λ_h_rem + λ_a_rem). The corresponding probability for the away team.
-
-No more goals: e^(−λ_h_rem) × e^(−λ_a_rem). The joint probability that both teams produce zero additional goals — that is, the current scoreline is the final result. This is the Poisson probability of zero events from both independent processes.
-
-TOP 10 MOST LIKELY FINAL SCORES (LIVE)
-
-The same ranked list as on Page 2, but restricted to reachable final scores only. The current live score is marked with an arrow. As the match approaches the final whistle, the most likely score's probability typically rises sharply because fewer reachable outcomes remain. In a 1–0 match at the 88th minute, the probability assigned to the 1–0 cell may be eight or nine times higher than it was before kickoff.
-
-HOME AND AWAY MARGINAL CHARTS
-
-Bar charts showing P(team scores exactly k regulation-time goals) derived from the live PMF. Only values at or above each team's current goal count are non-zero; goals already scored are facts, not random events.
+**How to use this page:** The live page is most useful in two situations. First, during fast-moving matches where the pre-game expectation is being rapidly revised -- a live scoreline of 2-0 in the 30th minute will have completely reshaped the probability distribution relative to what Page 1 showed before kickoff. Second, when evaluating live betting markets: compare the No More Goals probability against your book's live Under line, or compare the Next Goal fractions against live next-scorer pricing. The model's conditional probabilities are updating every 90 seconds, giving you a continuously refreshed view of the match as it actually unfolds.
 
 ---
 
-SCOPE AND LIMITATIONS — ALL PAGES
+## Scope and Limitations
 
-All probabilities on all three pages represent regulation time (90 minutes plus stoppage time) only. Extra time and penalty shootouts are not included.
+All probabilities across all three pages represent regulation time -- 90 minutes plus stoppage time. Extra time and penalty shootouts are not modeled.
 
-The Poisson independence assumption — that home and away goals are generated by two separate, uncorrelated random processes — is an approximation. In reality, a goal changes the incentives for both teams and triggers tactical adjustments. Market reconciliation partially corrects for this correlation, but does not eliminate it entirely.
+The model's structural assumption of independence between home and away goals is an approximation. In reality, a goal changes the incentives for both teams and triggers tactical adjustments. Market reconciliation partially corrects for this, but the independence assumption remains at the core of the parametric structure.
 
-Calibration is based on 128 World Cup matches from 2018 and 2022, augmented by completed 2026 matches as the tournament progresses. The 2026 results receive substantially higher weight in the training process — they are the most relevant data available and reflect the specific conditions of this tournament.
+Calibration rests on 128 World Cup matches from 2018 and 2022, augmented by completed 2026 matches as the tournament progresses. As more 2026 data accumulates, the model adapts its parameters to the specific conditions of this tournament.
 
-Edge estimates are outputs of a probabilistic model. They are not profit guarantees. Market odds move between the time predictions are generated and kickoff. Always verify current odds before acting on any signal.
+Edge estimates are outputs of a probabilistic model. Market odds move between the time predictions are generated and kickoff. Verify current prices at your book before acting on any signal shown here.
 
-All probabilities represent regulation time (90 minutes + stoppage time) only. Extra time and penalties are excluded.
-This guide is for informational and educational purposes. Please gamble responsibly.
+*All probabilities represent regulation time (90 minutes plus stoppage time) only. Extra time and penalties are excluded. This guide is for informational and educational purposes. Please gamble responsibly.*
