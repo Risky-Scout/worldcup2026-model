@@ -2903,6 +2903,94 @@ def annotate_published_with_results(matches_df) -> None:
 # MAIN
 # ────────────────────────────────────────────────────────────────────────────
 
+def _populate_clv_outcomes(matches_df) -> None:
+    """
+    For each CLV record whose match has a known result, set the outcome field.
+    Maps standard market names to actual match results (hg, ag).
+    Safe to call multiple times — records already having outcome are skipped.
+    """
+    import datetime as _dt
+
+    clv_path = DATA_DIR / "clv" / "2026" / "records.jsonl"
+    if not clv_path.exists():
+        return
+
+    from wc2026.markets.clv import CLVStore, CLVRecord
+    store = CLVStore(str(clv_path))
+    all_records = store.load_all()
+    if not all_records:
+        return
+
+    # Build match_id → (hg, ag) lookup from completed matches
+    completed = matches_df[
+        matches_df["status"].isin(["completed", "final"]) &
+        matches_df["home_goals"].notna() &
+        matches_df["away_goals"].notna()
+    ].copy()
+    result_map: dict[str, tuple[int, int]] = {}
+    for _, row in completed.iterrows():
+        mid = str(int(row.get("match_id") or row.name))
+        result_map[mid] = (int(row["home_goals"]), int(row["away_goals"]))
+
+    if not result_map:
+        return
+
+    now_ts = _dt.datetime.now(tz=_dt.timezone.utc).isoformat()
+    updated = 0
+    for rec in all_records:
+        if rec.outcome is not None:
+            continue  # already set
+        mid = str(rec.match_id)
+        if mid not in result_map:
+            continue
+        hg, ag = result_map[mid]
+        total = hg + ag
+        market = rec.market
+
+        # Determine outcome (True/False) for each known market
+        outcome: bool | None = None
+        if market == "home_win":
+            outcome = hg > ag
+        elif market == "draw":
+            outcome = hg == ag
+        elif market == "away_win":
+            outcome = ag > hg
+        elif market == "btts_yes":
+            outcome = hg > 0 and ag > 0
+        elif market == "btts_no":
+            outcome = not (hg > 0 and ag > 0)
+        elif market.startswith("over_"):
+            try:
+                threshold = float(market.split("over_")[1].replace("_", "."))
+                outcome = total > threshold
+            except ValueError:
+                pass
+        elif market.startswith("under_"):
+            try:
+                threshold = float(market.split("under_")[1].replace("_", "."))
+                outcome = total < threshold
+            except ValueError:
+                pass
+        elif market in ("draw_no_bet_home", "dnb_home"):
+            outcome = hg >= ag  # home win or draw returns stake → treated as True if not loss
+        elif market in ("draw_no_bet_away", "dnb_away"):
+            outcome = ag >= hg
+
+        if outcome is not None:
+            rec.set_outcome(outcome, now_ts)
+            updated += 1
+
+    if updated > 0:
+        # Rewrite file atomically with all settled records
+        with open(clv_path, "w") as _f:
+            for r in all_records:
+                _f.write(__import__("json").dumps(r.to_dict()) + "\n")
+        log.info("CLV outcomes populated: %d records updated for %d completed matches",
+                 updated, len(result_map))
+    else:
+        log.debug("CLV outcomes: no new records to settle")
+
+
 def main():
     generated_at = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     log.info("═" * 60)
@@ -2924,6 +3012,7 @@ def main():
     all_preds, champions, composite_prior = predict_all_2026(matches_df, odds_df, markets_df, hist_df, results)
     write_published_json(all_preds, generated_at)
     annotate_published_with_results(matches_df)
+    _populate_clv_outcomes(matches_df)
     write_reports(tables, results, champions, all_preds, composite_prior, generated_at)
     _run_live_replay(matches_df, tables, generated_at)
     _update_readme(generated_at)
