@@ -333,17 +333,17 @@ function buildScoreRanking(scorelines, edges){
     const isVal=valueMarkets.has(key);
     const w=maxP>0?(s.probability/maxP*100):0;
     const pctStr=pct(s.probability,2);
-    const fairDec=decimal(s.probability);
+    const fairDec=american(s.probability);
     const inside=w>35;
     html+=`<div class="score-rank-row">
       <span class="score-badge ${isVal?'value':''}" title="${isVal?'Value bet detected':''}">${key}${isVal?' ⚡':''}</span>
       <div class="score-rank-track">
         <div class="score-rank-fill" style="width:${w}%;background:${isVal?'rgba(74,222,128,.25)':'rgba(212,175,55,.2)'};border-right:2px solid ${isVal?'var(--green)':'var(--gold)'};">
           <span class="pct" style="color:${isVal?'var(--green)':'var(--gold)'}">${pctStr}</span>
-          ${inside?`<span class="fair">${fairDec}×</span>`:''}
+          ${inside?`<span class="fair">${fairDec}</span>`:''}
         </div>
       </div>
-      ${!inside?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;">${fairDec}×</span>`:''}
+      ${!inside?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;">${fairDec}</span>`:''}
     </div>`;
   });
   return html;
@@ -522,7 +522,7 @@ function buildMatchCard(m, idx){
     <div class="chart-row r3">
       <div class="chart-cell">
         <div class="chart-title">Top ${TOP_SCORES} Most Likely Scorelines</div>
-        <div class="chart-subtitle">Ranked by model probability. ⚡ indicates a value bet where the model edge exceeds 4% and the CI lower bound beats the market implied probability. Fair odds in decimal format (×) shown beside each bar.</div>
+        <div class="chart-subtitle">Ranked by model probability. ⚡ indicates a value bet where the model edge exceeds 4% and the CI lower bound beats the market implied probability. Fair odds in American format shown beside each bar.</div>
         ${buildScoreRanking(scores,edges)}
       </div>
       <div class="chart-cell">

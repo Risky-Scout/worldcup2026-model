@@ -484,9 +484,9 @@ function renderMatchRow(m, idx) {
   // Fair odds
   const fairOdds = `
     <div class="fair-odds">
-      <div class="odds-chip"><span class="odds-label">H</span>${fmtDecimal(hw)}</div>
-      <div class="odds-chip"><span class="odds-label">D</span>${fmtDecimal(dr)}</div>
-      <div class="odds-chip"><span class="odds-label">A</span>${fmtDecimal(aw)}</div>
+      <div class="odds-chip"><span class="odds-label">H</span>${fmtAmerican(hw)}</div>
+      <div class="odds-chip"><span class="odds-label">D</span>${fmtAmerican(dr)}</div>
+      <div class="odds-chip"><span class="odds-label">A</span>${fmtAmerican(aw)}</div>
     </div>`;
 
   // Result badge
