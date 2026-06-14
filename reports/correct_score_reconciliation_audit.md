@@ -1,6 +1,6 @@
 # Correct-Score Reconciliation Audit
 
-**Generated**: 2026-06-14T19:35:28Z
+**Generated**: 2026-06-14T19:46:51Z
 
 ## Method
 
@@ -1526,7 +1526,7 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
 
-### Croatia vs Ghana
+### Colombia vs Portugal
 - CS outcomes: 27  |  CS vendors: 1  |  Publish mode: market_reconciled
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |

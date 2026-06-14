@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-14T19:35:28Z",
+  "generated_at": "2026-06-14T19:46:51Z",
   "date": "2026-06-15",
   "date_timezone": "US/Eastern (UTC-4)",
   "data_source": "balldontlie_api_v1",
@@ -2880,7 +2880,7 @@
               "ci_90_upper": 0.57408,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -0.0% below threshold 4%"
+              "value_reason": "edge -0.1% below threshold 4%"
             },
             {
               "market": "away_win",
@@ -2919,33 +2919,7 @@
               "ci_90_upper": 0.01346,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -3.7% below threshold 4%"
-            },
-            {
-              "market": "under_2_5",
-              "model_prob": 0.50319,
-              "market_prob": 0.52365,
-              "edge_pct": -3.91,
-              "fair_odds": 1.987,
-              "market_odds": 1.91,
-              "ci_90_lower": 0.46531,
-              "ci_90_upper": 0.53589,
-              "half_kelly_pct": 0.0,
-              "value_flag": false,
-              "value_reason": "edge -3.9% below threshold 4%"
-            },
-            {
-              "market": "0-5",
-              "model_prob": 0.01864,
-              "market_prob": 0.01962,
-              "edge_pct": -4.98,
-              "fair_odds": 53.653,
-              "market_odds": 50.983,
-              "ci_90_lower": 0.00946,
-              "ci_90_upper": 0.02373,
-              "half_kelly_pct": 0.0,
-              "value_flag": false,
-              "value_reason": "edge -5.0% below threshold 4%"
+              "value_reason": "edge -5.3% below threshold 4%"
             },
             {
               "market": "2-1",
