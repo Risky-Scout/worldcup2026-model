@@ -2797,8 +2797,20 @@ def _write_team_prior_table(matches_df, generated_at):
 def _write_june11_analysis(all_preds, generated_at):
     june11 = [p for p in all_preds if p.get("match_date_et") == "2026-06-11"]
     if not june11:
-        log.warning("No June 11 predictions found!")
-        return
+        # June 11 matches are completed — load from published JSON
+        _j11_path = os.path.join("data", "published", "2026-06-11.json")
+        if os.path.exists(_j11_path):
+            try:
+                with open(_j11_path) as _f:
+                    _j11_data = json.load(_f)
+                june11 = _j11_data.get("matches", [])
+                log.info("_write_june11_analysis: loaded %d June 11 predictions from published JSON", len(june11))
+            except Exception as _e:
+                log.warning("No June 11 predictions found and could not load published JSON: %s", _e)
+                return
+        if not june11:
+            log.warning("No June 11 predictions found (neither in all_preds nor in published JSON).")
+            return
 
     lines = [
         "# June 11, 2026 Opening Day Predictions",

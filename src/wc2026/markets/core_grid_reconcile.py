@@ -245,9 +245,9 @@ class CoreGridSLSQPReconciler:
                 bounds=bounds,
                 constraints=constraints,
                 options={
-                    "maxiter": 800,
-                    "ftol": 1e-9,
-                    "eps": 1e-10,
+                    "maxiter": 1200,
+                    "ftol": 1e-7,
+                    "eps": 1e-8,
                 },
             )
             converged = result.success
@@ -508,8 +508,14 @@ def compare_reconciliation_methods(
     results["blend"] = _pmf_to_result(blend, mc, "market_reconciled_blend")
 
     # ── Method 3: SLSQP core-grid ─────────────────────────────────────────
+    # Sanitize market-implied PMF before passing to SLSQP: the DC fit for
+    # high-lambda matches produces tail cells at [8+, *] that exceed the
+    # validate() threshold (1e-4), disqualifying SLSQP unnecessarily.
+    # Sanitizing the input ensures the SLSQP inherits a clean tail and can
+    # compete against the blend on equal footing.
+    _slsqp_input = _sanitize_pmf(mip if mc.has_1x2 else prior_pmf)
     rec = CoreGridSLSQPReconciler()
-    slsqp_result = rec.reconcile(mip if mc.has_1x2 else prior_pmf, mc,
+    slsqp_result = rec.reconcile(_slsqp_input, mc,
                                   max_goals=n, cs_n_vendors=cs_n_vendors)
     results["slsqp_core"] = slsqp_result
 
