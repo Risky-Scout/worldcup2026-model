@@ -26,8 +26,8 @@ concurrency:
 jobs:
   pre-match:
     runs-on: ubuntu-latest
-    # Must be long enough to accommodate LOOKAHEAD_MIN (15) sleep + processing
-    timeout-minutes: 20
+    # Must be long enough to accommodate install (~3min) + LOOKAHEAD_MIN sleep (15min) + processing (~2min)
+    timeout-minutes: 25
     permissions:
       contents: write
 
