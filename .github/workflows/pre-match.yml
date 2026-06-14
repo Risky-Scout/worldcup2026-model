@@ -3,14 +3,13 @@ name: Pre-Match Closing Odds
 # Runs every 15 minutes during World Cup match hours (09:00–03:00 ET = 13:00–07:00 UTC).
 # Each run scans for any match kicking off within the next 15 minutes.
 # If found: sleeps until T-3 minutes, fetches live BDL odds, records the
-# closing line in the CLV store, and commits the updated records.jsonl.
+# closing line in the CLV store, commits the updated records.jsonl, then
+# BOOTSTRAPS the live snapshot chain by dispatching live.yml immediately.
 #
-# Why every 15 min vs. self-chaining:
-#   - Closing odds are only needed ONCE per match (at T-3 min before kickoff).
-#   - WC matches have ≥ 1 hour gaps, so the cron naturally catches every match.
-#   - Self-chaining would add complexity with no benefit here.
-#   - cancel-in-progress: false so two consecutive cron triggers don't cancel each
-#     other when two matches kick off within the same 15-minute window.
+# This is the guaranteed entry point for live tracking: rather than relying on
+# GitHub's throttled */2 cron to fire at the exact right moment, the pre-match
+# job — which already runs right before kickoff — triggers the first live run.
+# The self-chain in live.yml then keeps updates coming every ~90 seconds.
 
 on:
   schedule:
@@ -30,6 +29,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -75,4 +75,25 @@ jobs:
             echo "Committed and pushed closing odds update"
           else
             echo "No imminent matches — nothing to commit"
+          fi
+
+      - name: Bootstrap live snapshot chain at kickoff
+        # Dispatch live.yml ~3 minutes after closing odds captured (i.e. right at kickoff).
+        # This guarantees the live chain starts even if GitHub throttles the */2 cron.
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CAPTURED=$(python3 -c "
+          import json, pathlib
+          f = pathlib.Path('data/live/pre_match_status.json')
+          print(json.loads(f.read_text()).get('captured', 0) if f.exists() else 0)
+          " 2>/dev/null || echo "0")
+          if [ "$CAPTURED" != "0" ]; then
+            echo "Closing odds captured — sleeping 3 min then bootstrapping live chain..."
+            sleep 180
+            gh workflow run live.yml --repo ${{ github.repository }}
+            echo "Live snapshot chain bootstrapped"
+          else
+            echo "No match captured — skipping live bootstrap"
           fi
