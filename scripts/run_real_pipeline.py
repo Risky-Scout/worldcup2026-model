@@ -173,17 +173,46 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     cache_exists = matches_path.exists()
 
     if cache_exists and not force_refetch:
-        # Check for stale in_progress matches that need a fresh fetch
+        # Check for stale matches that need a fresh fetch:
+        # (a) Any 2026 match still marked in_progress may have since completed.
+        # (b) Any 2026 match still marked scheduled whose kickoff has passed
+        #     may have completed without ever being caught as in_progress.
         try:
-            _cached = pd.read_parquet(matches_path, columns=["status", "season"])
+            import datetime as _dt
+            _cols = ["status", "season", "match_datetime"]
+            _cached = pd.read_parquet(matches_path, columns=_cols)
+            _now_utc = _dt.datetime.now(tz=_dt.timezone.utc)
+
             _n_live = int(
                 ((_cached["season"] == 2026) & (_cached["status"] == "in_progress")).sum()
             )
+
+            # Matches cached as 'scheduled' whose kickoff already passed by > 2 hours
+            # are almost certainly completed but the cache never saw them as in_progress.
+            _sched_2026 = _cached[
+                (_cached["season"] == 2026) & (_cached["status"] == "scheduled")
+            ].copy()
+            _n_stale_sched = 0
+            if not _sched_2026.empty and "match_datetime" in _sched_2026.columns:
+                try:
+                    _kos = pd.to_datetime(_sched_2026["match_datetime"], utc=True)
+                    _stale = _kos < (_now_utc - _dt.timedelta(hours=2))
+                    _n_stale_sched = int(_stale.sum())
+                except Exception:
+                    pass
+
             if _n_live > 0:
                 log.info(
                     "Cache has %d in_progress 2026 match(es) — forcing BDL refetch "
                     "so completed results are incorporated into training.",
                     _n_live,
+                )
+                force_refetch = True
+            elif _n_stale_sched > 0:
+                log.info(
+                    "Cache has %d scheduled 2026 match(es) whose kickoff passed >2h ago "
+                    "— forcing BDL refetch to capture completed results.",
+                    _n_stale_sched,
                 )
                 force_refetch = True
             else:
