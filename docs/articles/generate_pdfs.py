@@ -8,7 +8,7 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, HRFlowable,
-    Table, TableStyle, PageBreak, KeepTogether
+    Table, TableStyle, PageBreak, KeepTogether, CondPageBreak
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.lib.colors import HexColor
@@ -59,17 +59,17 @@ def make_styles():
     styles["h2"] = ParagraphStyle("h2",
         fontName="Helvetica-Bold", fontSize=14,
         textColor=BODY_TEXT, spaceBefore=22, spaceAfter=4,
-        leading=18)
+        leading=18, keepWithNext=1)
 
     styles["h3"] = ParagraphStyle("h3",
         fontName="Helvetica-Bold", fontSize=11,
         textColor=H3_COLOR, spaceBefore=14, spaceAfter=3,
-        leading=14)
+        leading=14, keepWithNext=1)
 
     styles["h4"] = ParagraphStyle("h4",
         fontName="Helvetica-Bold", fontSize=10,
         textColor=ACCENT, spaceBefore=10, spaceAfter=2,
-        leading=13)
+        leading=13, keepWithNext=1)
 
     styles["body"] = ParagraphStyle("body",
         fontName="Helvetica", fontSize=10,
@@ -398,6 +398,7 @@ def build_article1(styles):
 
     # ── What a Joint Score PMF Is ──────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("What a Joint Score PMF Actually Is", S["h2"]),
             gold_thin_rule(),
@@ -448,6 +449,7 @@ def build_article1(styles):
 
     # ── Step 1: Composite Prior ────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         Paragraph("Step 1: Rating Every Team — The Composite Prior", S["h2"]),
         gold_thin_rule(),
         Paragraph(
@@ -482,6 +484,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 1: Market-Implied Strength (30% weight)", S["h3"]),
             Paragraph(
@@ -516,6 +519,7 @@ def build_article1(styles):
             S["body"]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 2: FIFA Ranking — March 2026 (~12% weight)", S["h3"]),
             Paragraph(
@@ -535,6 +539,7 @@ def build_article1(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 3: Qualifying Record (~10% weight)", S["h3"]),
             Paragraph(
@@ -561,6 +566,7 @@ def build_article1(styles):
             S["body"]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 4: Pi Rating (~18% effective weight)", S["h3"]),
             Paragraph(
@@ -574,6 +580,7 @@ def build_article1(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 5: Elo Rating (~35% effective weight)", S["h3"]),
             Paragraph(
@@ -588,6 +595,7 @@ def build_article1(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Source 6: Confederation Baseline (~5% as a soft floor)", S["h3"]),
             Paragraph(
@@ -618,6 +626,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Host Advantage and Altitude Adjustments", S["h3"]),
             Paragraph(
@@ -647,6 +656,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Tournament Adjustment: Learning from 2026 Results", S["h3"]),
             Paragraph(
@@ -681,6 +691,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Dynamic WC_AVG Scaling", S["h3"]),
             Paragraph(
@@ -714,6 +725,7 @@ def build_article1(styles):
 
     # ── Step 2: Bivariate Poisson ──────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         Paragraph("Step 2: The Bivariate Poisson — Where the Model Gets Clever", S["h2"]),
         gold_thin_rule(),
         Paragraph(
@@ -724,6 +736,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Standard Approach and Its Flaw", S["h3"]),
             Paragraph(
@@ -765,6 +778,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Bivariate Poisson: Three Latent Processes", S["h3"]),
             Paragraph(
@@ -796,6 +810,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Joint Probability Formula", S["h3"]),
             Paragraph(
@@ -843,6 +858,7 @@ def build_article1(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Six Parametric Competitors", S["h3"]),
             Paragraph(
@@ -884,6 +900,7 @@ def build_article1(styles):
 
     # ── Step 3: Market Reconciliation ─────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Step 3: Market Reconciliation (SLSQP Optimization)", S["h2"]),
             gold_thin_rule(),
@@ -939,6 +956,7 @@ def build_article1(styles):
 
     # ── Step 4: Calibration ────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Step 4: Calibration (Temperature Scaling)", S["h2"]),
             gold_thin_rule(),
@@ -995,6 +1013,7 @@ def build_article1(styles):
 
     # ── Step 5: Edge Screening ─────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Step 5: Edge Screening and Kelly Sizing", S["h2"]),
             gold_thin_rule(),
@@ -1051,6 +1070,7 @@ def build_article1(styles):
 
     # ── Step 6: CLV ────────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Step 6: Closing Line Value (CLV) — The Edge Litmus Test", S["h2"]),
             gold_thin_rule(),
@@ -1096,6 +1116,7 @@ def build_article1(styles):
 
     # ── Key Definitions ────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Key Terms and Definitions", S["h2"]),
             gold_thin_rule(),
@@ -1164,6 +1185,7 @@ def build_article1(styles):
 
     # ── Worked Example ────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Worked Example: How P(2-1) Gets Calculated", S["h2"]),
             gold_thin_rule(),
@@ -1238,6 +1260,7 @@ def build_article1(styles):
 
     # ── Automated Pipeline ─────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("The Automated Pipeline: A Living System", S["h2"]),
             gold_thin_rule(),
@@ -1275,6 +1298,7 @@ def build_article1(styles):
 
     # ── Model Architecture Summary ─────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Full Model Architecture: Data Flow Summary", S["h2"]),
             gold_thin_rule(),
@@ -1322,6 +1346,7 @@ def build_article1(styles):
 
     # ── Limitations ────────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         Paragraph("Honest Limitations", S["h2"]),
         gold_thin_rule(),
         Paragraph(
@@ -1461,6 +1486,7 @@ def build_article2(styles):
     # PAGE 1
     # ═══════════════════════════════════════════════════════
     story += [
+        CondPageBreak(2.3*inch),
         Paragraph("Page 1 — Pre-Game Predictions", S["h2"]),
         gold_thin_rule(),
         Paragraph(
@@ -1478,6 +1504,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The KPI Cards", S["h3"]),
             Paragraph(
@@ -1503,6 +1530,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Bankroll Sizing Tool", S["h3"]),
             Paragraph(
@@ -1536,6 +1564,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Match Table", S["h3"]),
             Paragraph(
@@ -1565,6 +1594,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The Expanded Row", S["h3"]),
             Paragraph(
@@ -1625,6 +1655,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Chart 1 — Joint Score PMF Heatmap", S["h3"]),
             Paragraph(
@@ -1667,6 +1698,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Chart 2 — Marginal Goal Distributions", S["h3"]),
             Paragraph(
@@ -1696,6 +1728,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Chart 3 — Total Goals Distribution", S["h3"]),
             Paragraph(
@@ -1724,6 +1757,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Chart 4 — Goal Difference Distribution", S["h3"]),
             Paragraph(
@@ -1746,6 +1780,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Chart 5 — Top 20 Most Likely Scorelines", S["h3"]),
             Paragraph(
@@ -1773,6 +1808,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("O/U Lines Table", S["h3"]),
             Paragraph(
@@ -1816,6 +1852,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("How the Live Model Differs from Pre-Game", S["h3"]),
             Paragraph(
@@ -1859,6 +1896,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Score-State Multipliers", S["h3"]),
             Paragraph(
@@ -1906,6 +1944,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Connection Badge", S["h3"]),
             Paragraph(
@@ -1930,6 +1969,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Live KPI Cards", S["h3"]),
             sp(4),
@@ -1946,6 +1986,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Win Probability Bar", S["h3"]),
             Paragraph(
@@ -1963,6 +2004,7 @@ def build_article2(styles):
             S["body"]),
         sp(6),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Pre-Game to Live Shift Table", S["h3"]),
             Paragraph(
@@ -1978,6 +2020,7 @@ def build_article2(styles):
         ]),
         sp(6),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Win Probability Sparkline", S["h3"]),
             Paragraph(
@@ -1995,6 +2038,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Live Joint Score PMF Heatmap", S["h3"]),
             Paragraph(
@@ -2026,6 +2070,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Next Goal Probabilities", S["h3"]),
             Paragraph(
@@ -2067,6 +2112,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Top 10 Most Likely Final Scores (Live)", S["h3"]),
             Paragraph(
@@ -2098,6 +2144,7 @@ def build_article2(styles):
 
     # ── Frequently Asked Questions ─────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Common Questions About the Prediction Pages", S["h2"]),
             gold_thin_rule(),
@@ -2108,6 +2155,7 @@ def build_article2(styles):
         ]),
         sp(6),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Why does the model sometimes show 0 value bets?", S["h3"]),
             Paragraph(
@@ -2129,6 +2177,7 @@ def build_article2(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("Why is the model probability for Over 2.5 different from the bookmaker's implied probability?", S["h3"]),
             Paragraph(
@@ -2148,6 +2197,7 @@ def build_article2(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("What does 'fair odds' mean on the site? Is that what I should expect to be offered?", S["h3"]),
             Paragraph(
@@ -2166,6 +2216,7 @@ def build_article2(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("The live model's probabilities changed before a goal happened — why?", S["h3"]),
             Paragraph(
@@ -2187,6 +2238,7 @@ def build_article2(styles):
         ]),
         sp(4),
 
+        CondPageBreak(1.8*inch),
         KeepTogether([
             Paragraph("How should I interpret the Edge Report when Best Edge is shown but the match is hours away?", S["h3"]),
             Paragraph(
@@ -2206,6 +2258,7 @@ def build_article2(styles):
 
     # ── Understanding the Live PMF in Detail ──────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("The Live PMF in Real Scenarios", S["h2"]),
             gold_thin_rule(),
@@ -2285,6 +2338,7 @@ def build_article2(styles):
 
     # ── Quick Reference ────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Quick Reference: Key Symbols and Formulas", S["h2"]),
             gold_thin_rule(),
@@ -2317,6 +2371,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Comparing Model vs. Market: A Step-by-Step Example", S["h2"]),
             gold_thin_rule(),
@@ -2359,6 +2414,7 @@ def build_article2(styles):
             "longer qualifies. This is why you always check current odds.",
             S["body"]),
         sp(8),
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Reading the Heatmap: What Each Region Tells You", S["h2"]),
             gold_thin_rule(),
@@ -2383,6 +2439,7 @@ def build_article2(styles):
     ]
 
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("How the Three Pages Work Together", S["h2"]),
             gold_thin_rule(),
@@ -2415,6 +2472,7 @@ def build_article2(styles):
 
     # ── Power User Tips ─────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         KeepTogether([
             Paragraph("Tips for Getting the Most from the Prediction Pages", S["h2"]),
             gold_thin_rule(),
@@ -2469,6 +2527,7 @@ def build_article2(styles):
 
     # ── Limitations ────────────────────────────────────────────────────────────
     story += [
+        CondPageBreak(2.3*inch),
         Paragraph("Scope and Limitations — All Pages", S["h2"]),
         gold_thin_rule(),
         Paragraph(
