@@ -303,8 +303,11 @@ class MatchReplayer:
         if events_df is None or len(events_df) == 0:
             return []
         cards = events_df[events_df["type"] == card_type]
-        return [(int(row.get("clock_minute", 50)), str(row.get("team", "home")).lower())
-                for _, row in cards.iterrows()]
+        return [
+            (max(0, min(int(float(row.get("clock_minute") or 50)), 120)),
+             str(row.get("team", "home")).lower())
+            for _, row in cards.iterrows()
+        ]
 
     def _state_at_minute(
         self,
@@ -533,7 +536,10 @@ def run_2022_replay(
 
         match_stats = None
         if stats_df is not None:
-            match_stats = stats_df[stats_df["match_id"] == mid]
+            try:
+                match_stats = stats_df[stats_df["match_id"] == int(mid)]
+            except (ValueError, TypeError):
+                match_stats = stats_df[stats_df["match_id"].astype(str) == mid]
 
         cps = replayer.replay(match_row, match_events, match_stats, lh, la, momentum_df=momentum_df)
         for cp in cps:

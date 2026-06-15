@@ -180,10 +180,10 @@ def score_state_multipliers(
         if very_late:
             home_mult = 1.15  # proportional scale from current 1.40
 
-    if log.isEnabledFor(logging.DEBUG):
-        _state_labels = {0: "drawn", 1: "hw1", 2: "hw2p", -1: "aw1"}
-        state = _state_labels.get(diff, "aw2p" if diff < -1 else "hw2p")
-        log.debug("score_state=%s h_mult=%.3f a_mult=%.3f", state, home_mult, away_mult)
+    _state_labels = {0: "drawn", 1: "hw1", 2: "hw2p", -1: "aw1"}
+    state = _state_labels.get(diff, "aw2p" if diff < -1 else "hw2p")
+    if state != "drawn":
+        log.info("score_state=%s h_mult=%.3f a_mult=%.3f min=%d", state, home_mult, away_mult, int(minute))
 
     return home_mult, away_mult
 
@@ -260,13 +260,13 @@ def momentum_scaling(
 
         if ratio > _NEUTRAL_HI:
             h_scale, a_scale = 1.08, 0.95
-            log.debug(
+            log.info(
                 "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
                 match_id, int(minute), ratio, h_scale, a_scale,
             )
         elif ratio < _NEUTRAL_LO:
             h_scale, a_scale = 0.95, 1.08
-            log.debug(
+            log.info(
                 "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
                 match_id, int(minute), ratio, h_scale, a_scale,
             )
