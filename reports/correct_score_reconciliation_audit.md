@@ -52,7 +52,7 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 - PMF validation: ✅ PASS
 
 ### Iran vs New Zealand
-- CS outcomes: 24  |  CS vendors: 1  |  Publish mode: market_reconciled
+- CS outcomes: 23  |  CS vendors: 1  |  Publish mode: market_reconciled
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |
 |-------|------------------|-----------------|-----------|
@@ -1466,6 +1466,31 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 | 1-4 | 0.0437 | 0.0520 | 0.0083 |
 | 0-0 | 0.0394 | 0.0428 | 0.0035 |
 | 0-5 | 0.0394 | 0.0461 | 0.0068 |
+| 2-2 | 0.0281 | 0.0278 | 0.0003 |
+| 1-0 | 0.0254 | 0.0253 | 0.0001 |
+| 2-3 | 0.0254 | 0.0256 | 0.0002 |
+| 1-5 | 0.0254 | 0.0221 | 0.0033 |
+| 2-1 | 0.0219 | 0.0190 | 0.0029 |
+| **Sum (top 15)** | **0.8794** | **0.9363** | — |
+- High-score mass (total ≥9 goals): 2.53e-05
+- Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
+- PMF validation: ✅ PASS
+
+### Jordan vs Argentina
+- CS outcomes: 28  |  CS vendors: 1  |  Publish mode: market_reconciled
+
+| Score | Market P (no-vig) | Published PMF P | Abs Error |
+|-------|------------------|-----------------|-----------|
+| 0-2 | 0.1312 | 0.1369 | 0.0058 |
+| 0-3 | 0.1124 | 0.1189 | 0.0064 |
+| 0-1 | 0.1049 | 0.1093 | 0.0044 |
+| 1-2 | 0.0787 | 0.0835 | 0.0048 |
+| 1-3 | 0.0715 | 0.0800 | 0.0085 |
+| 0-4 | 0.0715 | 0.0848 | 0.0132 |
+| 1-1 | 0.0605 | 0.0622 | 0.0016 |
+| 1-4 | 0.0437 | 0.0520 | 0.0083 |
+| 0-0 | 0.0394 | 0.0429 | 0.0035 |
+| 0-5 | 0.0394 | 0.0461 | 0.0067 |
 | 2-2 | 0.0281 | 0.0278 | 0.0003 |
 | 1-0 | 0.0254 | 0.0253 | 0.0001 |
 | 2-3 | 0.0254 | 0.0256 | 0.0002 |

@@ -1926,6 +1926,19 @@
               "value_reason": "edge -3.1% below threshold 4%"
             },
             {
+              "market": "1-0",
+              "model_prob": 0.09212,
+              "market_prob": 0.0953,
+              "edge_pct": -3.34,
+              "fair_odds": 10.856,
+              "market_odds": 10.494,
+              "ci_90_lower": 0.07969,
+              "ci_90_upper": 0.11214,
+              "half_kelly_pct": 0.0,
+              "value_flag": false,
+              "value_reason": "edge -3.3% below threshold 4%"
+            },
+            {
               "market": "under_3_5",
               "model_prob": 0.55105,
               "market_prob": 0.57289,
@@ -2014,7 +2027,7 @@
               "ci_90_upper": 0.07679,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -7.0% below threshold 4%"
+              "value_reason": "edge -7.1% below threshold 4%"
             },
             {
               "market": "6-0",
@@ -2027,7 +2040,7 @@
               "ci_90_upper": 0.04192,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -7.7% below threshold 4%"
+              "value_reason": "edge -7.8% below threshold 4%"
             },
             {
               "market": "7-0",
@@ -2040,7 +2053,7 @@
               "ci_90_upper": 0.01961,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -9.5% below threshold 4%"
+              "value_reason": "edge -9.6% below threshold 4%"
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."

@@ -1031,7 +1031,7 @@
               "value_reason": "edge -45.1% below threshold 4%"
             },
             {
-              "market": "4-3",
+              "market": "5-2",
               "model_prob": 0.0,
               "market_prob": 0.00632,
               "edge_pct": -100.0,
@@ -1044,7 +1044,7 @@
               "value_reason": "edge -100.0% below threshold 4%"
             },
             {
-              "market": "5-2",
+              "market": "4-3",
               "model_prob": 0.0,
               "market_prob": 0.00632,
               "edge_pct": -100.0,

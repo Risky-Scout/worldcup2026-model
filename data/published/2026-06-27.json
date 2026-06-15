@@ -639,7 +639,7 @@
           "edges": [
             {
               "market": "1-2",
-              "model_prob": 0.09215,
+              "model_prob": 0.09216,
               "market_prob": 0.08233,
               "edge_pct": 11.93,
               "fair_odds": 10.852,
