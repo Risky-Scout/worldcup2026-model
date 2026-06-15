@@ -2881,12 +2881,14 @@ def _run_live_replay(matches_df: pd.DataFrame, tables: dict, generated_at: str) 
 
         events_df = tables.get("events")
         stats_df = tables.get("team_stats")
+        momentum_df = tables.get("momentum")
 
         parquet_path = str(PREDICTIONS_DIR / "live_replay_2022.parquet")
         replay_df = run_2022_replay(
             matches_df=matches_df,
             events_df=events_df,
             stats_df=stats_df,
+            momentum_df=momentum_df,
             output_path=parquet_path,
         )
 

@@ -134,6 +134,7 @@ class MatchReplayer:
         stats_df: Optional[pd.DataFrame] = None,
         pregame_lh: float = 1.35,
         pregame_la: float = 1.00,
+        momentum_df: Optional[pd.DataFrame] = None,
     ) -> list[ReplayCheckpoint]:
         """
         Replay a completed match and return checkpoints.
@@ -142,9 +143,10 @@ class MatchReplayer:
         ----------
         match_row   Row from the matches DataFrame (must have home_goals, away_goals)
         events_df   BDL match events filtered to this match
-        stats_df    BDL team stats filtered to this match
+        stats_df    BDL team stats filtered to this match (used for xG blend)
         pregame_lh  Pregame expected home goals
         pregame_la  Pregame expected away goals
+        momentum_df Full momentum DataFrame (match_id, minute, value)
         """
         match_id = str(match_row.get("match_id", match_row.name))
         home = str(match_row.get("home_team", "Home"))
@@ -159,12 +161,66 @@ class MatchReplayer:
         )
         red_card_timeline = self._build_card_timeline(match_id, events_df, "red_card")
 
+        # Log red cards when present
+        if red_card_timeline:
+            home_rc_total = sum(1 for _, t in red_card_timeline if t == "home")
+            away_rc_total = sum(1 for _, t in red_card_timeline if t == "away")
+            if home_rc_total > 0 or away_rc_total > 0:
+                last_min = max(m for m, _ in red_card_timeline)
+                log.info(
+                    "red_cards: match=%s min=%d home_rc=%d away_rc=%d",
+                    match_id, last_min, home_rc_total, away_rc_total,
+                )
+
+        # Pre-fetch end-of-match team stats for xG blend (scaled linearly by minute)
+        h_stats_final = a_stats_final = None
+        if stats_df is not None and len(stats_df) > 0:
+            try:
+                from .state import TeamLiveStats
+                orig_mid = match_row.get("match_id", match_row.name)
+                m_stats = stats_df[stats_df["match_id"] == orig_mid]
+                if len(m_stats) == 0:
+                    m_stats = stats_df[stats_df["match_id"].astype(str) == match_id]
+                if len(m_stats) > 0:
+                    h_raw = m_stats[m_stats["is_home"] == True]
+                    a_raw = m_stats[m_stats["is_home"] == False]
+                    if len(h_raw) > 0 and len(a_raw) > 0:
+                        h_r = h_raw.iloc[0]
+                        a_r = a_raw.iloc[0]
+                        h_stats_final = h_r
+                        a_stats_final = a_r
+            except Exception as _se:
+                log.debug("stats_df parse failed for %s: %s", match_id, _se)
+
         checkpoints = []
         for cp_minute in CHECKPOINTS:
             # Reconstruct state at this checkpoint
             h_goals, a_goals, h_eff, a_eff = self._state_at_minute(
                 cp_minute, goal_timeline, red_card_timeline, final_hg, final_ag
             )
+
+            # Build per-checkpoint TeamLiveStats by scaling end-of-game xG linearly.
+            # This approximation lets the xG blend activate for minute >= 15 checkpoints.
+            cp_h_stats = cp_a_stats = None
+            if h_stats_final is not None and a_stats_final is not None and cp_minute >= 15:
+                try:
+                    from .state import TeamLiveStats
+                    scale = cp_minute / 90.0
+                    def _sv(row, col):
+                        v = row.get(col) if hasattr(row, "get") else getattr(row, col, None)
+                        return float(v) * scale if v is not None and not pd.isna(v) else None
+                    cp_h_stats = TeamLiveStats(
+                        xg=_sv(h_stats_final, "expected_goals"),
+                        shots_total=None,
+                        shots_on_target=None,
+                    )
+                    cp_a_stats = TeamLiveStats(
+                        xg=_sv(a_stats_final, "expected_goals"),
+                        shots_total=None,
+                        shots_on_target=None,
+                    )
+                except Exception:
+                    pass
 
             state = MatchState(
                 match_id=match_id,
@@ -179,12 +235,16 @@ class MatchReplayer:
                 away_goals=a_goals,
                 home_effective_players=h_eff,
                 away_effective_players=a_eff,
+                home_stats=cp_h_stats,
+                away_stats=cp_a_stats,
                 pregame_lh=pregame_lh,
                 pregame_la=pregame_la,
             )
 
             try:
-                result = self.predictor.predict(state, pregame_lh, pregame_la)
+                result = self.predictor.predict(
+                    state, pregame_lh, pregame_la, momentum_df=momentum_df
+                )
                 cp = self._build_checkpoint(
                     state, result, final_hg, final_ag, pregame_lh, pregame_la
                 )
@@ -387,6 +447,7 @@ def run_2022_replay(
     stats_df: Optional[pd.DataFrame] = None,
     pregame_lambdas: Optional[dict] = None,
     output_path: Optional[str] = None,
+    momentum_df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """
     Run the full 2022 World Cup replay and return a DataFrame of checkpoints.
@@ -395,9 +456,10 @@ def run_2022_replay(
     ----------
     matches_df      DataFrame with 2022 completed matches
     events_df       Optional BDL events DataFrame (match_id, type, clock_minute, team)
-    stats_df        Optional BDL stats DataFrame
+    stats_df        Optional BDL stats DataFrame (used for xG blend)
     pregame_lambdas Dict mapping match_id → (lh, la) from the composite prior
     output_path     If provided, save parquet to this path
+    momentum_df     Optional momentum DataFrame (match_id, minute, value)
 
     Returns
     -------
@@ -473,7 +535,7 @@ def run_2022_replay(
         if stats_df is not None:
             match_stats = stats_df[stats_df["match_id"] == mid]
 
-        cps = replayer.replay(match_row, match_events, match_stats, lh, la)
+        cps = replayer.replay(match_row, match_events, match_stats, lh, la, momentum_df=momentum_df)
         for cp in cps:
             rows.append(cp.to_dict())
 

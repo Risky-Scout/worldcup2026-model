@@ -36,6 +36,7 @@ Returns a LivePMFResult with:
 - home_win_prob, draw_prob, away_win_prob (regulation only)
 - next_goal_home_prob, next_goal_away_prob, no_more_goals_prob
 - derived markets
+- first_half_markets (only when minute <= 45)
 - calibration_temperature
 """
 from __future__ import annotations
@@ -93,6 +94,9 @@ class LivePMFResult:
     # Derived markets
     derived_markets: dict
 
+    # First-half markets (None when minute > 45 — already settled)
+    first_half_markets: Optional[dict] = None
+
     # Calibration
     calibration_temperature: float = _DEFAULT_TEMP
     method: str = "live_hazard_poisson"
@@ -116,6 +120,7 @@ class LivePMFResult:
             "no_more_goals_prob": round(self.no_more_goals_prob, 4),
             "top_scorelines": self.top_scorelines[:10],
             "derived_markets": self.derived_markets,
+            "first_half_markets": self.first_half_markets,
             "calibration_temperature": self.calibration_temperature,
             "method": self.method,
             "warnings": self.warnings,
@@ -161,7 +166,8 @@ class LivePMFPredictor:
         state: MatchState,
         pregame_lh: Optional[float] = None,
         pregame_la: Optional[float] = None,
-    ) -> LivePMFResult:
+        momentum_df=None,
+    ) -> "LivePMFResult":
         """
         Compute the live score PMF for a given match state.
 
@@ -170,6 +176,8 @@ class LivePMFPredictor:
         state       Current MatchState
         pregame_lh  Pregame expected home goals per 90 (overrides state field)
         pregame_la  Pregame expected away goals per 90
+        momentum_df Optional momentum DataFrame (match_id, minute, value) for
+                    hazard scaling — loaded once outside the hot loop.
         """
         lh = float(pregame_lh or state.pregame_lh or 1.35)
         la = float(pregame_la or state.pregame_la or 1.00)
@@ -182,6 +190,7 @@ class LivePMFPredictor:
 
         # ── 1. Get live xG rates if available ────────────────────────────
         home_xg_rate = away_xg_rate = None
+        xg_used = False
         if state.home_stats and state.away_stats:
             h_xg = state.home_stats.xg
             a_xg = state.away_stats.xg
@@ -189,6 +198,7 @@ class LivePMFPredictor:
                 time_frac = max(minute / 90.0, 0.01)
                 home_xg_rate = float(h_xg) / time_frac
                 away_xg_rate = float(a_xg) / time_frac
+                xg_used = True
 
                 # xT-inspired shot quality adjustment via xGOT/xG ratio.
                 # When xGOT (xG on target) > xG, chances were higher quality
@@ -224,6 +234,20 @@ class LivePMFPredictor:
             home_disadvantage=h_disadv,
             away_disadvantage=a_disadv,
             xg_blend=self.xg_blend,
+            match_id=state.match_id,
+            momentum_df=momentum_df,
+        )
+
+        # ── Fix 3 log: mandatory xG blend status on every live snapshot ──
+        log.info(
+            "xG blend: %s | match=%s min=%d | xg_h=%.3f xg_a=%.3f | lam_h=%.3f lam_a=%.3f",
+            "ACTIVE" if xg_used else "INACTIVE",
+            state.match_id,
+            int(minute),
+            home_xg_rate or 0.0,
+            away_xg_rate or 0.0,
+            lh_rem,
+            la_rem,
         )
 
         # ── 3. Build additional-goals PMF (independent Poisson) ──────────
@@ -309,6 +333,68 @@ class LivePMFPredictor:
             "over_3_5": round(over_3_5, 4),
         }
 
+        # ── 10. First-half PMF (Fix 5) ────────────────────────────────────
+        # Only computed when match is still in first half; first-half markets
+        # are already settled once minute > 45.
+        first_half_markets = None
+        if minute <= 45:
+            fh_remaining_secs = max(0.0, 45.0 * 60 - state.match_seconds)
+            if fh_remaining_secs > 0:
+                lh_fh, la_fh = expected_goals_remaining(
+                    minute=minute,
+                    home_goals=h0,
+                    away_goals=a0,
+                    pregame_lh=lh,
+                    pregame_la=la,
+                    remaining_seconds=fh_remaining_secs,
+                    home_xg_rate=home_xg_rate,
+                    away_xg_rate=away_xg_rate,
+                    home_disadvantage=h_disadv,
+                    away_disadvantage=a_disadv,
+                    xg_blend=self.xg_blend,
+                    match_id=state.match_id,
+                    momentum_df=momentum_df,
+                )
+                d_fh = min(d, 7)
+                fh_add_pmf = np.outer(
+                    poisson.pmf(range(d_fh), max(lh_fh, _EPS)),
+                    poisson.pmf(range(d_fh), max(la_fh, _EPS)),
+                )
+                fh_add_pmf /= fh_add_pmf.sum()
+
+                fh_hw = float(sum(
+                    fh_add_pmf[dh, da]
+                    for dh in range(d_fh) for da in range(d_fh)
+                    if h0 + dh > a0 + da
+                ))
+                fh_dr = float(sum(
+                    fh_add_pmf[dh, da]
+                    for dh in range(d_fh) for da in range(d_fh)
+                    if h0 + dh == a0 + da
+                ))
+                fh_aw = float(sum(
+                    fh_add_pmf[dh, da]
+                    for dh in range(d_fh) for da in range(d_fh)
+                    if h0 + dh < a0 + da
+                ))
+                fh_over_0_5 = float(sum(
+                    fh_add_pmf[dh, da]
+                    for dh in range(d_fh) for da in range(d_fh)
+                    if h0 + a0 + dh + da >= 1
+                ))
+                fh_btts = float(sum(
+                    fh_add_pmf[dh, da]
+                    for dh in range(d_fh) for da in range(d_fh)
+                    if h0 + dh >= 1 and a0 + da >= 1
+                ))
+                first_half_markets = {
+                    "fh_home_win": round(fh_hw, 4),
+                    "fh_draw": round(fh_dr, 4),
+                    "fh_away_win": round(fh_aw, 4),
+                    "fh_over_0_5": round(fh_over_0_5, 4),
+                    "fh_btts": round(fh_btts, 4),
+                }
+
         return LivePMFResult(
             match_id=state.match_id,
             home_team=state.home_team,
@@ -329,6 +415,7 @@ class LivePMFPredictor:
             no_more_goals_prob=round(p_no_more, 4),
             top_scorelines=top,
             derived_markets=markets,
+            first_half_markets=first_half_markets,
             calibration_temperature=self.temperature,
             warnings=warnings,
         )
@@ -340,7 +427,9 @@ class LivePMFPredictor:
         pregame_lh: float = 1.35,
         pregame_la: float = 1.00,
         bdl_shots: Optional[list] = None,
-    ) -> Optional[LivePMFResult]:
+        events_df=None,
+        momentum_df=None,
+    ) -> Optional["LivePMFResult"]:
         """
         Build a MatchState from a BDL match dict and call predict().
 
@@ -350,6 +439,10 @@ class LivePMFPredictor:
         bdl_stats   BDL team stats dict (from /matches/{id}/team_stats)
         pregame_lh  Pregame expected home goals
         pregame_la  Pregame expected away goals
+        events_df   Optional events DataFrame (loaded once upstream) for red cards.
+                    Columns: match_id, incident_type, incident_class,
+                             time_minute, is_home
+        momentum_df Optional momentum DataFrame (match_id, minute, value)
         """
         from .state import MatchState, MatchStatus, TeamLiveStats
         try:
@@ -439,12 +532,41 @@ class LivePMFPredictor:
             h_goals = int(bdl_match.get("home_score", 0) or 0)
             a_goals = int(bdl_match.get("away_score", 0) or 0)
 
+            # ── Fix 1: Count red cards from events_df ─────────────────────
+            home_rc = 0
+            away_rc = 0
+            if events_df is not None and len(events_df) > 0:
+                try:
+                    try:
+                        mid_int = int(match_id)
+                        m_ev = events_df[events_df["match_id"] == mid_int]
+                    except (TypeError, ValueError):
+                        m_ev = events_df[events_df["match_id"].astype(str) == match_id]
+
+                    if len(m_ev) > 0:
+                        rc_mask = (
+                            (m_ev["incident_type"] == "card") &
+                            (m_ev["incident_class"].isin(["red", "yellowRed"])) &
+                            (m_ev["time_minute"].notna()) &
+                            (m_ev["time_minute"] <= clock_min)
+                        )
+                        rc_events = m_ev[rc_mask]
+                        home_rc = int((rc_events["is_home"] == True).sum())
+                        away_rc = int((rc_events["is_home"] == False).sum())
+                except Exception as _rc_exc:
+                    log.debug("Red card extraction failed: %s", _rc_exc)
+
+            if home_rc > 0 or away_rc > 0:
+                log.info(
+                    "red_cards: match=%s min=%d home_rc=%d away_rc=%d",
+                    match_id, clock_min, home_rc, away_rc,
+                )
+
             # Live stats (if available).
             # bdl_stats is a list of team_match_stats rows [{match_id, team_id, is_home, ...}, ...]
             # Spec fields: shots_total, shots_on_target, expected_goals, big_chances,
             #   corners, possession_pct, fouls, yellow_cards.
             # NOTE: xgot does NOT exist in team_match_stats — it lives in match_shots only.
-            # NOTE: red_cards does NOT exist in team_match_stats.
             h_stats = a_stats = None
             if bdl_stats:
                 def _safe_float(d, k):
@@ -474,7 +596,7 @@ class LivePMFPredictor:
                     possession_pct=_safe_float(h_raw, "possession_pct"),
                     fouls=h_raw.get("fouls"),
                     yellow_cards=int(h_raw.get("yellow_cards", 0) or 0),
-                    red_cards=0,  # not in team_match_stats
+                    red_cards=home_rc,
                 )
                 a_stats = TeamLiveStats(
                     shots_total=a_raw.get("shots_total"),
@@ -486,7 +608,7 @@ class LivePMFPredictor:
                     possession_pct=_safe_float(a_raw, "possession_pct"),
                     fouls=a_raw.get("fouls"),
                     yellow_cards=int(a_raw.get("yellow_cards", 0) or 0),
-                    red_cards=0,
+                    red_cards=away_rc,
                 )
 
             state = MatchState(
@@ -500,12 +622,19 @@ class LivePMFPredictor:
                 match_seconds=match_seconds,
                 home_goals=h_goals,
                 away_goals=a_goals,
+                home_effective_players=max(9, 11 - home_rc),
+                away_effective_players=max(9, 11 - away_rc),
                 home_stats=h_stats,
                 away_stats=a_stats,
                 pregame_lh=pregame_lh,
                 pregame_la=pregame_la,
             )
-            return self.predict(state, pregame_lh=pregame_lh, pregame_la=pregame_la)
+            return self.predict(
+                state,
+                pregame_lh=pregame_lh,
+                pregame_la=pregame_la,
+                momentum_df=momentum_df,
+            )
 
         except Exception as exc:
             log.warning("predict_from_bdl failed: %s", exc)

@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-06-15T01:20:09Z
+**Generated**: 2026-06-15T22:09:27Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -8,58 +8,58 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 
 | Team | 2018 | 2022 | Conf | WC Games | Elo | Pi | Market Att | Market Def | n Mkt | Final Att λ | Final Def λ | Uncertainty | Sources |
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
-| Germany | ✅ | ✅ | UEFA | 7 | 1499 | 0.042 | 2.761 | 0.829 | 3 | **2.622** | **1.241** | LOW | market_implied+fifa_ranking+qualifying |
-| USA | ❌ | ✅ | CONCACAF | 5 | 1489 | 0.076 | 2.439 | 0.839 | 3 | **2.162** | **1.146** | LOW | market_implied+fifa_ranking+qualifying |
-| Spain | ✅ | ✅ | UEFA | 8 | 1493 | 0.143 | 2.710 | 0.675 | 3 | **2.065** | **1.188** | LOW | market_implied+fifa_ranking+qualifying |
-| France | ✅ | ✅ | UEFA | 14 | 1415 | 0.568 | 2.179 | 0.758 | 3 | **1.929** | **1.210** | LOW | market_implied+fifa_ranking+qualifying |
-| Mexico | ✅ | ✅ | CONCACAF | 8 | 1491 | -0.204 | 2.208 | 0.677 | 3 | **1.895** | **0.856** | LOW | market_implied+fifa_ranking+qualifying |
-| Argentina | ✅ | ✅ | CONMEBOL | 11 | 1475 | 0.290 | 2.108 | 0.689 | 3 | **1.894** | **1.185** | LOW | market_implied+fifa_ranking+qualifying |
-| Portugal | ✅ | ✅ | UEFA | 9 | 1491 | 0.179 | 2.043 | 0.802 | 3 | **1.848** | **1.255** | LOW | market_implied+fifa_ranking+qualifying |
-| England | ✅ | ✅ | UEFA | 12 | 1479 | 0.169 | 2.071 | 0.746 | 3 | **1.845** | **1.212** | LOW | market_implied+fifa_ranking+qualifying |
-| South Korea | ✅ | ✅ | AFC | 8 | 1505 | 0.290 | 1.752 | 0.761 | 3 | **1.809** | **1.201** | LOW | market_implied+fifa_ranking+qualifying |
-| Belgium | ✅ | ✅ | UEFA | 10 | 1456 | 0.303 | 2.021 | 0.729 | 3 | **1.804** | **1.201** | LOW | market_implied+fifa_ranking+qualifying |
-| Switzerland | ✅ | ✅ | UEFA | 9 | 1501 | -0.353 | 1.317 | 0.618 | 3 | **1.765** | **1.217** | LOW | market_implied+fifa_ranking+qualifying |
-| Côte d'Ivoire | ❌ | ❌ | CAF | 1 | 1490 | 0.070 | 2.300 | 0.902 | 3 | **1.756** | **0.960** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Colombia | ✅ | ❌ | CONMEBOL | 4 | 1490 | 0.123 | 1.609 | 0.911 | 3 | **1.661** | **1.253** | LOW | market_implied+fifa_ranking+qualifying |
-| Brazil | ✅ | ✅ | CONMEBOL | 11 | 1465 | 0.430 | 1.988 | 0.714 | 3 | **1.659** | **1.176** | LOW | market_implied+fifa_ranking+qualifying |
-| Uruguay | ✅ | ✅ | CONMEBOL | 8 | 1474 | 0.113 | 1.554 | 1.067 | 3 | **1.613** | **1.295** | LOW | market_implied+fifa_ranking+qualifying |
-| Norway | ❌ | ❌ | UEFA | 0 | 1500 | — | 1.663 | 1.119 | 3 | **1.604** | **1.355** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Croatia | ✅ | ✅ | UEFA | 14 | 1466 | 0.078 | 1.459 | 1.060 | 3 | **1.589** | **1.343** | LOW | market_implied+fifa_ranking+qualifying |
-| Canada | ❌ | ✅ | CONCACAF | 4 | 1527 | -0.029 | 1.383 | 0.886 | 3 | **1.565** | **1.203** | LOW | market_implied+fifa_ranking+qualifying |
-| Austria | ❌ | ❌ | UEFA | 0 | 1500 | — | 1.492 | 1.183 | 3 | **1.559** | **1.367** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Netherlands | ❌ | ✅ | UEFA | 6 | 1472 | 0.453 | 1.254 | 0.577 | 3 | **1.540** | **1.429** | LOW | market_implied+fifa_ranking+qualifying |
-| Morocco | ✅ | ✅ | CAF | 11 | 1502 | -0.257 | 1.491 | 0.743 | 3 | **1.533** | **1.198** | LOW | market_implied+fifa_ranking+qualifying |
-| Australia | ✅ | ✅ | AFC | 8 | 1506 | -0.163 | 1.492 | 1.091 | 3 | **1.518** | **1.024** | LOW | market_implied+fifa_ranking+qualifying |
-| Senegal | ✅ | ✅ | CAF | 7 | 1500 | -0.373 | 1.288 | 1.372 | 3 | **1.478** | **1.490** | LOW | market_implied+fifa_ranking+qualifying |
-| Sweden | ✅ | ❌ | UEFA | 5 | 1490 | 0.023 | 1.162 | 1.377 | 3 | **1.443** | **1.460** | LOW | market_implied+fifa_ranking+qualifying |
-| G1 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.438** | **1.438** | HIGH | penaltyblog_elo+confederation |
-| G2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.438** | **1.438** | HIGH | penaltyblog_elo+confederation |
-| H1 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.438** | **1.438** | HIGH | penaltyblog_elo+confederation |
-| H2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.438** | **1.438** | HIGH | penaltyblog_elo+confederation |
-| Scotland | ❌ | ❌ | UEFA | 1 | 1490 | 0.000 | 1.427 | 1.221 | 3 | **1.435** | **1.064** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Egypt | ✅ | ❌ | CAF | 3 | 1529 | -0.214 | 1.172 | 1.145 | 3 | **1.420** | **1.441** | MEDIUM | market_implied+qualifying+penaltyblog_pi |
-| Japan | ✅ | ✅ | AFC | 9 | 1498 | -0.093 | 1.046 | 0.625 | 3 | **1.410** | **1.447** | LOW | market_implied+fifa_ranking+qualifying |
-| Iran | ✅ | ✅ | AFC | 6 | 1510 | -0.057 | 0.983 | 1.322 | 3 | **1.410** | **1.427** | LOW | market_implied+fifa_ranking+qualifying |
-| Algeria | ❌ | ❌ | CAF | 0 | 1500 | — | 1.189 | 1.390 | 3 | **1.405** | **1.462** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Ghana | ❌ | ✅ | CAF | 3 | 1509 | -0.182 | 0.947 | 1.645 | 3 | **1.387** | **1.613** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Tunisia | ✅ | ✅ | CAF | 6 | 1507 | -0.048 | 0.827 | 1.709 | 3 | **1.328** | **1.575** | LOW | market_implied+fifa_ranking+qualifying |
-| Panama | ✅ | ❌ | CONCACAF | 3 | 1529 | -0.176 | 0.815 | 1.841 | 3 | **1.311** | **1.724** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Saudi Arabia | ✅ | ✅ | AFC | 6 | 1520 | -0.191 | 0.798 | 2.010 | 3 | **1.309** | **1.706** | LOW | market_implied+fifa_ranking+qualifying |
-| Bosnia & Herzegovina | ❌ | ❌ | UEFA | 1 | 1501 | -0.074 | 1.063 | 1.120 | 3 | **1.298** | **1.320** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Ecuador | ❌ | ✅ | CONMEBOL | 4 | 1510 | -0.079 | 1.247 | 1.839 | 3 | **1.290** | **1.481** | LOW | market_implied+fifa_ranking+qualifying |
-| DR Congo | ❌ | ❌ | CAF | 0 | 1500 | — | 0.872 | 1.709 | 3 | **1.278** | **1.584** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Cabo Verde | ❌ | ❌ | CAF | 0 | 1500 | — | 0.856 | 2.166 | 3 | **1.266** | **1.744** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Czechia | ❌ | ❌ | UEFA | 1 | 1510 | -0.093 | 0.854 | 1.686 | 3 | **1.256** | **1.761** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Uzbekistan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.794 | 1.897 | 3 | **1.251** | **1.630** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Türkiye | ❌ | ❌ | UEFA | 1 | 1510 | -0.103 | 0.962 | 1.665 | 3 | **1.236** | **1.750** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Jordan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.698 | 2.225 | 3 | **1.223** | **1.735** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| New Zealand | ❌ | ❌ | OFC | 0 | 1500 | — | 0.781 | 1.760 | 3 | **1.221** | **1.605** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Paraguay | ❌ | ❌ | CONMEBOL | 1 | 1510 | -0.125 | 0.884 | 2.182 | 3 | **1.215** | **2.414** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Iraq | ❌ | ❌ | AFC | 0 | 1500 | — | 0.606 | 2.487 | 3 | **1.201** | **1.811** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Qatar | ❌ | ✅ | AFC | 4 | 1528 | 0.014 | 0.469 | 1.609 | 3 | **1.112** | **1.458** | LOW | market_implied+fifa_ranking+qualifying |
-| Curaçao | ❌ | ❌ | CONCACAF | 1 | 1510 | -0.140 | 0.609 | 3.346 | 3 | **1.084** | **3.088** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Haiti | ❌ | ❌ | CONCACAF | 1 | 1510 | 0.000 | 0.496 | 2.724 | 3 | **1.069** | **1.744** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| South Africa | ❌ | ❌ | CAF | 1 | 1510 | -0.104 | 0.651 | 2.341 | 3 | **0.924** | **1.948** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Germany | ✅ | ✅ | UEFA | 7 | 1499 | 0.042 | 2.769 | 0.842 | 3 | **2.580** | **1.218** | LOW | market_implied+fifa_ranking+qualifying |
+| USA | ❌ | ✅ | CONCACAF | 5 | 1489 | 0.076 | 2.437 | 0.836 | 3 | **2.122** | **1.126** | LOW | market_implied+fifa_ranking+qualifying |
+| Sweden | ✅ | ❌ | UEFA | 6 | 1481 | 0.153 | 1.991 | 1.202 | 3 | **2.060** | **1.306** | LOW | market_implied+fifa_ranking+qualifying |
+| France | ✅ | ✅ | UEFA | 14 | 1415 | 0.568 | 2.184 | 0.766 | 3 | **1.892** | **1.194** | LOW | market_implied+fifa_ranking+qualifying |
+| Mexico | ✅ | ✅ | CONCACAF | 8 | 1491 | -0.204 | 2.208 | 0.676 | 3 | **1.861** | **0.837** | LOW | market_implied+fifa_ranking+qualifying |
+| Argentina | ✅ | ✅ | CONMEBOL | 11 | 1475 | 0.290 | 2.109 | 0.688 | 3 | **1.860** | **1.166** | LOW | market_implied+fifa_ranking+qualifying |
+| Portugal | ✅ | ✅ | UEFA | 9 | 1491 | 0.179 | 2.042 | 0.798 | 3 | **1.816** | **1.230** | LOW | market_implied+fifa_ranking+qualifying |
+| England | ✅ | ✅ | UEFA | 12 | 1479 | 0.169 | 2.078 | 0.747 | 3 | **1.809** | **1.192** | LOW | market_implied+fifa_ranking+qualifying |
+| South Korea | ✅ | ✅ | AFC | 8 | 1505 | 0.290 | 1.757 | 0.758 | 3 | **1.779** | **1.175** | LOW | market_implied+fifa_ranking+qualifying |
+| Côte d'Ivoire | ❌ | ❌ | CAF | 1 | 1490 | 0.070 | 2.397 | 0.937 | 3 | **1.747** | **0.952** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Switzerland | ✅ | ✅ | UEFA | 9 | 1501 | -0.353 | 1.320 | 0.614 | 3 | **1.734** | **1.191** | LOW | market_implied+fifa_ranking+qualifying |
+| Spain | ✅ | ✅ | UEFA | 9 | 1494 | 0.115 | 1.831 | 0.520 | 3 | **1.654** | **0.839** | LOW | market_implied+fifa_ranking+qualifying |
+| Colombia | ✅ | ❌ | CONMEBOL | 4 | 1490 | 0.123 | 1.614 | 0.910 | 3 | **1.632** | **1.232** | LOW | market_implied+fifa_ranking+qualifying |
+| Brazil | ✅ | ✅ | CONMEBOL | 11 | 1465 | 0.430 | 1.980 | 0.703 | 3 | **1.628** | **1.153** | LOW | market_implied+fifa_ranking+qualifying |
+| Belgium | ✅ | ✅ | UEFA | 11 | 1459 | 0.336 | 1.753 | 0.676 | 3 | **1.587** | **1.149** | LOW | market_implied+fifa_ranking+qualifying |
+| Norway | ❌ | ❌ | UEFA | 0 | 1500 | — | 1.668 | 1.116 | 3 | **1.577** | **1.330** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Uruguay | ✅ | ✅ | CONMEBOL | 8 | 1474 | 0.113 | 1.489 | 1.081 | 3 | **1.566** | **1.274** | LOW | market_implied+fifa_ranking+qualifying |
+| Croatia | ✅ | ✅ | UEFA | 14 | 1466 | 0.078 | 1.456 | 1.056 | 3 | **1.558** | **1.320** | LOW | market_implied+fifa_ranking+qualifying |
+| Austria | ❌ | ❌ | UEFA | 0 | 1500 | — | 1.497 | 1.193 | 3 | **1.533** | **1.345** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Canada | ❌ | ✅ | CONCACAF | 4 | 1527 | -0.029 | 1.377 | 0.890 | 3 | **1.533** | **1.185** | LOW | market_implied+fifa_ranking+qualifying |
+| Netherlands | ❌ | ✅ | UEFA | 6 | 1472 | 0.453 | 1.324 | 0.565 | 3 | **1.528** | **1.402** | LOW | market_implied+fifa_ranking+qualifying |
+| Morocco | ✅ | ✅ | CAF | 11 | 1502 | -0.257 | 1.515 | 0.745 | 3 | **1.511** | **1.178** | LOW | market_implied+fifa_ranking+qualifying |
+| Australia | ✅ | ✅ | AFC | 8 | 1506 | -0.163 | 1.492 | 1.085 | 3 | **1.486** | **1.008** | LOW | market_implied+fifa_ranking+qualifying |
+| Senegal | ✅ | ✅ | CAF | 7 | 1500 | -0.373 | 1.286 | 1.377 | 3 | **1.450** | **1.467** | LOW | market_implied+fifa_ranking+qualifying |
+| G1 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.412** | **1.412** | HIGH | penaltyblog_elo+confederation |
+| G2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.412** | **1.412** | HIGH | penaltyblog_elo+confederation |
+| H1 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.412** | **1.412** | HIGH | penaltyblog_elo+confederation |
+| H2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.412** | **1.412** | HIGH | penaltyblog_elo+confederation |
+| Scotland | ❌ | ❌ | UEFA | 1 | 1490 | 0.000 | 1.420 | 1.226 | 3 | **1.408** | **1.046** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Japan | ✅ | ✅ | AFC | 9 | 1498 | -0.093 | 1.089 | 0.597 | 3 | **1.395** | **1.415** | LOW | market_implied+fifa_ranking+qualifying |
+| Iran | ✅ | ✅ | AFC | 6 | 1510 | -0.057 | 1.011 | 1.309 | 3 | **1.392** | **1.399** | LOW | market_implied+fifa_ranking+qualifying |
+| Algeria | ❌ | ❌ | CAF | 0 | 1500 | — | 1.188 | 1.391 | 3 | **1.379** | **1.437** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Ghana | ❌ | ✅ | CAF | 3 | 1509 | -0.182 | 0.950 | 1.659 | 3 | **1.366** | **1.586** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Egypt | ✅ | ❌ | CAF | 4 | 1527 | -0.246 | 1.141 | 0.830 | 3 | **1.332** | **1.249** | LOW | market_implied+qualifying+penaltyblog_pi |
+| Ecuador | ❌ | ✅ | CONMEBOL | 4 | 1510 | -0.079 | 1.427 | 1.871 | 3 | **1.312** | **1.462** | LOW | market_implied+fifa_ranking+qualifying |
+| Saudi Arabia | ✅ | ✅ | AFC | 6 | 1520 | -0.191 | 0.841 | 2.138 | 3 | **1.303** | **1.713** | LOW | market_implied+fifa_ranking+qualifying |
+| Panama | ✅ | ❌ | CONCACAF | 3 | 1529 | -0.176 | 0.820 | 1.842 | 3 | **1.279** | **1.698** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Bosnia & Herzegovina | ❌ | ❌ | UEFA | 1 | 1501 | -0.074 | 1.059 | 1.122 | 3 | **1.271** | **1.299** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| DR Congo | ❌ | ❌ | CAF | 0 | 1500 | — | 0.867 | 1.716 | 3 | **1.253** | **1.558** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Czechia | ❌ | ❌ | UEFA | 1 | 1510 | -0.093 | 0.850 | 1.687 | 3 | **1.236** | **1.728** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Uzbekistan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.795 | 1.894 | 3 | **1.229** | **1.600** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Türkiye | ❌ | ❌ | UEFA | 1 | 1510 | -0.103 | 0.962 | 1.672 | 3 | **1.211** | **1.725** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Jordan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.708 | 2.230 | 3 | **1.205** | **1.706** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Paraguay | ❌ | ❌ | CONMEBOL | 1 | 1510 | -0.125 | 0.887 | 2.185 | 3 | **1.192** | **2.374** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| New Zealand | ❌ | ❌ | OFC | 0 | 1500 | — | 0.734 | 1.825 | 3 | **1.183** | **1.598** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Iraq | ❌ | ❌ | AFC | 0 | 1500 | — | 0.612 | 2.492 | 3 | **1.181** | **1.780** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Qatar | ❌ | ✅ | AFC | 4 | 1528 | 0.014 | 0.474 | 1.603 | 3 | **1.093** | **1.431** | LOW | market_implied+fifa_ranking+qualifying |
+| Curaçao | ❌ | ❌ | CONCACAF | 1 | 1510 | -0.140 | 0.668 | 3.611 | 3 | **1.083** | **3.142** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Tunisia | ✅ | ✅ | CAF | 7 | 1516 | -0.179 | 0.601 | 2.641 | 3 | **1.073** | **2.438** | LOW | market_implied+fifa_ranking+qualifying |
+| Haiti | ❌ | ❌ | CONCACAF | 1 | 1510 | 0.000 | 0.493 | 2.736 | 3 | **1.049** | **1.716** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Cabo Verde | ❌ | ❌ | CAF | 1 | 1500 | 0.027 | 0.684 | 1.106 | 3 | **0.939** | **0.980** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| South Africa | ❌ | ❌ | CAF | 1 | 1510 | -0.104 | 0.649 | 2.343 | 3 | **0.911** | **1.913** | MEDIUM | market_implied+fifa_ranking+qualifying |
 
 ## Summary
 
@@ -69,14 +69,14 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Teams with market-implied lambdas | 48 (from BDL group-stage odds) |
 | Teams with fallback only | 4 |
 | Uncertainty HIGH | 4 |
-| Uncertainty MEDIUM | 21 |
-| Uncertainty LOW | 27 |
+| Uncertainty MEDIUM | 20 |
+| Uncertainty LOW | 28 |
 
 ## Key teams for June 11
 
 | Team | Final Att λ | Final Def λ | Market Att (raw) | Sources |
 |------|------------|------------|-----------------|---------|
-| Mexico | 1.895 | 0.856 | 2.208 | market_implied+fifa_ranking+qualifying |
-| South Africa | 0.924 | 1.948 | 0.651 | market_implied+fifa_ranking+qualifying |
-| South Korea | 1.809 | 1.201 | 1.752 | market_implied+fifa_ranking+qualifying |
-| Czechia | 1.256 | 1.761 | 0.854 | market_implied+fifa_ranking+qualifying |
+| Mexico | 1.861 | 0.837 | 2.208 | market_implied+fifa_ranking+qualifying |
+| South Africa | 0.911 | 1.913 | 0.649 | market_implied+fifa_ranking+qualifying |
+| South Korea | 1.779 | 1.175 | 1.757 | market_implied+fifa_ranking+qualifying |
+| Czechia | 1.236 | 1.728 | 0.850 | market_implied+fifa_ranking+qualifying |

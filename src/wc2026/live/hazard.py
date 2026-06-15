@@ -19,6 +19,7 @@ match?" into two components:
    - Current score state (chasing team has higher intensity)
    - Live xG rate (updates intensity in real time)
    - Player advantage / disadvantage (red cards)
+   - Rolling momentum (last-5-minute pressure balance)
 
 Effective rate at minute t:
     rate_home(t, state) = h_home(t) × λ_home(state)
@@ -30,24 +31,23 @@ empirical prior from the broader football literature.
 
 Score-state intensity adjustments
 ----------------------------------
-When a team is losing, they tend to push forward more, increasing both their
-own goal rate and the opponent's (on the counter).
+Multipliers are Bayesian-blended from Dixon & Robinson (1998) and 2026 WC
+observed rates.  2026 WC data has 11 completed matches (32 goal events).
 
-Multipliers (from Dixon & Robinson 1998 and WC empirical patterns):
-    drawn at t=60+:    both teams × 1.10 (game opens up)
-    home losing by 1:  home × 1.25, away × 1.05 (counter risk)
-    home losing by 2+: home × 1.40, away × 1.10
-    home winning by 1: home × 0.90, away × 1.10 (away pushes)
-    home winning by 2+: home × 0.80, away × 1.15
-
-These multipliers are applied on top of the xG-derived intensity.
+Shrinkage weights applied:
+    ≥20 events in state: 70% observed, 30% prior
+    10-19 events:        50% observed, 50% prior
+    <10 events:          20% observed, 80% prior  (heavy shrinkage)
 """
 from __future__ import annotations
 
+import logging
 import math
 from typing import Optional
 
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 # ── Temporal baseline h(t) ────────────────────────────────────────────────────
 # Calibrated from WC 2018 + 2022 goal distribution by minute.
@@ -108,6 +108,9 @@ def baseline_hazard(minute: float) -> float:
 
 
 # ── Score-state intensity multipliers ─────────────────────────────────────────
+# Bayesian-blended values from Dixon & Robinson (1998) and 2026 WC data.
+# 2026 data: 11 completed matches, 32 goal events.
+# States with <10 events use 20% weight on observed rate (heavy shrinkage).
 
 def score_state_multipliers(
     home_goals: int,
@@ -118,7 +121,8 @@ def score_state_multipliers(
     Return (home_multiplier, away_multiplier) based on current score and minute.
     
     These adjust the home/away goal rate relative to the match baseline.
-    Based on Dixon & Robinson (1998) and WC empirical calibration.
+    Values are Bayesian-blended from Dixon & Robinson (1998) and 2026 WC
+    empirical goal rates per score state.
     """
     diff = home_goals - away_goals
     late = minute >= 60.0
@@ -128,7 +132,8 @@ def score_state_multipliers(
     away_mult = 1.0
 
     if diff == 0:
-        # Drawn: both teams become slightly more open late
+        # Drawn: both teams open up late (Dixon & Robinson, unchanged — 467 drawn
+        # minutes in 2026 WC matches provide baseline; late breakdown not computed)
         if late:
             home_mult = 1.08
             away_mult = 1.08
@@ -137,31 +142,48 @@ def score_state_multipliers(
             away_mult = 1.12
 
     elif diff == 1:
-        # Home winning by 1: away chases, slight counter risk
-        home_mult = 0.92
-        away_mult = 1.12
+        # Home winning by 1: Bayesian-calibrated (7 events, w=0.20)
+        # Observed: home_ratio=0.701, away_ratio=1.557
+        # new_h = 0.20*0.701 + 0.80*0.92 = 0.876 → 0.88
+        # new_a = 0.20*1.557 + 0.80*1.12 = 1.207 → 1.21
+        home_mult = 0.88
+        away_mult = 1.21
         if very_late:
-            away_mult = 1.20
+            away_mult = 1.28  # proportional scale from current 1.20
 
     elif diff >= 2:
-        # Home comfortable: away chases harder, home on counter
-        home_mult = 0.85
-        away_mult = 1.20
+        # Home comfortable: Bayesian-calibrated (4 events, w=0.20)
+        # Observed: home_ratio=2.172, away_ratio=0.000 (sparse — high home scoring)
+        # new_h = 0.20*2.172 + 0.80*0.85 = 1.114 → 1.11
+        # new_a = 0.20*0.000 + 0.80*1.20 = 0.960 → 0.96
+        home_mult = 1.11
+        away_mult = 0.96
         if very_late:
-            away_mult = 1.35
+            away_mult = 1.10  # proportional scale from current 1.35
 
     elif diff == -1:
-        # Away winning by 1: home chases
-        home_mult = 1.12
-        away_mult = 0.92
+        # Away winning by 1: Bayesian-calibrated (5 events, w=0.20)
+        # Observed: home_ratio=0.792, away_ratio=0.330
+        # new_h = 0.20*0.792 + 0.80*1.12 = 1.054 → 1.05
+        # new_a = 0.20*0.330 + 0.80*0.92 = 0.802 → 0.80
+        home_mult = 1.05
+        away_mult = 0.80
         if very_late:
-            home_mult = 1.22
+            home_mult = 1.15  # proportional scale from current 1.22
 
     else:  # diff <= -2
-        home_mult = 1.25
-        away_mult = 0.88
+        # Away comfortable: Bayesian-calibrated (0 events in 1 minute, w=0.20)
+        # new_h = 0.20*0.000 + 0.80*1.25 = 1.00
+        # new_a = 0.20*0.000 + 0.80*0.88 = 0.70
+        home_mult = 1.00
+        away_mult = 0.70
         if very_late:
-            home_mult = 1.40
+            home_mult = 1.15  # proportional scale from current 1.40
+
+    if log.isEnabledFor(logging.DEBUG):
+        _state_labels = {0: "drawn", 1: "hw1", 2: "hw2p", -1: "aw1"}
+        state = _state_labels.get(diff, "aw2p" if diff < -1 else "hw2p")
+        log.debug("score_state=%s h_mult=%.3f a_mult=%.3f", state, home_mult, away_mult)
 
     return home_mult, away_mult
 
@@ -183,6 +205,80 @@ def red_card_multipliers(
     return float(h_mult), float(a_mult)
 
 
+# ── Momentum scaling ──────────────────────────────────────────────────────────
+
+def momentum_scaling(
+    match_id,
+    minute: float,
+    momentum_df,
+) -> tuple[float, float]:
+    """
+    Compute momentum-based hazard scaling from rolling 5-minute pressure data.
+
+    The momentum feed provides a per-minute signed value: positive = home
+    team pressure advantage, negative = away team pressure advantage.
+
+    Parameters
+    ----------
+    match_id    Match identifier (int or str; matched against momentum_df)
+    minute      Current regulation minute
+    momentum_df DataFrame with columns [match_id, minute, value]
+
+    Returns
+    -------
+    (home_scale, away_scale)
+        1.08/0.95 if home dominant (avg > +20),
+        0.95/1.08 if away dominant (avg < -20),
+        1.0/1.0   otherwise or if no data.
+    """
+    if momentum_df is None or len(momentum_df) == 0:
+        return 1.0, 1.0
+
+    try:
+        # Filter to this match
+        try:
+            mid_int = int(match_id)
+            m_data = momentum_df[momentum_df["match_id"] == mid_int]
+        except (TypeError, ValueError):
+            m_data = momentum_df[momentum_df["match_id"].astype(str) == str(match_id)]
+
+        if len(m_data) == 0:
+            return 1.0, 1.0
+
+        # Last 5-minute window
+        window = m_data[
+            (m_data["minute"] >= minute - 4) &
+            (m_data["minute"] <= minute)
+        ]
+        if len(window) == 0:
+            return 1.0, 1.0
+
+        ratio = float(window["value"].mean())
+
+        _NEUTRAL_LO = -20.0
+        _NEUTRAL_HI = 20.0
+
+        if ratio > _NEUTRAL_HI:
+            h_scale, a_scale = 1.08, 0.95
+            log.debug(
+                "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
+                match_id, int(minute), ratio, h_scale, a_scale,
+            )
+        elif ratio < _NEUTRAL_LO:
+            h_scale, a_scale = 0.95, 1.08
+            log.debug(
+                "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
+                match_id, int(minute), ratio, h_scale, a_scale,
+            )
+        else:
+            h_scale, a_scale = 1.0, 1.0
+
+        return h_scale, a_scale
+
+    except Exception:
+        return 1.0, 1.0
+
+
 def compute_live_rates(
     minute: float,
     home_goals: int,
@@ -194,6 +290,8 @@ def compute_live_rates(
     home_disadvantage: int = 0,
     away_disadvantage: int = 0,
     xg_blend: float = 0.60,
+    home_momentum_scale: float = 1.0,
+    away_momentum_scale: float = 1.0,
 ) -> tuple[float, float]:
     """
     Compute the instantaneous goal rate (per-minute) for each team.
@@ -211,6 +309,9 @@ def compute_live_rates(
     away_disadvantage  Number of red cards for away team
     xg_blend        Weight on live xG rate vs pregame (0 = pure pregame,
                     1 = pure live xG). Increases with match maturity.
+    home_momentum_scale  Pre-computed momentum scale for home team (from
+                    momentum_scaling, evaluated once per snapshot)
+    away_momentum_scale  Pre-computed momentum scale for away team
 
     Returns
     -------
@@ -237,8 +338,13 @@ def compute_live_rates(
 
     # Apply score-state multipliers
     h_score, a_score = score_state_multipliers(home_goals, away_goals, minute)
-    base_h *= h_score
-    base_a *= a_score
+
+    # Apply momentum scaling AFTER score-state, with hard cap on combined multiplier
+    # Cap: score-state × momentum combined may not exceed 2.0 or go below 0.5
+    h_combined = max(0.5, min(2.0, h_score * home_momentum_scale))
+    a_combined = max(0.5, min(2.0, a_score * away_momentum_scale))
+    base_h *= h_combined
+    base_a *= a_combined
 
     # Apply red card multipliers
     h_card, a_card = red_card_multipliers(home_disadvantage, away_disadvantage)
@@ -261,18 +367,25 @@ def expected_goals_remaining(
     away_disadvantage: int = 0,
     xg_blend: float = 0.60,
     n_steps: int = 30,
+    match_id=None,
+    momentum_df=None,
 ) -> tuple[float, float]:
     """
     Integrate the hazard over remaining regulation time to get expected
     additional home/away goals.
 
     Uses trapezoidal integration over n_steps intervals.
+    Momentum scaling is evaluated once at the current minute and held constant
+    throughout the integration (it is a snapshot, not a future prediction).
     """
     if remaining_seconds <= 0:
         return 0.0, 0.0
 
     step_seconds = remaining_seconds / n_steps
     step_minutes = step_seconds / 60.0
+
+    # Compute momentum scales once for the current snapshot
+    h_mom, a_mom = momentum_scaling(match_id, minute, momentum_df)
 
     total_h = 0.0
     total_a = 0.0
@@ -290,6 +403,8 @@ def expected_goals_remaining(
             home_disadvantage=home_disadvantage,
             away_disadvantage=away_disadvantage,
             xg_blend=xg_blend,
+            home_momentum_scale=h_mom,
+            away_momentum_scale=a_mom,
         )
         total_h += h_rate * step_minutes
         total_a += a_rate * step_minutes

@@ -1,15 +1,15 @@
 # Champion Policy (Real BDL Data)
 
-**Generated**: 2026-06-15T01:20:09Z
+**Generated**: 2026-06-15T22:09:27Z
 
 ## Six champion tiers
 
 | Champion Type | Model | NLL | Use Case |
 |--------------|-------|-----|----------|
 | diagnostic_champion | equal_probability | 3.0219 | Audit only — NEVER published |
-| pure_model_champion | negative_binomial | 4.515848523272986 | Parametric model for matches without odds |
+| pure_model_champion | negative_binomial | 4.515852072380328 | Parametric model for matches without odds |
 | rating_champion | negative_binomial | composite_rating_pmf | Market-implied priors for all 48 teams |
-| parametric_champion | negative_binomial | 4.5158 | Alias for pure_model — parametric prior |
+| parametric_champion | negative_binomial | 4.5159 | Alias for pure_model — parametric prior |
 | market_champion | market_implied | N/A | Pure-market PMF from BDL consensus |
 | **publish_champion** | **market_reconciled** | **N/A** | **Default publish when BDL odds exist** |
 
@@ -49,9 +49,9 @@ New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 | 1 | equal_probability | 118 | 3.0219 | 0.2382 | 0.6497 | 0.0698 | 1.077 | diagnostic only |
 | 2 | elo | 118 | 3.1493 | 0.2673 | 0.7073 | 0.1969 | 1.255 | diagnostic only |
 | 3 | historical_base_rate | 118 | 4.0844 | 0.2422 | 0.6734 | 0.0260 | 0.492 | diagnostic only |
-| 4 | negative_binomial | 106 | 4.5158 | 0.2951 | 0.7914 | 0.2418 | 2.997 | parametric prior |
+| 4 | negative_binomial | 106 | 4.5159 | 0.2951 | 0.7914 | 0.2418 | 2.997 | parametric prior |
 | 5 | dixon_coles | 86 | 4.8898 | 0.2999 | 0.8257 | 0.2690 | 3.000 | parametric prior |
-| 6 | bivariate_poisson | 106 | 4.9445 | 0.3131 | 0.8572 | 0.3161 | 3.000 | parametric prior |
+| 6 | bivariate_poisson | 106 | 4.9446 | 0.3131 | 0.8572 | 0.3161 | 3.000 | parametric prior |
 | 7 | poisson | 106 | 5.1645 | 0.3092 | 0.8450 | 0.3049 | 3.000 | parametric prior |
 | 8 | zero_inflated_poisson | 106 | 5.1683 | 0.3085 | 0.8407 | 0.2706 | 3.000 | parametric prior |
-| 9 | weibull_copula | 106 | 6.5942 | 0.3201 | 0.8601 | 0.3125 | 3.000 | parametric prior |
+| 9 | weibull_copula | 106 | 6.4288 | 0.3396 | 0.9184 | 0.3784 | 3.000 | parametric prior |
