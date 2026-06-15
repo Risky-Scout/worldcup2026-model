@@ -300,7 +300,7 @@ def _make_page_decorator(article_title=""):
         # Page number
         canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(MUTED)
-        canvas.drawCentredString(w / 2, 0.44 * inch, f"— Page {doc.page} —")
+        canvas.drawCentredString(w / 2, 0.44 * inch, f" --  Page {doc.page}  -- ")
         canvas.setFont("Helvetica-Oblique", 7)
         canvas.setFillColor(HexColor("#777777"))
         canvas.drawCentredString(
@@ -332,7 +332,7 @@ def render(story, output_path: Path, title: str, short_title: str = ""):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ARTICLE 1 — How the Model Works
+# ARTICLE 1  --  How the Model Works
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def build_article1(styles):
@@ -346,7 +346,7 @@ def build_article1(styles):
         Paragraph("How the 2026 World Cup Prediction Model Works", S["h1"]),
         Paragraph(
             "A complete, mathematically rigorous guide to the joint score probability engine "
-            "powering every prediction on this site — from the composite team ratings through "
+            "powering every prediction on this site  --  from the composite team ratings through "
             "the Bivariate Poisson, market reconciliation, calibration, and edge screening.",
             S["subtitle"]),
         rule(),
@@ -362,27 +362,27 @@ def build_article1(styles):
                 "Predicting football is an exercise in structured humility. A single match "
                 "produces roughly two or three goals from a cascade of decisions, deflections, "
                 "and individual moments that no model can fully capture. Even the best football "
-                "models in the world — the ones running inside sharp sportsbooks and professional "
-                "syndicates — are wrong more often than they are right about any individual game.",
+                "models in the world  --  the ones running inside sharp sportsbooks and professional "
+                "syndicates  --  are wrong more often than they are right about any individual game.",
                 S["body"]),
             Paragraph(
                 "What a good model <i>can</i> do is get the probabilities right over a large "
                 "number of matches. Assign 30% to outcomes that happen 30% of the time. Be "
                 "faster than the public at incorporating new information. Identify specific "
                 "markets where the bookmaker's price doesn't reflect the available evidence. "
-                "That is a narrower ambition than predicting winners — but it is the one that "
+                "That is a narrower ambition than predicting winners  --  but it is the one that "
                 "leads to long-run results.",
                 S["body"]),
         ]),
         Paragraph(
             "This model produces a <b>full joint probability mass function (PMF) over every "
             "possible regulation-time final score</b> for every 2026 FIFA World Cup match. "
-            "Every market you see on the site — Over/Under, Both Teams to Score (BTTS), 1X2 "
-            "result, correct score — is derived mechanically from this single two-dimensional "
+            "Every market you see on the site  --  Over/Under, Both Teams to Score (BTTS), 1X2 "
+            "result, correct score  --  is derived mechanically from this single two-dimensional "
             "grid of probabilities. The architecture guarantees internal consistency: the "
             "numbers cannot contradict each other because they all flow from one source of "
             "truth. The model cannot simultaneously output 'Home Win = 45%' and a set of "
-            "correct-score probabilities that sum to 52% across all home-win scorelines — "
+            "correct-score probabilities that sum to 52% across all home-win scorelines  --  "
             "an inconsistency that appears on sites blending data from separate models.",
             S["body"]),
         Paragraph(
@@ -404,7 +404,7 @@ def build_article1(styles):
             gold_thin_rule(),
             Paragraph(
                 "Before describing the engine, it helps to understand precisely what it produces. "
-                "A PMF is a Probability Mass Function — a complete assignment of probability to "
+                "A PMF is a Probability Mass Function  --  a complete assignment of probability to "
                 "every possible discrete outcome. For a football match, the <b>joint score PMF</b> "
                 "is a two-dimensional grid. Each cell (h, a) holds P(Home = h, Away = a): the "
                 "probability that the home team scores exactly h goals and the away team scores "
@@ -412,8 +412,8 @@ def build_article1(styles):
                 S["body"]),
         ]),
         Paragraph(
-            "The grid extends from (0, 0) through whatever maximum makes sense — typically "
-            "8 or 9 goals per team — plus an explicit tail-mass bucket for extreme scores "
+            "The grid extends from (0, 0) through whatever maximum makes sense  --  typically "
+            "8 or 9 goals per team  --  plus an explicit tail-mass bucket for extreme scores "
             "beyond the grid boundary. Every cell, including the tail, must sum to "
             "<b>exactly 1.0</b>. This is not approximate. It is a hard constraint enforced "
             "at every stage of the pipeline. Any rounding is immediately corrected by "
@@ -421,7 +421,7 @@ def build_article1(styles):
             S["body"]),
         Paragraph(
             "Here is why the grid architecture matters. Every betting market is simply a "
-            "different question about this same distribution — a different way of summing "
+            "different question about this same distribution  --  a different way of summing "
             "certain cells. The PMF contains the answer to every possible question "
             "about regulation-time outcomes:",
             S["body"]),
@@ -441,7 +441,7 @@ def build_article1(styles):
         callout_box(
             "There is no separate model for each market type. The PMF is the entire model, "
             "and all markets are different questions about the same distribution. This "
-            "guarantees internal consistency — a property that does not hold on sites "
+            "guarantees internal consistency  --  a property that does not hold on sites "
             "that blend data from different sources or use different models for different markets.",
             S, label="The Internal Consistency Guarantee"),
         sp(10),
@@ -450,7 +450,7 @@ def build_article1(styles):
     # ── Step 1: Composite Prior ────────────────────────────────────────────────
     story += [
         CondPageBreak(2.3*inch),
-        Paragraph("Step 1: Rating Every Team — The Composite Prior", S["h2"]),
+        Paragraph("Step 1: Rating Every Team  --  The Composite Prior", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "The first task is assigning each of the 48 teams an <b>attack lambda</b> "
@@ -472,14 +472,14 @@ def build_article1(styles):
         dark_header_block("The Six Rating Sources", "Weights shown are for matches with market odds available", S),
         sp(6),
         styled_table([
-            ["Source",                   "Primary Data",                    "Approx. Weight", "Key Strength",              "Primary Weakness"],
-            ["1. Market-Implied",        "Bookmaker 1X2 odds (up to 6)",    "30%",            "Late team news, sharp money","Requires available odds"],
-            ["2. FIFA Ranking",          "March 2026 points snapshot",      "~12%",           "Long-run int'l performance", "Infrequent updates"],
-            ["3. Qualifying Record",     "Attack/defense efficiency",       "~10%",           "Campaign-specific form",     "Small sample sizes"],
-            ["4. Pi Rating",             "Goal-margin Elo (penaltyblog)",   "~18%",           "Fast form updates",          "Noisy on flukes"],
-            ["5. Elo Rating",            "Win/loss/draw (penaltyblog)",     "~35%",           "Stability, long-run signal", "Ignores goal margins"],
-            ["6. Confederation Baseline","Historical WC averages by region","~5%",            "Prevents extreme estimates", "No team-level info"],
-        ], [1.3*inch, 1.5*inch, 0.85*inch, 1.45*inch, BODY_WIDTH-5.1*inch], S),
+            ["Source",                   "Primary Data",                      "Weight", "Key Strength",               "Primary Weakness"],
+            ["1. Market-Implied",        "1X2 odds, up to 6 bookmakers",      "30%",    "Late news, sharp money",     "Requires available odds"],
+            ["2. FIFA Ranking",          "March 2026 points snapshot",        "~12%",   "Long-run int'l performance", "Infrequent updates"],
+            ["3. Qualifying Record",     "Attack/defense efficiency",         "~10%",   "Campaign-specific form",     "Small sample sizes"],
+            ["4. Pi Rating",             "Goal-margin Elo (penaltyblog)",     "~18%",   "Fast form updates",          "Noisy on flukes"],
+            ["5. Elo Rating",            "Win/loss/draw (penaltyblog)",       "~35%",   "Stability, long-run signal", "Ignores goal margins"],
+            ["6. Confederation Baseline","Historical WC averages by region",  "~5%",    "Prevents extreme estimates", "No team-level info"],
+        ], [1.35*inch, 1.75*inch, 0.65*inch, 1.5*inch, BODY_WIDTH-5.25*inch], S),
         sp(10),
     ]
 
@@ -499,10 +499,10 @@ def build_article1(styles):
                 "reverse-engineering what team strengths would produce the bookmaker's "
                 "observed 1X2 probabilities. Before doing this, the bookmaker margin "
                 "must be removed. Raw quoted odds always include a margin of roughly "
-                "5–8% that inflates the implied probabilities. <b>SHIN normalization</b> "
+                "5-8% that inflates the implied probabilities. <b>SHIN normalization</b> "
                 "is applied to all odds from all bookmakers to convert them to fair "
                 "(no-margin) probabilities. Using raw odds as fair probabilities would "
-                "consistently bias every market comparison — this step is not optional.",
+                "consistently bias every market comparison  --  this step is not optional.",
                 S["body"]),
         ]),
         Paragraph(
@@ -521,12 +521,12 @@ def build_article1(styles):
 
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Source 2: FIFA Ranking — March 2026 (~12% weight)", S["h3"]),
+            Paragraph("Source 2: FIFA Ranking  --  March 2026 (~12% weight)", S["h3"]),
             Paragraph(
                 "FIFA's official ranking points system, converted to an attack lambda "
                 "via a calibrated sigmoid mapping. FIFA rankings capture long-run "
-                "international performance across all competitions — friendlies, "
-                "qualifiers, continental championships — and provide a useful signal "
+                "international performance across all competitions  --  friendlies, "
+                "qualifiers, continental championships  --  and provide a useful signal "
                 "particularly for teams with limited recent competitive data.",
                 S["body"]),
             Paragraph(
@@ -534,7 +534,7 @@ def build_article1(styles):
                 "results from years prior. A team that had a dismal October 2025 qualifying "
                 "window would see that reflected in an immediate Elo update but potentially "
                 "not in the FIFA ranking until the next official release. The model uses "
-                "the March 2026 snapshot — the last official pre-tournament update.",
+                "the March 2026 snapshot  --  the last official pre-tournament update.",
                 S["body"]),
         ]),
         sp(4),
@@ -586,7 +586,7 @@ def build_article1(styles):
             Paragraph(
                 "Classic international Elo, also from penaltyblog, based on win/loss/draw "
                 "outcomes only. Elo is more stable over long periods than Pi precisely because "
-                "it does not react to score margins — a team cannot inflate its Elo by running "
+                "it does not react to score margins  --  a team cannot inflate its Elo by running "
                 "up the score against a weaker opponent. It serves as a stabilizing anchor that "
                 "prevents the prior from swinging too sharply on an unusual scoreline, and it "
                 "is the dominant signal for teams whose Pi and market data are sparse or "
@@ -615,7 +615,7 @@ def build_article1(styles):
             ], [1.1*inch, 1.35*inch, 1.35*inch, BODY_WIDTH-3.8*inch], S),
             sp(6),
             Paragraph(
-                "This acts as a soft floor — preventing any team from receiving a lambda "
+                "This acts as a soft floor  --  preventing any team from receiving a lambda "
                 "estimate wildly inconsistent with what teams from their region have historically "
                 "produced at World Cups. For well-rated teams with extensive data, this source "
                 "contributes almost nothing to the composite. For data-sparse teams, it prevents "
@@ -633,7 +633,7 @@ def build_article1(styles):
                 "USA, Canada, and Mexico each receive a co-host adjustment of "
                 "<b>+0.10 attack lambda</b> and <b>-0.10 defense lambda</b>, applied "
                 "after the composite is blended. This reflects the measurable advantages "
-                "of familiar geography, minimal travel, and genuine home crowd support — "
+                "of familiar geography, minimal travel, and genuine home crowd support  --  "
                 "without overstating an effect that is smaller in a multi-host tournament "
                 "than in a traditional single-host World Cup.",
                 S["body"]),
@@ -648,7 +648,7 @@ def build_article1(styles):
             ], [1.35*inch, 1.05*inch, 0.7*inch, 1.0*inch, BODY_WIDTH-4.1*inch], S),
             sp(4),
             Paragraph(
-                "Both teams' lambdas are scaled equally at altitude venues — neither side "
+                "Both teams' lambdas are scaled equally at altitude venues  --  neither side "
                 "has an acclimatization advantage when both are flying in from sea level.",
                 S["note"]),
         ]),
@@ -684,9 +684,9 @@ def build_article1(styles):
             "As of June 2026: 22 teams have active tournament adjustments from "
             "11 completed WC2026 matches. The xG blend is active for all 22 teams. "
             "The shrinkage mechanism means a team that played 1 match gets weight "
-            "1/(1+3) = 0.25 — only 25% of the raw adjustment survives; 75% stays "
+            "1/(1+3) = 0.25  --  only 25% of the raw adjustment survives; 75% stays "
             "anchored to the prior. A team with 3 matches gets 50/50.",
-            S, label="Current Status — June 2026"),
+            S, label="Current Status  --  June 2026"),
         sp(8),
     ]
 
@@ -715,7 +715,7 @@ def build_article1(styles):
         ], S),
         sp(6),
         Paragraph(
-            "This is not a fudge factor — it is a principled correction. The composite "
+            "This is not a fudge factor  --  it is a principled correction. The composite "
             "prior tells us the relative strength of each team; the WC_AVG scale tells "
             "us what absolute level of scoring this specific tournament is producing. "
             "Both pieces of information are necessary for well-calibrated predictions.",
@@ -726,11 +726,11 @@ def build_article1(styles):
     # ── Step 2: Bivariate Poisson ──────────────────────────────────────────────
     story += [
         CondPageBreak(2.3*inch),
-        Paragraph("Step 2: The Bivariate Poisson — Where the Model Gets Clever", S["h2"]),
+        Paragraph("Step 2: The Bivariate Poisson  --  Where the Model Gets Clever", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "With composite team ratings in hand, the model computes the joint score "
-            "distribution. This is the technically most important step — and the one "
+            "distribution. This is the technically most important step  --  and the one "
             "where this model goes beyond the standard football forecasting approach.",
             S["section_intro"]),
     ]
@@ -742,7 +742,7 @@ def build_article1(styles):
             Paragraph(
                 "The textbook starting point for football forecasting is to model each "
                 "team's goals as an independent Poisson random variable. The Poisson "
-                "distribution has one parameter — its mean (lambda) — and gives the "
+                "distribution has one parameter  --  its mean (lambda)  --  and gives the "
                 "probability of exactly k events occurring in a fixed interval when "
                 "events happen at a constant average rate. For goals in a 90-minute match, "
                 "it is a reasonable approximation: goals are relatively rare and the "
@@ -802,7 +802,7 @@ def build_article1(styles):
         sp(6),
         Paragraph(
             "The intuition for Z_3: some matches have an unusually open, attacking "
-            "character — both teams committing forward, creating chances, and scoring. "
+            "character  --  both teams committing forward, creating chances, and scoring. "
             "Other matches are tight, defensive, and low-scoring regardless of the "
             "individual teams' quality. The shared intensity parameter lambda_3 captures "
             "this match-level factor that simultaneously lifts both teams' scoring rates.",
@@ -850,7 +850,7 @@ def build_article1(styles):
         sp(6),
         callout_box(
             "Calibrated value from 11 completed WC2026 matches: lambda_3 = 0.170. "
-            "Positive — this World Cup is showing exactly the mutual intensity correlation "
+            "Positive  --  this World Cup is showing exactly the mutual intensity correlation "
             "the model was built to capture. Cov(H, A) = 0.170. The independent "
             "Poisson assumption significantly understates this correlation.",
             S, label="Current Calibrated Value"),
@@ -890,7 +890,7 @@ def build_article1(styles):
         sp(6),
         Paragraph(
             "All six compete on the same held-out WC2026 data in a walk-forward backtest "
-            "— predicting each match from what was known before it was played. The model "
+            " --  predicting each match from what was known before it was played. The model "
             "with the lowest negative log-likelihood wins and feeds all upstream "
             "calculations. The winner is reselected <b>daily</b> as more matches "
             "accumulate. Currently the Bivariate Poisson is dominant.",
@@ -908,7 +908,7 @@ def build_article1(styles):
                 "Even the Bivariate Poisson model with perfect team ratings cannot know "
                 "about a starting goalkeeper injury announced 90 minutes before kickoff. "
                 "Market reconciliation is the mechanism that incorporates this class of "
-                "information — the kind of real-time intelligence that sharp bookmakers "
+                "information  --  the kind of real-time intelligence that sharp bookmakers "
                 "absorb instantly and that no parametric model can anticipate.",
                 S["body"]),
         ]),
@@ -921,8 +921,8 @@ def build_article1(styles):
             "remove each book's individual margin.",
             S["body"]),
         Paragraph(
-            "A constrained optimization algorithm — <b>SLSQP (Sequential Least Squares "
-            "Programming)</b> — then adjusts the parametric PMF grid to satisfy these "
+            "A constrained optimization algorithm  --  <b>SLSQP (Sequential Least Squares "
+            "Programming)</b>  --  then adjusts the parametric PMF grid to satisfy these "
             "market constraints while minimizing Kullback-Leibler divergence from the "
             "original parametric distribution:",
             S["body"]),
@@ -940,7 +940,7 @@ def build_article1(styles):
         sp(6),
         Paragraph(
             "KL divergence measures how far the adjusted distribution has moved from "
-            "the starting point — minimizing it ensures the optimizer moves only as "
+            "the starting point  --  minimizing it ensures the optimizer moves only as "
             "far from the parametric prior as the market evidence strictly requires. "
             "When SLSQP converges to a better solution than a simple weighted-average "
             "blend of the two distributions, SLSQP is used; otherwise the blend is used.",
@@ -973,7 +973,7 @@ def build_article1(styles):
             "The model uses <b>temperature scaling</b>: a single scalar parameter T "
             "that adjusts the entire distribution uniformly. T is fitted by minimizing "
             "exact-score log loss on out-of-sample predictions from the 2018 and 2022 "
-            "World Cups — never on training data.",
+            "World Cups  --  never on training data.",
             S["body"]),
         formula_box([
             "For each cell (h, a) in the PMF grid:",
@@ -1003,7 +1003,7 @@ def build_article1(styles):
         ], [1.5*inch, 1.8*inch, BODY_WIDTH-3.3*inch], S),
         sp(6),
         callout_box(
-            "Current T = 1.089. The correction is modest — the raw model is reasonably "
+            "Current T = 1.089. The correction is modest  --  the raw model is reasonably "
             "well-calibrated before adjustment. An honest caveat: 128 World Cup matches "
             "is a small calibration dataset. As the 2026 tournament adds completed "
             "matches, T will be re-estimated on a growing sample.",
@@ -1037,7 +1037,7 @@ def build_article1(styles):
         sp(6),
         Paragraph(
             "Raw edge alone is not enough to flag a market as a value opportunity. "
-            "The model applies <b>three simultaneous filters</b> — all three must pass:",
+            "The model applies <b>three simultaneous filters</b>  --  all three must pass:",
             S["body"]),
         sp(4),
         styled_table([
@@ -1072,7 +1072,7 @@ def build_article1(styles):
     story += [
         CondPageBreak(2.3*inch),
         KeepTogether([
-            Paragraph("Step 6: Closing Line Value (CLV) — The Edge Litmus Test", S["h2"]),
+            Paragraph("Step 6: Closing Line Value (CLV)  --  The Edge Litmus Test", S["h2"]),
             gold_thin_rule(),
             Paragraph(
                 "Counting wins and losses is a poor way to evaluate a prediction model. "
@@ -1085,7 +1085,7 @@ def build_article1(styles):
         Paragraph(
             "<b>CLV is the industry-standard measure of whether a model has genuine edge.</b> "
             "The closing line is the bookmaker's final no-vig probability immediately "
-            "before kickoff — the market's best collective estimate of the true probability, "
+            "before kickoff  --  the market's best collective estimate of the true probability, "
             "having absorbed every piece of publicly available information. It represents "
             "the aggregated opinion of every sharp bettor, quantitative model, and market "
             "maker who has looked at the match. It is the most informed number available.",
@@ -1093,13 +1093,13 @@ def build_article1(styles):
         Paragraph(
             "A model that consistently predicts <i>higher</i> probability than where the "
             "market ultimately closes is providing information the market was slow to price "
-            "in. That positive CLV is evidence of genuine edge — not because the model was "
+            "in. That positive CLV is evidence of genuine edge  --  not because the model was "
             "necessarily right about the specific outcome, but because it was ahead of the "
             "market's information flow.",
             S["body"]),
         Paragraph(
-            "A model that consistently <i>loses</i> to the closing line — predicting lower "
-            "probability than where the market closes — means the market was consistently "
+            "A model that consistently <i>loses</i> to the closing line  --  predicting lower "
+            "probability than where the market closes  --  means the market was consistently "
             "smarter, and the model's apparent positive edges were illusions driven by "
             "stale or insufficient information.",
             S["body"]),
@@ -1131,9 +1131,9 @@ def build_article1(styles):
             ["lambda (general)",         "The rate parameter of a Poisson distribution. "
                                          "Equal to both the mean and variance of the distribution. "
                                          "In this model: the expected number of goals in 90 minutes."],
-            ["lambda_att",               "A team's attack lambda — expected goals scored "
+            ["lambda_att",               "A team's attack lambda  --  expected goals scored "
                                          "against an average opponent at a neutral venue."],
-            ["lambda_def",               "A team's defense lambda — expected goals conceded "
+            ["lambda_def",               "A team's defense lambda  --  expected goals conceded "
                                          "against an average opponent at a neutral venue."],
             ["lambda_h",                 "Match-specific home team expected goals, after applying "
                                          "the composite prior, WC_AVG scale, and opponent adjustment."],
@@ -1148,7 +1148,7 @@ def build_article1(styles):
                                          "The core output of the model."],
             ["Marginal PMF",             "The one-dimensional distribution for a single team's goals, "
                                          "derived by summing the joint PMF across the other team's axis."],
-            ["Temperature T",            "Calibration parameter. p_cal ∝ p_raw^(1/T), then renormalized. "
+            ["Temperature T",            "Calibration parameter. p_cal proportional to p_raw^(1/T), then renormalized. "
                                          "T=1.089 currently. T>1 flattens (corrects overconfidence)."],
             ["No-vig probability",       "Bookmaker odds with the bookmaker margin removed. "
                                          "Computed via SHIN normalization."],
@@ -1191,8 +1191,8 @@ def build_article1(styles):
             gold_thin_rule(),
             Paragraph(
                 "To make the pipeline concrete, here is a step-by-step example of how "
-                "the model computes the probability of a specific final score — say, "
-                "a 2-1 home win — for a hypothetical WC2026 match.",
+                "the model computes the probability of a specific final score  --  say, "
+                "a 2-1 home win  --  for a hypothetical WC2026 match.",
                 S["body"]),
         ]),
         Paragraph(
@@ -1252,7 +1252,7 @@ def build_article1(styles):
             "This single cell of 9.38% feeds into the Edge Report for the correct score "
             "2-1 market. If a bookmaker is offering +1100 American odds on this scoreline, "
             "the no-vig implied probability is roughly 1/12 = 8.33%. The edge would be "
-            "(9.38% - 8.33%) / 8.33% = 12.6% — a significant value signal that would "
+            "(9.38% - 8.33%) / 8.33% = 12.6%  --  a significant value signal that would "
             "easily pass all three filters and appear in the edge report.",
             S["body"]),
         sp(10),
@@ -1267,7 +1267,7 @@ def build_article1(styles):
             Paragraph(
                 "Every stage described above runs without human intervention, around the "
                 "clock. The pipeline is not a tool that runs when someone presses a button "
-                "— it is a continuously running system that treats each completed World Cup "
+                " --  it is a continuously running system that treats each completed World Cup "
                 "match as a new data point to incorporate.",
                 S["body"]),
         ]),
@@ -1333,7 +1333,7 @@ def build_article1(styles):
              "SLSQP minimize KL divergence"],
             ["8. Calibration",      "Market PMF + T = 1.089",
              "Calibrated PMF (the final grid)",
-             "Temperature scaling p ∝ p^(1/T)"],
+             "Temperature scaling p proportional to p^(1/T)"],
             ["9. Edge Screening",   "Calibrated PMF + market prices",
              "Value bet flags + Kelly stakes",
              "3-filter screen: edge, CI, liquidity"],
@@ -1382,8 +1382,8 @@ def build_article1(styles):
         Paragraph(
             "<b>Lambda uncertainty is a fixed prior, not a per-match estimate.</b> "
             "The +/-12% used to compute confidence intervals is a conservative global "
-            "assumption. For teams with extensive, recent competitive data — Brazil, "
-            "France, Germany — 12% likely overstates the true uncertainty. For teams "
+            "assumption. For teams with extensive, recent competitive data  --  Brazil, "
+            "France, Germany  --  12% likely overstates the true uncertainty. For teams "
             "from data-sparse qualifying regions, 12% may understate it. A fully "
             "Bayesian treatment would require per-team posterior distributions that "
             "the current architecture does not implement.",
@@ -1419,7 +1419,7 @@ def build_article1(styles):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ARTICLE 2 — Page Guide
+# ARTICLE 2  --  Page Guide
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def build_article2(styles):
@@ -1432,7 +1432,7 @@ def build_article2(styles):
         rule(),
         Paragraph("A Guide to the WC 2026 Prediction Pages", S["h1"]),
         Paragraph(
-            "What every number, chart, and indicator means across all three pages — "
+            "What every number, chart, and indicator means across all three pages  --  "
             "and how to make the most of each one.",
             S["subtitle"]),
         rule(),
@@ -1447,8 +1447,8 @@ def build_article2(styles):
             Paragraph(
                 "Most football prediction tools give you a win probability and call it "
                 "a day. This one gives you the <b>entire joint probability distribution "
-                "over every possible scoreline</b> — the probability the match ends 0-0, "
-                "that it ends 2-1, that it ends 4-3 — and derives every betting market "
+                "over every possible scoreline</b>  --  the probability the match ends 0-0, "
+                "that it ends 2-1, that it ends 4-3  --  and derives every betting market "
                 "mechanically from that single distribution.",
                 S["body"]),
             Paragraph(
@@ -1458,7 +1458,7 @@ def build_article2(styles):
                 "the way they frequently do on aggregator sites that blend data from "
                 "different sources. When you see an edge on this site, you are looking "
                 "at a discrepancy between a coherent probability system and the "
-                "bookmaker's price — not an artifact of mismatched models.",
+                "bookmaker's price  --  not an artifact of mismatched models.",
                 S["body"]),
         ]),
         Paragraph(
@@ -1476,8 +1476,8 @@ def build_article2(styles):
             ["Both Teams to Score",       "SUM cells where h>=1 AND a>=1",   "Everything except row 0 and column 0"],
             ["Home Win",                  "SUM cells where h > a",           "Below the main diagonal of the grid"],
             ["Draw",                      "SUM cells where h = a",           "The main diagonal (0-0, 1-1, 2-2, ...)"],
-            ["Correct Score 2-1",         "P(h=2, a=1)",                     "Single cell — read directly"],
-            ["P(Home scores exactly h)",  "SUM over all a of P(h,a)",        "Row marginal — collapse across all a"],
+            ["Correct Score 2-1",         "P(h=2, a=1)",                     "Single cell  --  read directly"],
+            ["P(Home scores exactly h)",  "SUM over all a of P(h,a)",        "Row marginal  --  collapse across all a"],
         ], [1.45*inch, 1.85*inch, BODY_WIDTH-3.3*inch], S),
         sp(8),
     ]
@@ -1487,7 +1487,7 @@ def build_article2(styles):
     # ═══════════════════════════════════════════════════════
     story += [
         CondPageBreak(2.3*inch),
-        Paragraph("Page 1 — Pre-Game Predictions", S["h2"]),
+        Paragraph("Page 1  --  Pre-Game Predictions", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world%20cup/pre%20match.html",
@@ -1497,7 +1497,7 @@ def build_article2(styles):
             "for today appears in the main table with the model's probability estimates, "
             "expected goals, and edge analysis against live bookmaker prices. The data "
             "refreshes automatically and a red banner appears if the underlying prediction "
-            "file is more than four hours old — a signal the automated pipeline may have "
+            "file is more than four hours old  --  a signal the automated pipeline may have "
             "encountered an issue.",
             S["body"]),
         sp(6),
@@ -1517,7 +1517,7 @@ def build_article2(styles):
                 ["Matches Today",    "Regulation kickoffs scheduled today", "Simple count. 0 = off-day or rest day."],
                 ["Value Bets",       "Markets passing all three edge filters simultaneously",
                  "Edge >= 4% AND 90% CI lower bound > market implied AND market implied > 2%. "
-                 "Frequently zero — that is correct behavior in a well-priced market."],
+                 "Frequently zero  --  that is correct behavior in a well-priced market."],
                 ["Best Edge",        "Single largest edge % across today's markets",
                  "Specific match and market labeled below the number. Does NOT guarantee "
                  "the bet will win. Confirm current odds before acting."],
@@ -1639,7 +1639,7 @@ def build_article2(styles):
     # PAGE 2
     # ═══════════════════════════════════════════════════════
     story += [
-        Paragraph("Page 2 — Probability Distributions", S["h2"]),
+        Paragraph("Page 2  --  Probability Distributions", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/pre-match/"
@@ -1649,7 +1649,7 @@ def build_article2(styles):
             "Where Page 1 compresses model output into a single row per match, this "
             "page opens it completely. Select a match using the navigation chips at the "
             "top and every chart updates immediately to show the full probability landscape. "
-            "Not just the most likely result — the entire distribution from every angle.",
+            "Not just the most likely result  --  the entire distribution from every angle.",
             S["body"]),
         sp(6),
     ]
@@ -1657,7 +1657,7 @@ def build_article2(styles):
     story += [
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Chart 1 — Joint Score PMF Heatmap", S["h3"]),
+            Paragraph("Chart 1  --  Joint Score PMF Heatmap", S["h3"]),
             Paragraph(
                 "The heatmap is the model in its purest form. Every cell (h, a) shows "
                 "P(Home = h, Away = a). Home goals increase upward on the vertical axis; "
@@ -1667,10 +1667,10 @@ def build_article2(styles):
                 "The color scale uses the <b>square root</b> of each cell's probability "
                 "relative to the maximum cell value. This is deliberate. Without the "
                 "square root, cells above ~8% would appear bright and everything else "
-                "would look uniformly dark — the distribution is so heavily concentrated "
+                "would look uniformly dark  --  the distribution is so heavily concentrated "
                 "in the low-scoring top-left region that a linear scale is visually "
                 "useless. The square root transformation separates moderate-probability "
-                "cells (3–5%) from near-zero ones, making the full grid readable.",
+                "cells (3-5%) from near-zero ones, making the full grid readable.",
                 S["body"]),
         ]),
         Paragraph(
@@ -1683,7 +1683,7 @@ def build_article2(styles):
             ["BTTS probability",            "Everything except the first row (h=0) and first column (a=0)"],
             ["Home clean sheet",            "First column only (a=0): all cells where away scores 0"],
             ["Away clean sheet",            "First row only (h=0): all cells where home scores 0"],
-            ["Correct score 2-1",           "Single cell at row h=2, column a=1 — read the number"],
+            ["Correct score 2-1",           "Single cell at row h=2, column a=1  --  read the number"],
             ["Draw probability",            "Diagonal cells: (0,0), (1,1), (2,2), (3,3), ..."],
             ["Home win by exactly 2",       "Sum of cells where h-a = 2: (2,0),(3,1),(4,2),etc."],
         ], [2.0*inch, BODY_WIDTH-2.0*inch], S),
@@ -1691,7 +1691,7 @@ def build_article2(styles):
         Paragraph(
             "The <b>tail mass</b> shown below the heatmap is the probability assigned "
             "to scores beyond the grid boundary (more than ~8-9 goals per team). In "
-            "practice vanishingly small but nonzero — it must exist so the grid sums "
+            "practice vanishingly small but nonzero  --  it must exist so the grid sums "
             "to exactly 100%.",
             S["body"]),
         sp(8),
@@ -1700,7 +1700,7 @@ def build_article2(styles):
     story += [
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Chart 2 — Marginal Goal Distributions", S["h3"]),
+            Paragraph("Chart 2  --  Marginal Goal Distributions", S["h3"]),
             Paragraph(
                 "Two bar charts side by side: the probability the home team scores "
                 "exactly k goals (left), and the same for the away team (right). "
@@ -1718,7 +1718,7 @@ def build_article2(styles):
         ], S),
         sp(6),
         Paragraph(
-            "A tall bar at k = 0 indicates this team is frequently shut out — the model "
+            "A tall bar at k = 0 indicates this team is frequently shut out  --  the model "
             "assigns high probability to them failing to score at all. A relatively flat "
             "distribution across k = 1 and k = 2 reflects a strong attacking rate. "
             "In most World Cup group-stage matches, the tallest bar sits at k = 1 for "
@@ -1730,7 +1730,7 @@ def build_article2(styles):
     story += [
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Chart 3 — Total Goals Distribution", S["h3"]),
+            Paragraph("Chart 3  --  Total Goals Distribution", S["h3"]),
             Paragraph(
                 "A bar chart showing the probability of each possible total goal count "
                 "from 0 through 8+. Computed by summing all cells along each anti-diagonal "
@@ -1750,7 +1750,7 @@ def build_article2(styles):
             "Standard over/under lines (0.5, 1.5, 2.5, 3.5, 4.5, 5.5) appear as vertical "
             "dividers on the chart. The probability to the right of any divider is the "
             "Over probability for that line; to the left is the Under. This chart makes "
-            "the model's entire total-goals market visible at once — you can see Over 2.5 "
+            "the model's entire total-goals market visible at once  --  you can see Over 2.5 "
             "and Over 3.5 and Over 4.5 simultaneously without navigating to a table.",
             S["body"]),
         sp(8),
@@ -1759,7 +1759,7 @@ def build_article2(styles):
     story += [
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Chart 4 — Goal Difference Distribution", S["h3"]),
+            Paragraph("Chart 4  --  Goal Difference Distribution", S["h3"]),
             Paragraph(
                 "Centered on zero, this bar chart shows P(goal difference = d) for "
                 "every possible value d = home goals - away goals. Gold bars indicate "
@@ -1771,7 +1771,7 @@ def build_article2(styles):
                 "as a clear favorite. A roughly symmetric distribution means the match "
                 "is genuinely even. The height of the gray bar relative to the gold and "
                 "blue bars shows how likely a draw is given these two specific teams. "
-                "High-scoring expected matches tend to have shorter gray bars — when "
+                "High-scoring expected matches tend to have shorter gray bars  --  when "
                 "both teams are expected to score frequently, exact ties become less "
                 "probable.",
                 S["body"]),
@@ -1782,16 +1782,16 @@ def build_article2(styles):
     story += [
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("Chart 5 — Top 20 Most Likely Scorelines", S["h3"]),
+            Paragraph("Chart 5  --  Top 20 Most Likely Scorelines", S["h3"]),
             Paragraph(
                 "A ranked bar chart of the 20 most probable individual final scores "
                 "with exact percentages and fair American odds shown next to each bar. "
-                "The fair odds have no bookmaker margin — they represent what a perfectly "
+                "The fair odds have no bookmaker margin  --  they represent what a perfectly "
                 "calibrated market would offer for each specific score.",
                 S["body"]),
             Paragraph(
                 "As a general reference: the top cell in most group-stage matches "
-                "carries 12–20% probability. Any score above 6% is in the top tier "
+                "carries 12-20% probability. Any score above 6% is in the top tier "
                 "of the distribution. Values below 1% are common correct-score offerings "
                 "that carry long odds.",
                 S["body"]),
@@ -1801,7 +1801,7 @@ def build_article2(styles):
                 "by the decimal equivalent after removing the bookmaker margin), then "
                 "compare to the model's percentage for that cell. A book offering +550 "
                 "on a score the model gives 12% probability implies a fair price of "
-                "+733 — a meaningful gap worth investigating.",
+                "+733  --  a meaningful gap worth investigating.",
                 S["body"]),
         ]),
         sp(8),
@@ -1814,7 +1814,7 @@ def build_article2(styles):
             Paragraph(
                 "A clean table listing Over and Under probabilities for every standard "
                 "total line from 0.5 through 6.5. All values are computed directly from "
-                "the joint PMF — no additional modeling involved. Useful for quickly "
+                "the joint PMF  --  no additional modeling involved. Useful for quickly "
                 "comparing the model's view across all lines without doing arithmetic "
                 "from the chart.",
                 S["body"]),
@@ -1836,7 +1836,7 @@ def build_article2(styles):
     # PAGE 3
     # ═══════════════════════════════════════════════════════
     story += [
-        Paragraph("Page 3 — Live In-Play PMF", S["h2"]),
+        Paragraph("Page 3  --  Live In-Play PMF", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/live/"
@@ -1845,7 +1845,7 @@ def build_article2(styles):
         Paragraph(
             "This page activates when a World Cup match is in progress. When no match "
             "is live, it displays the next scheduled kickoff. All probabilities are "
-            "regulation time only — 90 minutes plus stoppage time. Extra time and "
+            "regulation time only  --  90 minutes plus stoppage time. Extra time and "
             "penalty shootouts are not in scope.",
             S["body"]),
         sp(6),
@@ -1867,14 +1867,14 @@ def build_article2(styles):
             "scores have become impossible. If the match is 2-1 in the 70th minute, "
             "the final score cannot be 1-0, 0-0, 2-0, or any score where home is below "
             "2 or away is below 1. Those grid cells are locked at zero probability. "
-            "The remaining probability — 100% minus whatever was locked in those "
-            "impossible cells — redistributes entirely across the reachable outcomes.",
+            "The remaining probability  --  100% minus whatever was locked in those "
+            "impossible cells  --  redistributes entirely across the reachable outcomes.",
             S["body"]),
         Paragraph(
             "This is conditional probability in action. It is what separates a proper "
             "live model from a pre-game model that simply gets refreshed on a 60-second "
-            "timer. The live model's grid is a fundamentally different distribution — "
-            "a conditional PMF rather than a prior PMF — and the two should never "
+            "timer. The live model's grid is a fundamentally different distribution  --  "
+            "a conditional PMF rather than a prior PMF  --  and the two should never "
             "be confused.",
             S["body"]),
         Paragraph(
@@ -1926,7 +1926,7 @@ def build_article2(styles):
         Paragraph(
             "When live expected goals (xG) data is available from BallDontLie, the "
             "model blends the live xG-derived rate (60% weight) with the pre-game "
-            "prior (40% weight). This blend activates at minute 15 — before that, "
+            "prior (40% weight). This blend activates at minute 15  --  before that, "
             "live xG from only a handful of shots is too noisy to be useful. By "
             "minute 70, the live model is genuinely tracking the actual shot volumes "
             "and quality observed in the match, not just the pre-game forecast.",
@@ -1961,7 +1961,7 @@ def build_article2(styles):
                 ["Polling Active",      "Yellow",
                  "Push connection unavailable. The page fetches updated data from a "
                  "static JSON file every 60 seconds. Updates arrive with up to a "
-                 "one-minute delay. This is the automatic fallback mode — no user "
+                 "one-minute delay. This is the automatic fallback mode  --  no user "
                  "action required."],
             ], [1.1*inch, 0.6*inch, BODY_WIDTH-1.7*inch], S),
         ]),
@@ -1990,8 +1990,8 @@ def build_article2(styles):
         KeepTogether([
             Paragraph("Win Probability Bar", S["h3"]),
             Paragraph(
-                "The same three-segment bar as on Page 1 — Home Win (gold), Draw (gray), "
-                "Away Win (blue) — but now <b>conditional on the current score and minute</b>. "
+                "The same three-segment bar as on Page 1  --  Home Win (gold), Draw (gray), "
+                "Away Win (blue)  --  but now <b>conditional on the current score and minute</b>. "
                 "These are conditional probabilities: P(outcome | current_score = H-A, "
                 "minute = t). They update with every new live snapshot.",
                 S["body"]),
@@ -2014,7 +2014,7 @@ def build_article2(styles):
                 "Home Win combined with large negative shifts on Draw and Away Win "
                 "tells you the home team has taken control of a match that was expected "
                 "to be closer. This table is one of the most informative features on "
-                "the live page — it quantifies exactly how the match is deviating from "
+                "the live page  --  it quantifies exactly how the match is deviating from "
                 "the pre-game expectation.",
                 S["body"]),
         ]),
@@ -2026,7 +2026,7 @@ def build_article2(styles):
             Paragraph(
                 "A compact line chart showing the home team's win probability from kickoff "
                 "to the current minute. This history accumulates in your browser session "
-                "and resets on page reload — it is stored client-side, not on the server. "
+                "and resets on page reload  --  it is stored client-side, not on the server. "
                 "Sharp upward jumps correspond to home goals; sharp downward drops "
                 "correspond to away goals. The sparkline makes visible what the current "
                 "snapshot cannot: whether the home team earned their current probability "
@@ -2050,7 +2050,7 @@ def build_article2(styles):
             styled_table([
                 ["Visual Cue",              "Description"],
                 ["Red cell outline",        "The cell corresponding to the current live score is "
-                                            "outlined in red. This is the 'current state' marker — "
+                                            "outlined in red. This is the 'current state' marker  --  "
                                             "the match is here now and can only move to cells "
                                             "reachable from this point."],
                 ["Dark unreachable cells",  "All cells where home goals < current home score OR "
@@ -2062,7 +2062,7 @@ def build_article2(styles):
         Paragraph(
             "As the match progresses, the dark region grows and the probability "
             "concentrates into fewer and fewer bright cells. In stoppage time of a "
-            "1-0 match, the heatmap may assign 85–90% probability to the single "
+            "1-0 match, the heatmap may assign 85-90% probability to the single "
             "1-0 cell, with small amounts on 1-1 (away equalizes), 2-0 "
             "(home extends), and a handful of other reachable outcomes.",
             S["body"]),
@@ -2098,7 +2098,7 @@ def build_article2(styles):
         sp(6),
         Paragraph(
             "<b>Home/Away scores next:</b> These are conditional probabilities given "
-            "that a goal will be scored — they sum to 1.0 between them and ignore the "
+            "that a goal will be scored  --  they sum to 1.0 between them and ignore the "
             "possibility of no more goals. Use them to evaluate next-scorer and "
             "first-to-score live markets.",
             S["body"]),
@@ -2119,7 +2119,7 @@ def build_article2(styles):
                 "The same ranked scoreline list as on Page 2, restricted to reachable "
                 "outcomes only. The current live score is marked with an arrow. "
                 "As the match approaches the final whistle, the probability on the "
-                "leading score climbs rapidly — in an 88th-minute 1-0 match, the 1-0 "
+                "leading score climbs rapidly  --  in an 88th-minute 1-0 match, the 1-0 "
                 "cell may carry 8 or 9 times the probability it held before kickoff.",
                 S["body"]),
             Paragraph(
@@ -2132,7 +2132,7 @@ def build_article2(styles):
         sp(6),
         callout_box(
             "How to use Page 3: Most valuable during fast-moving matches where the "
-            "pre-game expectation is being rapidly revised — a 2-0 scoreline in the "
+            "pre-game expectation is being rapidly revised  --  a 2-0 scoreline in the "
             "30th minute reshapes the entire distribution. Also useful for evaluating "
             "live betting markets: compare the 'No more goals' probability against your "
             "book's live Under line; compare Next Goal fractions against live next-scorer "
@@ -2163,7 +2163,7 @@ def build_article2(styles):
                 "in the world. Professional syndicates, sharp books, and quantitative "
                 "models all focus heavily on these matches. The result is that the market "
                 "is frequently very efficiently priced. A day with zero value bets is not "
-                "a failure of the model — it is the model correctly recognizing that the "
+                "a failure of the model  --  it is the model correctly recognizing that the "
                 "bookmakers' prices are fair today.",
                 S["body"]),
             Paragraph(
@@ -2185,7 +2185,7 @@ def build_article2(styles):
                 "(the Bivariate Poisson) and the market's price may reflect different "
                 "information sets. The market may know about a key player injury that "
                 "the model's lambda estimates haven't fully absorbed. Second, even after "
-                "market reconciliation, the optimizer minimizes KL divergence — it moves "
+                "market reconciliation, the optimizer minimizes KL divergence  --  it moves "
                 "the distribution toward the market but doesn't simply copy it.",
                 S["body"]),
             Paragraph(
@@ -2202,8 +2202,8 @@ def build_article2(styles):
             Paragraph("What does 'fair odds' mean on the site? Is that what I should expect to be offered?", S["h3"]),
             Paragraph(
                 "Fair odds on this site are the model's no-margin American odds for each "
-                "outcome — the odds a perfectly calibrated, zero-margin market would offer. "
-                "In practice, every bookmaker adds a margin of 5–8% (sometimes more on "
+                "outcome  --  the odds a perfectly calibrated, zero-margin market would offer. "
+                "In practice, every bookmaker adds a margin of 5-8% (sometimes more on "
                 "exotic markets like correct scores). So the market odds available to you "
                 "will typically be worse than the fair odds shown here.",
                 S["body"]),
@@ -2218,13 +2218,13 @@ def build_article2(styles):
 
         CondPageBreak(1.8*inch),
         KeepTogether([
-            Paragraph("The live model's probabilities changed before a goal happened — why?", S["h3"]),
+            Paragraph("The live model's probabilities changed before a goal happened  --  why?", S["h3"]),
             Paragraph(
                 "The live model's conditional PMF updates based on two inputs: the "
                 "current score and minute (which change the temporal hazard rate and "
                 "score-state multipliers), and the live xG data (which reflects actual "
                 "shot accumulation in the match). Even without a goal, the distribution "
-                "shifts as time passes because the remaining expected goals shrink — "
+                "shifts as time passes because the remaining expected goals shrink  --  "
                 "a 0-0 at the 70th minute carries very different probabilities than "
                 "the same 0-0 at the 25th minute.",
                 S["body"]),
@@ -2244,8 +2244,8 @@ def build_article2(styles):
             Paragraph(
                 "Treat it as a starting point, not a final signal. The edge report is "
                 "generated at 8:00 AM UTC each day. The odds used for comparison are "
-                "the best available at that time. By the time a match kicks off — "
-                "potentially 8 or 10 hours later — the market may have moved. The "
+                "the best available at that time. By the time a match kicks off  --  "
+                "potentially 8 or 10 hours later  --  the market may have moved. The "
                 "best practice is to check the current odds at your book and recompute "
                 "the edge manually using the model probabilities shown in the All Markets "
                 "panel. The model probabilities themselves do not change significantly "
@@ -2276,16 +2276,16 @@ def build_article2(styles):
             "At 0-0 in minute 60, the conditional PMF updates:",
             S["body"]),
         formula_box([
-            "Remaining expected goals: lambda_h_rem ≈ 0.65, lambda_a_rem ≈ 0.50",
+            "Remaining expected goals: lambda_h_rem ~ 0.65, lambda_a_rem ~ 0.50",
             "  (roughly 30 minutes remain; hazard rate increases as both teams push)",
             "  Score-state multiplier at 0-0 after min 60: both teams x1.10",
-            "  lambda_h_rem_adjusted ≈ 0.72,  lambda_a_rem_adjusted ≈ 0.55",
+            "  lambda_h_rem_adjusted ~ 0.72,  lambda_a_rem_adjusted ~ 0.55",
             "",
             "Likely updated probabilities (illustrative):",
             "  Home Win: ~39%  (lower than pre-game; less time for decisive goals)",
             "  Draw:     ~38%  (higher; 0-0 at 60 min makes draw much more likely)",
             "  Away Win: ~23%  (lower for same reasons as Home Win)",
-            "  No more goals: e^(-0.72) x e^(-0.55) ≈ 0.487 x 0.577 ≈ 28%",
+            "  No more goals: e^(-0.72) x e^(-0.55) ~ 0.487 x 0.577 ~ 28%",
         ], S),
         sp(4),
 
@@ -2293,13 +2293,13 @@ def build_article2(styles):
         Paragraph(
             "A dramatic early lead completely reshapes the distribution. The 2-0 home "
             "lead at minute 30 means scores of (0,0), (0,1), (1,0), (1,1), (2,1), "
-            "(0,2) and many others are now impossible — the away team hasn't scored "
+            "(0,2) and many others are now impossible  --  the away team hasn't scored "
             "and the home team has 2. The remaining expected goals cover a full 60 minutes.",
             S["body"]),
         formula_box([
-            "Remaining expected goals: lambda_h_rem ≈ 1.10, lambda_a_rem ≈ 0.85",
+            "Remaining expected goals: lambda_h_rem ~ 1.10, lambda_a_rem ~ 0.85",
             "  Score-state multiplier: home winning by 2 -> home x0.80, away x1.15",
-            "  lambda_h_rem_adj ≈ 0.88,  lambda_a_rem_adj ≈ 0.98",
+            "  lambda_h_rem_adj ~ 0.88,  lambda_a_rem_adj ~ 0.98",
             "",
             "Reachable final scores from (2,0): (2,0),(2,1),(2,2),(3,0),(3,1),(3,2),(4,0)...",
             "",
@@ -2307,7 +2307,7 @@ def build_article2(styles):
             "  Home Win: ~82%  (strong favorite; large lead with 60 min remaining)",
             "  Draw:      ~9%  (away needs 2 goals to tie)",
             "  Away Win:  ~9%  (away needs 3 goals)",
-            "  No more goals: e^(-0.88) x e^(-0.98) ≈ 0.415 x 0.375 ≈ 15.6%",
+            "  No more goals: e^(-0.88) x e^(-0.98) ~ 0.415 x 0.375 ~ 15.6%",
             "  Most likely final score: 2-0 (~30%), then 2-1 (~26%), then 3-0 (~14%)",
         ], S),
         sp(4),
@@ -2320,15 +2320,15 @@ def build_article2(styles):
             "(2,1), (1,2), and (2,2).",
             S["body"]),
         formula_box([
-            "Remaining expected goals: lambda_h_rem ≈ 0.14, lambda_a_rem ≈ 0.14",
+            "Remaining expected goals: lambda_h_rem ~ 0.14, lambda_a_rem ~ 0.14",
             "  Hazard rate is elevated in stoppage time, but only ~5-7 minutes remain",
-            "  Score-state at 1-1 after min 60: both teams x1.10 -> ≈ 0.15 each",
+            "  Score-state at 1-1 after min 60: both teams x1.10 -> ~ 0.15 each",
             "",
-            "No more goals: e^(-0.15) x e^(-0.15) = 0.861 x 0.861 ≈ 74%",
+            "No more goals: e^(-0.15) x e^(-0.15) = 0.861 x 0.861 ~ 74%",
             "",
             "Likely updated probabilities (illustrative):",
             "  Home Win: ~11%  (home needs to score; ~14% lambda, 5 min)",
-            "  Draw:     ~74%  (most likely — no more goals)",
+            "  Draw:     ~74%  (most likely  --  no more goals)",
             "  Away Win: ~15%  (away slightly more likely to score in this scenario)",
             "",
             "Top 10 live scores: 1-1 (~74%), 2-1 (~8%), 1-2 (~12%), 2-2 (~1%), ...",
@@ -2355,17 +2355,17 @@ def build_article2(styles):
             ["lambda_3",                "Shared intensity parameter in Bivariate Poisson = Cov(H,A). Currently 0.170."],
             ["lambda_h_rem",            "Expected remaining home goals from current minute to 90+"],
             ["lambda_a_rem",            "Expected remaining away goals from current minute to 90+"],
-            ["PMF",                     "Probability Mass Function — the full grid of P(h,a) values"],
+            ["PMF",                     "Probability Mass Function  --  the full grid of P(h,a) values"],
             ["T (temperature)",         "Calibration parameter. T=1.089 currently. T>1 flattens distribution."],
             ["SHIN normalization",       "Method to remove bookmaker margin from quoted odds"],
-            ["KL divergence",           "Kullback-Leibler divergence — measures how far a distribution moved"],
-            ["SLSQP",                   "Sequential Least Squares Programming — constrained optimizer"],
-            ["NLL",                     "Negative Log-Likelihood — primary model selection criterion"],
-            ["CLV",                     "Closing Line Value — model probability vs. closing market price"],
+            ["KL divergence",           "Kullback-Leibler divergence  --  measures how far a distribution moved"],
+            ["SLSQP",                   "Sequential Least Squares Programming  --  constrained optimizer"],
+            ["NLL",                     "Negative Log-Likelihood  --  primary model selection criterion"],
+            ["CLV",                     "Closing Line Value  --  model probability vs. closing market price"],
             ["Edge",                    "(Model prob - Market prob) / Market prob. Positive = model above market."],
             ["f* (Kelly fraction)",     "Edge / (Decimal odds - 1). Optimal growth-maximizing bet size."],
-            ["RPS",                     "Ranked Probability Score — calibration metric for 1X2 market"],
-            ["ECE",                     "Expected Calibration Error — direct probability vs. frequency measure"],
+            ["RPS",                     "Ranked Probability Score  --  calibration metric for 1X2 market"],
+            ["ECE",                     "Expected Calibration Error  --  direct probability vs. frequency measure"],
         ], [1.5*inch, BODY_WIDTH-1.5*inch], S),
         sp(10),
     ]
@@ -2409,8 +2409,8 @@ def build_article2(styles):
         Paragraph(
             "Critical step before acting: verify the current Over 2.5 odds at your "
             "book. If the market has moved to -130 since the model ran, the new "
-            "implied probability is 1/(1+100/130) ≈ 56.5%, and the edge narrows to "
-            "(58.2% - 56.5%) / 56.5% = 3.0% — below the 4% threshold. The bet no "
+            "implied probability is 1/(1+100/130) ~ 56.5%, and the edge narrows to "
+            "(58.2% - 56.5%) / 56.5% = 3.0%  --  below the 4% threshold. The bet no "
             "longer qualifies. This is why you always check current odds.",
             S["body"]),
         sp(8),
@@ -2432,7 +2432,7 @@ def build_article2(styles):
                 ["Upper-left 3x3 corner",    "Matches with 0-2 total goals",     "Bright here = strong Under 2.5 lean"],
                 ["Upper-right region",        "Over 2.5 goals",                   "Sum of cells where h+a >= 3 = Over 2.5 %"],
                 ["Top few cells of column 0", "P(Away=0, Home=1,2,3...)",        "Home win by clean sheet probability"],
-                ["Single bright cell",        "Dominant most-likely scoreline",   "Correct score value — compare to book's odds"],
+                ["Single bright cell",        "Dominant most-likely scoreline",   "Correct score value  --  compare to book's odds"],
             ], [1.7*inch, 1.7*inch, BODY_WIDTH-3.4*inch], S),
         ]),
         sp(10),
@@ -2488,7 +2488,7 @@ def build_article2(styles):
             "<b>Use the marginal charts to evaluate team-level markets.</b> The marginal "
             "distributions on Page 2 show P(home team scores exactly k goals) and "
             "P(away team scores exactly k goals) directly. These are exactly the "
-            "distributions for team-total over/under markets — for example, "
+            "distributions for team-total over/under markets  --  for example, "
             "Home Team Over 1.5 is P(home scores 0) + P(home scores 1) subtracted "
             "from 1.0.",
             S["body"]),
@@ -2497,7 +2497,7 @@ def build_article2(styles):
             "On Page 2, the goal difference distribution plots show P(home wins by "
             "1 goal), P(home wins by 2), P(draw), P(away wins by 1) etc. directly. "
             "These are the same as Asian handicap probabilities. P(difference = +1) "
-            "is the probability the home team wins by exactly one goal — directly "
+            "is the probability the home team wins by exactly one goal  --  directly "
             "relevant for Asian handicap -1 markets.",
             S["body"]),
         Paragraph(
@@ -2528,7 +2528,7 @@ def build_article2(styles):
     # ── Limitations ────────────────────────────────────────────────────────────
     story += [
         CondPageBreak(2.3*inch),
-        Paragraph("Scope and Limitations — All Pages", S["h2"]),
+        Paragraph("Scope and Limitations  --  All Pages", S["h2"]),
         gold_thin_rule(),
         Paragraph(
             "These limitations are real. Read them before using any number from this site "
@@ -2602,13 +2602,13 @@ if __name__ == "__main__":
     render(
         build_article1(styles),
         OUT_DIR / "wc2026-how-the-model-works.pdf",
-        title="How the WC 2026 Prediction Model Works — Wizard of Odds",
+        title="How the WC 2026 Prediction Model Works  --  Wizard of Odds",
         short_title="How the Model Works",
     )
     render(
         build_article2(styles),
         OUT_DIR / "wc2026-page-guide.pdf",
-        title="A Guide to the WC 2026 Prediction Pages — Wizard of Odds",
+        title="A Guide to the WC 2026 Prediction Pages  --  Wizard of Odds",
         short_title="WC 2026 Page Guide",
     )
     print("Done.")
