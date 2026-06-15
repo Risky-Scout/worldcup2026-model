@@ -887,7 +887,7 @@ def predict_all_2026(
     # overall expected-goals level toward the observed tournament environment.
     if _wc_avg_scale is not None:
         scaled_n = 0
-        for _tp in composite_prior.priors():
+        for _tp in composite_prior.all_priors():
             _tp.final_attack_lambda = round(_tp.final_attack_lambda * _wc_avg_scale, 4)
             _tp.final_defense_lambda = round(
                 max(_tp.final_defense_lambda * _wc_avg_scale, 0.3), 4
