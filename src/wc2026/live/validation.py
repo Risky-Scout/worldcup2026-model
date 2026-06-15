@@ -184,6 +184,42 @@ def write_live_replay_report(
         for state, v in sorted(sc.items()):
             lines.append(f"| {state} | {v['n']} | {v['home_cal_err']} | {v['away_cal_err']} |")
 
+    # 4D — First-Half Market Calibration section
+    if "fh_ignorance_score" in replay_df.columns:
+        fh_df = replay_df[
+            (replay_df["checkpoint_minute"] <= 45) &
+            replay_df["fh_ignorance_score"].notna()
+        ].copy()
+        if len(fh_df) > 0:
+            lines += [
+                "",
+                "## First-Half Market Calibration",
+                "",
+                "Evaluated using Log Loss (Ignorance Score) per penaltyblog's recommendation.",
+                "Checkpoints ≤ 45 min where first-half actual scores are available.",
+                "",
+                "| Minute bucket | N | Mean FH NLL | Mean FH Brier |",
+                "|--------------|---|------------|--------------|",
+            ]
+            fh_df["_bucket"] = pd.cut(
+                fh_df["checkpoint_minute"],
+                bins=[-1, 0, 15, 30, 45],
+                labels=["0 (pre-kickoff)", "1–15", "16–30", "31–45"],
+            )
+            for bucket, grp in fh_df.groupby("_bucket", observed=True):
+                mean_nll = float(grp["fh_ignorance_score"].mean())
+                brier_col = "fh_brier_score" if "fh_brier_score" in grp.columns else None
+                mean_brier = float(grp[brier_col].mean()) if brier_col and grp[brier_col].notna().any() else float("nan")
+                lines.append(
+                    f"| {bucket} | {len(grp)} | {mean_nll:.4f} | "
+                    f"{mean_brier:.4f} |"
+                )
+            overall_nll = float(fh_df["fh_ignorance_score"].mean())
+            lines += [
+                "",
+                f"**Overall first-half PMF: n={len(fh_df)}  mean_NLL={overall_nll:.4f}**",
+            ]
+
     # Add live model limitations
     lines += [
         "",

@@ -213,16 +213,18 @@ class WalkForwardEngine:
                 if model_name not in ladder.fitted_models():
                     continue
                 try:
-                    pred = ladder.predict(
+                    # Use predict_batch (internally uses predict_many) for the
+                    # single-match case — same API, falls back to predict() on error
+                    preds = ladder.predict_batch(
                         model_name,
-                        home_team,
-                        away_team,
-                        match_id=int(match_row.get("match_id", 0)),
-                        season=match_row.get("season"),
-                        stage=match_row.get("stage"),
-                        venue=match_row.get("stadium"),
-                        neutral_venue=neutral,
+                        [home_team],
+                        [away_team],
+                        match_ids=[int(match_row.get("match_id", 0))],
+                        seasons=[match_row.get("season")],
+                        stages=[match_row.get("stage")],
+                        venues=[match_row.get("stadium")],
                     )
+                    pred = preds[0]
                     model_rows[model_name].append(
                         _prediction_to_row(pred, actual_h, actual_a, train_df)
                     )
@@ -369,18 +371,20 @@ def _log_summary(results: list[WalkForwardResult]) -> None:
     if not results:
         log.info("No walk-forward results.")
         return
-    log.info("=" * 60)
-    log.info("WALK-FORWARD SUMMARY")
-    log.info("%-25s %8s %8s %8s %8s", "model", "n", "RPS", "Brier", "ExactLL")
-    log.info("-" * 60)
-    for r in sorted(results, key=lambda x: x.metrics.rps_1x2):
+    log.info("=" * 70)
+    log.info("WALK-FORWARD SUMMARY  (sorted by 1X2 Log Loss — penaltyblog recommended)")
+    log.info("%-25s %8s %10s %8s %8s %8s", "model", "n", "1X2_LogLoss", "RPS", "Brier", "ExactLL")
+    log.info("-" * 70)
+    # Primary sort: 1X2 ignorance score (Log Loss) per penaltyblog recommendation
+    for r in sorted(results, key=lambda x: x.metrics.ignorance_1x2 if np.isfinite(x.metrics.ignorance_1x2) else 999):
         m = r.metrics
         log.info(
-            "%-25s %8d %8.4f %8.4f %8.4f",
+            "%-25s %8d %10.4f %8.4f %8.4f %8.4f",
             r.model_name[:25],
             r.n_predictions,
+            m.ignorance_1x2,
             m.rps_1x2,
             m.brier_1x2,
             m.exact_score_log_loss,
         )
-    log.info("=" * 60)
+    log.info("=" * 70)

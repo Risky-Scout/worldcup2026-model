@@ -127,7 +127,10 @@ class ModelLadder:
         # penaltyblog time-decay weights
         # dixon_coles_weights returns array aligned with df rows
         w = _compute_weights(df)
-        neutral = df["is_neutral"].values.astype(int)
+        # All WC matches are at neutral venues — force neutral_venue=1 so home
+        # advantage is not learned from tournament data (penaltyblog 1.11.0 pins
+        # the home advantage parameter to 0 when all training matches are neutral).
+        neutral = np.ones(len(df), dtype=int)
 
         to_fit = models or (
             TIER1_MODELS + (TIER2_MODELS if self._include_bayesian else [])
@@ -157,38 +160,41 @@ class ModelLadder:
         kw_base = dict(weights=w)
         kw_neutral = dict(weights=w, neutral_venue=neutral)
 
+        # use_gradient=True + tighter convergence for all MLE models (1.11.0)
+        _fit_kw = dict(use_gradient=True, minimizer_options={"maxiter": 3000, "gtol": 1e-8})
+
         if name == MODEL_POISSON:
             # Pass neutral_venue per penaltyblog 1.11.0 recommendation; fall back
             # to kw_base if this version of the model doesn't support the arg.
             try:
                 m = PoissonGoalsModel(h, a, ht, at, **kw_neutral)
-                m.fit()
+                m.fit(**_fit_kw)
             except TypeError:
                 m = PoissonGoalsModel(h, a, ht, at, **kw_base)
-                m.fit()
+                m.fit(**_fit_kw)
         elif name == MODEL_DIXON_COLES:
             m = DixonColesGoalModel(h, a, ht, at, **kw_neutral)
-            m.fit()
+            m.fit(**_fit_kw)
         elif name == MODEL_BIVARIATE:
             try:
                 m = BivariatePoissonGoalModel(h, a, ht, at, **kw_neutral)
-                m.fit()
+                m.fit(**_fit_kw)
             except TypeError:
                 m = BivariatePoissonGoalModel(h, a, ht, at, **kw_base)
-                m.fit()
+                m.fit(**_fit_kw)
         elif name == MODEL_WEIBULL:
             try:
                 m = WeibullCopulaGoalsModel(h, a, ht, at, **kw_neutral)
-                m.fit()
+                m.fit(**_fit_kw)
             except TypeError:
                 m = WeibullCopulaGoalsModel(h, a, ht, at, **kw_base)
-                m.fit()
+                m.fit(**_fit_kw)
         elif name == MODEL_NEG_BINOMIAL:
             m = NegativeBinomialGoalModel(h, a, ht, at, **kw_neutral)
-            m.fit()
+            m.fit(**_fit_kw)
         elif name == MODEL_ZERO_INF:
             m = ZeroInflatedPoissonGoalsModel(h, a, ht, at, **kw_neutral)
-            m.fit()
+            m.fit(**_fit_kw)
         elif name == MODEL_BAYESIAN:
             m = BayesianGoalModel(h, a, ht, at, **kw_neutral)
             m.fit(
@@ -251,6 +257,67 @@ class ModelLadder:
             venue=venue,
             max_goals=self._max_goals,
         )
+
+    def predict_batch(
+        self,
+        model_name: str,
+        home_teams: list[str],
+        away_teams: list[str],
+        match_ids: Optional[list[int]] = None,
+        seasons: Optional[list] = None,
+        stages: Optional[list[str]] = None,
+        venues: Optional[list[str]] = None,
+    ) -> list[ScorePMFPrediction]:
+        """
+        Batch-predict using penaltyblog's predict_many() for efficiency.
+
+        All WC matches are treated as neutral_venue=1. Falls back to per-match
+        .predict() calls if predict_many raises an exception.
+        """
+        if not self.fitted:
+            raise RuntimeError("Call .fit() first.")
+        if model_name not in self._models:
+            raise ValueError(f"Model '{model_name}' not fitted.")
+
+        n = len(home_teams)
+        neutral = [1] * n
+
+        try:
+            model = self._models[model_name]
+            grids: list[FootballProbabilityGrid] = model.predict_many(
+                home_teams,
+                away_teams,
+                max_goals=self._max_goals,
+                neutral_venue=neutral,
+            )
+            return [
+                ScorePMFPrediction.from_grid(
+                    grid=grid,
+                    model_name=model_name,
+                    home_team=home_teams[i],
+                    away_team=away_teams[i],
+                    match_id=match_ids[i] if match_ids else None,
+                    season=seasons[i] if seasons else None,
+                    stage=stages[i] if stages else None,
+                    venue=venues[i] if venues else None,
+                    max_goals=self._max_goals,
+                )
+                for i, grid in enumerate(grids)
+            ]
+        except Exception as exc:
+            log.warning("predict_batch(%s) failed (%s) — falling back to per-match predict", model_name, exc)
+            return [
+                self.predict(
+                    model_name,
+                    home_teams[i],
+                    away_teams[i],
+                    match_id=match_ids[i] if match_ids else None,
+                    season=seasons[i] if seasons else None,
+                    stage=stages[i] if stages else None,
+                    venue=venues[i] if venues else None,
+                )
+                for i in range(n)
+            ]
 
     def predict_all(
         self,

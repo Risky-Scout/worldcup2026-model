@@ -112,8 +112,27 @@ class ReplayCheckpoint:
     xg_available: bool = False
     warnings: list = field(default_factory=list)
 
+    # 4B — First-half actual scores and PMF probabilities
+    fh_home_actual: Optional[int] = None
+    fh_away_actual: Optional[int] = None
+    fh_hw_prob: Optional[float] = None
+    fh_draw_prob: Optional[float] = None
+    fh_aw_prob: Optional[float] = None
+    fh_over_0_5_prob: Optional[float] = None
+    fh_btts_prob: Optional[float] = None
+    fh_ignorance_score: Optional[float] = None   # Log Loss per penaltyblog
+    fh_brier_score: Optional[float] = None
+
     def to_dict(self) -> dict:
-        return {k: v for k, v in self.__dict__.items() if not isinstance(v, list)}
+        d = {k: v for k, v in self.__dict__.items() if not isinstance(v, list)}
+        # Ensure first-half fields are always present (None when not applicable)
+        for fh_field in (
+            "fh_home_actual", "fh_away_actual", "fh_hw_prob", "fh_draw_prob",
+            "fh_aw_prob", "fh_over_0_5_prob", "fh_btts_prob",
+            "fh_ignorance_score", "fh_brier_score",
+        ):
+            d.setdefault(fh_field, None)
+        return d
 
 
 class MatchReplayer:
@@ -154,6 +173,9 @@ class MatchReplayer:
         season = int(match_row.get("season", 2022))
         final_hg = int(match_row.get("home_goals", 0))
         final_ag = int(match_row.get("away_goals", 0))
+        # 4A — First-half actual scores for PMF evaluation
+        fh_home_actual = int(match_row.get("first_half_home") or 0) if match_row.get("first_half_home") is not None else None
+        fh_away_actual = int(match_row.get("first_half_away") or 0) if match_row.get("first_half_away") is not None else None
 
         # Build goal events from BDL data or synthetic reconstruction
         goal_timeline = self._build_goal_timeline(
@@ -246,7 +268,9 @@ class MatchReplayer:
                     state, pregame_lh, pregame_la, momentum_df=momentum_df
                 )
                 cp = self._build_checkpoint(
-                    state, result, final_hg, final_ag, pregame_lh, pregame_la
+                    state, result, final_hg, final_ag, pregame_lh, pregame_la,
+                    fh_home_actual=fh_home_actual,
+                    fh_away_actual=fh_away_actual,
                 )
                 checkpoints.append(cp)
             except Exception as exc:
@@ -347,6 +371,8 @@ class MatchReplayer:
         final_ag: int,
         pregame_lh: float,
         pregame_la: float,
+        fh_home_actual: Optional[int] = None,
+        fh_away_actual: Optional[int] = None,
     ) -> ReplayCheckpoint:
         """Build a ReplayCheckpoint from a prediction result and actual outcome."""
         h0 = state.home_goals
@@ -396,12 +422,36 @@ class MatchReplayer:
         actual_no_more = 1.0 if add_h + add_a == 0 else 0.0
         nmg_brier = (result.no_more_goals_prob - actual_no_more) ** 2
 
+        # 4C — First-half PMF metrics (checkpoint_minute <= 45 only)
+        fh_hw_prob = fh_draw_prob_val = fh_aw_prob = None
+        fh_over_0_5_prob = fh_btts_prob_val = None
+        fh_ignorance = fh_brier = None
+        cp_min = int(state.regulation_minute)
+        fhm = result.first_half_markets
+        if fhm is not None and cp_min <= 45 and fh_home_actual is not None and fh_away_actual is not None:
+            try:
+                import penaltyblog as pb
+                fh_hw_prob = fhm.get("fh_home_win")
+                fh_draw_prob_val = fhm.get("fh_draw")
+                fh_aw_prob = fhm.get("fh_away_win")
+                fh_over_0_5_prob = fhm.get("fh_over_0_5")
+                fh_btts_prob_val = fhm.get("fh_btts")
+                if fh_hw_prob is not None and fh_draw_prob_val is not None and fh_aw_prob is not None:
+                    probs_1x2 = [[fh_hw_prob, fh_draw_prob_val, fh_aw_prob]]
+                    fh_outcome = 0 if fh_home_actual > fh_away_actual else (
+                        1 if fh_home_actual == fh_away_actual else 2
+                    )
+                    fh_ignorance = float(pb.metrics.ignorance_score(probs_1x2, [fh_outcome]))
+                    fh_brier = float(pb.metrics.multiclass_brier_score(probs_1x2, [fh_outcome]))
+            except Exception as _fh_exc:
+                log.debug("First-half PMF metrics failed: %s", _fh_exc)
+
         return ReplayCheckpoint(
             match_id=state.match_id,
             home_team=state.home_team,
             away_team=state.away_team,
             season=state.season,
-            checkpoint_minute=int(state.regulation_minute),
+            checkpoint_minute=cp_min,
             clock_display=state.clock_display,
             current_home_goals=h0,
             current_away_goals=a0,
@@ -432,6 +482,15 @@ class MatchReplayer:
             pregame_la=pregame_la,
             xg_available=result.method == "live_hazard_poisson" and "xg_unavailable" not in " ".join(result.warnings),
             warnings=result.warnings,
+            fh_home_actual=fh_home_actual,
+            fh_away_actual=fh_away_actual,
+            fh_hw_prob=fh_hw_prob,
+            fh_draw_prob=fh_draw_prob_val,
+            fh_aw_prob=fh_aw_prob,
+            fh_over_0_5_prob=fh_over_0_5_prob,
+            fh_btts_prob=fh_btts_prob_val,
+            fh_ignorance_score=fh_ignorance,
+            fh_brier_score=fh_brier,
         )
 
 

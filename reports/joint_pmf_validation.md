@@ -51,4 +51,4 @@
 | historical_base_rate | 113 | 4.3856 |
 | negative_binomial | 102 | 4.5707 |
 | dixon_coles | 60 | 4.8106 |
-| poisson | 102 | 5.2134 |
+| poisson | 102 | 5.2046 |

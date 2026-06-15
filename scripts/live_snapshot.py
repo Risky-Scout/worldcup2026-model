@@ -179,6 +179,104 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
     return live, upcoming
 
 
+def _compute_live_edge(
+    result,
+    live_hw_odds: float | None,
+    live_dr_odds: float | None,
+    live_aw_odds: float | None,
+    pregame_fallback: bool,
+    home_team: str,
+    away_team: str,
+) -> dict:
+    """
+    3B–3E: Compute live betting edge using Shin devigging + Kelly criterion.
+
+    Returns a dict with Shin-devigged probs, per-outcome edge, and value-bet flags.
+    Handles missing/invalid odds gracefully.
+    """
+    import penaltyblog as pb
+    from penaltyblog.implied.models import ImpliedMethod
+
+    # Skip if odds not available
+    if not (live_hw_odds and live_dr_odds and live_aw_odds):
+        return {"market_margin": None, "shin_z": None, "pregame_fallback": pregame_fallback,
+                "home": None, "draw": None, "away": None, "any_value_bet": False,
+                "error": "no_odds"}
+
+    try:
+        # 3B — Shin devigging
+        odds = [float(live_hw_odds), float(live_dr_odds), float(live_aw_odds)]
+        # Guard against invalid odds (<= 1.0)
+        if any(o <= 1.0 for o in odds):
+            raise ValueError(f"Invalid odds: {odds}")
+        implied = pb.implied.calculate_implied(odds, method=ImpliedMethod.SHIN)
+        market_margin = float(implied.margin)
+        shin_z = implied.method_params.get("z") if implied.method_params else None
+
+        # 3C — Per-outcome edge using estimated probabilities from live model
+        home_vb = pb.betting.identify_value_bet(
+            bookmaker_odds=float(live_hw_odds),
+            estimated_probability=float(result.home_win_prob),
+            kelly_fraction=0.5,
+            min_edge_threshold=0.03,
+        )
+        draw_vb = pb.betting.identify_value_bet(
+            bookmaker_odds=float(live_dr_odds),
+            estimated_probability=float(result.draw_prob),
+            kelly_fraction=0.5,
+            min_edge_threshold=0.03,
+        )
+        away_vb = pb.betting.identify_value_bet(
+            bookmaker_odds=float(live_aw_odds),
+            estimated_probability=float(result.away_win_prob),
+            kelly_fraction=0.5,
+            min_edge_threshold=0.03,
+        )
+
+        # 3D — Build live_edge dict
+        live_edge = {
+            "market_margin": round(market_margin, 4),
+            "shin_z": round(float(shin_z), 5) if shin_z is not None else None,
+            "pregame_fallback": pregame_fallback,
+            "home": {
+                "edge": round(float(home_vb.edge), 5),
+                "is_value": bool(home_vb.is_value_bet),
+                "ev": round(float(home_vb.expected_value), 5),
+                "kelly_stake": round(float(home_vb.recommended_stake_fraction), 5),
+            },
+            "draw": {
+                "edge": round(float(draw_vb.edge), 5),
+                "is_value": bool(draw_vb.is_value_bet),
+                "ev": round(float(draw_vb.expected_value), 5),
+                "kelly_stake": round(float(draw_vb.recommended_stake_fraction), 5),
+            },
+            "away": {
+                "edge": round(float(away_vb.edge), 5),
+                "is_value": bool(away_vb.is_value_bet),
+                "ev": round(float(away_vb.expected_value), 5),
+                "kelly_stake": round(float(away_vb.recommended_stake_fraction), 5),
+            },
+            "any_value_bet": bool(home_vb.is_value_bet or draw_vb.is_value_bet or away_vb.is_value_bet),
+        }
+
+        # 3E — Log when live edge fires
+        if live_edge["any_value_bet"]:
+            minute = int(getattr(result, "regulation_minute", 0) or 0)
+            log.info(
+                "LIVE EDGE DETECTED: %s vs %s min=%d | margin=%.3f shin_z=%.4f",
+                home_team, away_team, minute,
+                market_margin, float(shin_z) if shin_z is not None else 0.0,
+            )
+
+        return live_edge
+
+    except Exception as exc:
+        log.debug("live_edge computation failed for %s vs %s: %s", home_team, away_team, exc)
+        return {"market_margin": None, "shin_z": None, "pregame_fallback": pregame_fallback,
+                "home": None, "draw": None, "away": None, "any_value_bet": False,
+                "error": str(exc)}
+
+
 def run_live_snapshot() -> dict:
     """Main: fetch live matches, run PMF engine, return snapshot dict."""
     from wc2026.live.predictor import LivePMFPredictor
@@ -230,6 +328,25 @@ def run_live_snapshot() -> dict:
         bdl_stats = live_team_stats.get(mid) or None
         bdl_shots = live_shots.get(mid) or None
 
+        # 3A — Populate live odds: try BDL match data first; fall back to pregame
+        _live_hw_odds = bdl_m.get("home_odds") or bdl_m.get("odds_home") or None
+        _live_dr_odds = bdl_m.get("draw_odds") or bdl_m.get("odds_draw") or None
+        _live_aw_odds = bdl_m.get("away_odds") or bdl_m.get("odds_away") or None
+        _pregame_fallback = False
+        if not (_live_hw_odds and _live_dr_odds and _live_aw_odds):
+            # Fall back to pregame probs converted to decimal odds
+            _pg = pregame_probs.get(mid) or pregame_probs.get(f"{home}|{away}") or {}
+            _pg_hw = float(_pg.get("home_win_prob") or 0)
+            _pg_dr = float(_pg.get("draw_prob") or 0)
+            _pg_aw = float(_pg.get("away_win_prob") or 0)
+            if _pg_hw > 0.01 and _pg_dr > 0.01 and _pg_aw > 0.01:
+                # Convert to decimal odds (include a small synthetic margin of ~4%)
+                _margin = 1.04
+                _live_hw_odds = round(_margin / _pg_hw, 3)
+                _live_dr_odds = round(_margin / _pg_dr, 3)
+                _live_aw_odds = round(_margin / _pg_aw, 3)
+                _pregame_fallback = True
+
         log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s lambda_src=%s stats=%s",
                  home, away, bdl_m.get("status"), bdl_m.get("clock_display"),
                  bdl_m.get("home_score"), bdl_m.get("away_score"),
@@ -244,6 +361,14 @@ def run_live_snapshot() -> dict:
                 d["pregame_lh"] = lh
                 d["pregame_la"] = la
                 d["bdl_status"] = bdl_m.get("status")
+
+                # 3B–3E — Compute live betting edge with Shin devigging
+                live_edge = _compute_live_edge(
+                    result, _live_hw_odds, _live_dr_odds, _live_aw_odds,
+                    _pregame_fallback, home, away,
+                )
+                d["live_edge"] = live_edge
+
                 results.append(d)
                 log.info("  Live PMF OK: %s vs %s  min=%.0f score=%d-%d hw=%.3f dr=%.3f aw=%.3f",
                          home, away, result.regulation_minute,
