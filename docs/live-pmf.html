@@ -163,10 +163,11 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
   <div class="logo">
     <span class="logo-mark">W</span>
     <span class="logo-name">Wizard of Odds</span>
-    <span class="logo-tag">Live PMF Engine</span>
+    <!-- WOO_REVIEW: check if this text belongs in CMS -->
   </div>
   <nav class="nav">
     <a href="/tools/odds-scanner/predictions/nba-props.html">NBA Props</a>
+    <!-- WOO_REVIEW: WoO server paths contain spaces — update hrefs when WoO pages are renamed -->
     <a href="/tools/odds-scanner/predictions/world%20cup/pre%20match.html">WC Pre-Match</a>
     <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html">PMF Dist.</a>
     <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html" class="active">Live PMF ⚡</a>
@@ -174,10 +175,6 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
 </header>
 
 <section class="hero">
-  <h1><span class="live-badge"><span class="live-dot"></span>Live</span> In-Play <em>PMF Engine</em>.</h1>
-  <p>Real-time score-conditional PMF updated every 5 minutes. Given the current score at minute t,
-     the model computes P(final home = h, away = a) for every regulation-time outcome using
-     the <strong>non-homogeneous hazard model</strong>. All markets re-derived from this single distribution.</p>
   <div class="refresh-info">
     <span id="mode-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:3px;border:1px solid var(--border);background:rgba(255,255,255,.04);">
       <span id="mode-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text-muted);"></span>
@@ -204,6 +201,7 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
 </div>
 
 <footer>
+  <!-- WOO_REVIEW: check if this text belongs in CMS -->
   Live PMF · Regulation time conditional · Updates every ~5 min · Not financial advice
 </footer>
 
@@ -212,7 +210,7 @@ footer{text-align:center;padding:28px;color:var(--text-muted);font-family:'JetBr
 const WS_URL    = 'wss://sportsodds.wizardofodds.com/ws/live';
 const API_LIVE  = 'https://sportsodds.wizardofodds.com/api/live';
 const LIVE_URLS = ['./wc-live.json','../wc-live.json', API_LIVE];
-const PRE_URLS  = ['../pre-match/wc-predictions.json','../wc-predictions.json','../../predictions/world%20cup/wc-predictions.json','https://sportsodds.wizardofodds.com/api/pre-match'];
+const PRE_URLS  = ['../pre-match/wc-predictions.json','../wc-predictions.json','../../predictions/world-cup/wc-predictions.json','https://sportsodds.wizardofodds.com/api/pre-match'];
 const REFRESH_INTERVAL = 60 * 1000;   // 60 seconds (polling fallback only)
 
 // ── Win probability history (session-local) ────────────────────────────────
@@ -544,6 +542,7 @@ function render(data){
     }
     wrap.innerHTML=`<div class="quiet-state">
       <h2>No live matches right now.</h2>
+      <!-- WOO_REVIEW: check if this text belongs in CMS -->
       <p>The live PMF engine activates when a World Cup match is in play.
          Pre-game distributions are available until kickoff.</p>
       ${upHtml}
