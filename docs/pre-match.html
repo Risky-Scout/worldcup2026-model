@@ -236,25 +236,6 @@
   </div>
 </section>
 
-<div class="bankroll-card" style="max-width:1700px;margin:16px 28px 0;">
-  <span class="bankroll-card-title">Bankroll Sizing</span>
-  <div class="bankroll-input-group">
-    <span class="bankroll-label">Bankroll $</span>
-    <input class="bankroll-input" type="number" id="bankroll-input" value="1000" min="1" step="100">
-  </div>
-  <select class="kelly-select" id="kelly-select">
-    <option value="1">Whole · Full Kelly</option>
-    <option value="0.75">¾ Kelly</option>
-    <option value="0.5" selected>½ Kelly (recommended)</option>
-    <option value="0.25">¼ Kelly</option>
-  </select>
-  <!-- WOO_REVIEW: check if this text belongs in CMS -->
-  <p class="kelly-explainer">
-    Kelly sizes each bet by your edge × your bankroll.
-    <strong>Half Kelly</strong> is the standard for most professional bettors —
-    it sacrifices a little growth for substantially less variance.
-  </p>
-</div>
 
 <div class="controls" style="max-width:1700px;margin:0 28px;">
   <span class="ctrl-label">Filter</span>
@@ -646,7 +627,19 @@ function renderDetailRow(m, idx) {
             <div class="market-grid">${teamTotalRows}</div>
           </div>
           <div class="detail-section">
-            <h4>Edge Report (top 8)</h4>
+            <h4 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <span>Edge Report (top 8)</span>
+              <span style="display:flex;align-items:center;gap:6px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;">Bankroll $</span>
+                <input class="bankroll-input" type="number" id="bankroll-input" value="1000" min="1" step="100" style="width:90px;font-size:12px;padding:4px 8px;">
+                <select class="kelly-select" id="kelly-select" style="font-size:11px;padding:4px 8px;">
+                  <option value="1">Full Kelly</option>
+                  <option value="0.75">¾ Kelly</option>
+                  <option value="0.5" selected>½ Kelly</option>
+                  <option value="0.25">¼ Kelly</option>
+                </select>
+              </span>
+            </h4>
             <div class="edge-rows">${edgeRows || '<div style="color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:11px;">No market odds available</div>'}</div>
           </div>
         </div>
