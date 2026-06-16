@@ -155,6 +155,7 @@ footer{text-align:center;padding:32px 28px;color:var(--text-muted);font-family:'
 </style>
 </head>
 <body>
+<div id="app-root">
 
 <header>
   <div class="logo">
@@ -165,7 +166,7 @@ footer{text-align:center;padding:32px 28px;color:var(--text-muted);font-family:'
   <nav class="nav">
     <a href="/tools/odds-scanner/predictions/nba-props.html">NBA Props</a>
     <!-- WOO_REVIEW: WoO server paths contain spaces — update hrefs when WoO pages are renamed -->
-    <a href="/tools/odds-scanner/predictions/world%20cup/pre%20match.html">WC Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match.html">WC Pre-Match</a>
     <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html" class="active">PMF Distributions</a>
     <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html">Live PMF ⚡</a>
   </nav>
@@ -614,5 +615,55 @@ async function checkHealth(){
 checkHealth();
 init();
 </script>
+<script>
+(function() {
+    if (window.self === window.top) {
+        return;
+    }
+
+    let lastSentHeight = 0;
+
+    function sendHeightToParent() {
+        try {
+            const body = document.body;
+            const html = document.documentElement;
+            if (!body || !html) return;
+
+            const contentWrapper = document.getElementById('app-root') || body;
+            const currentHeight = Math.ceil(contentWrapper.getBoundingClientRect().height || html.scrollHeight);
+
+            if (currentHeight > 0 && Math.abs(currentHeight - lastSentHeight) > 2) {
+                lastSentHeight = currentHeight;
+                console.log("Iframe broadcast event! Height sent: " + currentHeight + "px");
+                window.parent.postMessage({ frameHeight: currentHeight }, 'https://wizardofodds.com');
+            }
+        } catch (error) {
+            console.warn("Skipped frame height calculation:", error.message);
+        }
+    }
+
+    window.addEventListener('load', sendHeightToParent);
+    document.addEventListener('DOMContentLoaded', sendHeightToParent);
+
+    document.addEventListener('click', function() {
+        // Wait 150ms to give the layout time to physically render the change after the click
+        setTimeout(sendHeightToParent, 150);
+    });
+
+    if (window.MutationObserver) {
+        const observer = new MutationObserver(sendHeightToParent);
+        observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+    }
+
+    if (window.ResizeObserver) {
+        const resizeObserver = new ResizeObserver(sendHeightToParent);
+        resizeObserver.observe(document.body);
+    }
+
+    setInterval(sendHeightToParent, 1000);
+
+})();
+</script>
+</div>
 </body>
 </html>
