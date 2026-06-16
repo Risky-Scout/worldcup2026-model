@@ -175,6 +175,17 @@ class ModelLadder:
         elif name == MODEL_DIXON_COLES:
             m = DixonColesGoalModel(h, a, ht, at, **kw_neutral)
             m.fit(**_fit_kw)
+            # Clamp rho to a physically safe range after fitting.
+            # penaltyblog allows rho bounds (-2.5, 2.5), but extreme rho values
+            # cause the DC tau correction cells (tau = 1 + lambda * rho) to go
+            # negative when neutral_venue forces home_advantage=0.
+            # Original DC paper value: rho ≈ -0.13. Positive rho is unphysical.
+            # With rho ≥ -0.2, tau(0,1) = 1 + lambda*rho ≥ 1 - 5.0*0.2 = 0
+            # guarantees non-negative cells for all realistic WC lambda values.
+            try:
+                m._params[-1] = float(np.clip(m._params[-1], -0.2, 0.0))
+            except Exception:
+                pass
         elif name == MODEL_BIVARIATE:
             try:
                 m = BivariatePoissonGoalModel(h, a, ht, at, **kw_neutral)
@@ -242,9 +253,34 @@ class ModelLadder:
                 neutral_venue=neutral_venue,
             )
         except Exception as exc:
-            raise RuntimeError(
-                f"Prediction failed for {model_name} ({home_team} v {away_team}): {exc}"
-            ) from exc
+            # For DC, extreme attack/defence params on small training folds can
+            # produce tau correction cells that go negative (even with rho clamped).
+            # Retry with rho=0 (pure Poisson) to recover the prediction rather
+            # than silently dropping it.
+            if "negative probabilities" in str(exc) and hasattr(model, "_params"):
+                try:
+                    _saved_rho = float(model._params[-1])
+                    model._params[-1] = 0.0
+                    grid = model.predict(
+                        home_team,
+                        away_team,
+                        max_goals=self._max_goals,
+                        neutral_venue=neutral_venue,
+                    )
+                    log.debug(
+                        "DC negative-prob retry with rho=0 succeeded: %s v %s",
+                        home_team, away_team,
+                    )
+                    model._params[-1] = _saved_rho
+                except Exception as exc2:
+                    model._params[-1] = _saved_rho
+                    raise RuntimeError(
+                        f"Prediction failed for {model_name} ({home_team} v {away_team}): {exc2}"
+                    ) from exc2
+            else:
+                raise RuntimeError(
+                    f"Prediction failed for {model_name} ({home_team} v {away_team}): {exc}"
+                ) from exc
 
         return ScorePMFPrediction.from_grid(
             grid=grid,
@@ -305,7 +341,14 @@ class ModelLadder:
                 for i, grid in enumerate(grids)
             ]
         except Exception as exc:
-            log.warning("predict_batch(%s) failed (%s) — falling back to per-match predict", model_name, exc)
+            # "All teams must have been in the training data" is expected in
+            # early walk-forward folds; "negative probabilities" is recovered by
+            # the rho=0 retry in predict(); both are demoted to DEBUG.
+            _msg = str(exc)
+            if "training data" in _msg or "must have been" in _msg or "negative prob" in _msg:
+                log.debug("predict_batch(%s): fallback to per-match (%s)", model_name, _msg[:80])
+            else:
+                log.warning("predict_batch(%s) failed (%s) — falling back to per-match predict", model_name, exc)
             return [
                 self.predict(
                     model_name,

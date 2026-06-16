@@ -293,6 +293,7 @@ def run_walkforward(matches_df: pd.DataFrame) -> list:
         log.info("%-30s | %5d | %11.4f | %14.4f | %7.4f | %9.4f | %6.4f | %5.3f",
                  r.model_name, r.n_predictions,
                  m.ignorance_1x2, m.exact_score_log_loss, m.rps_1x2, m.brier_1x2, m.ece_1x2, m.temperature)
+
     return results
 
 

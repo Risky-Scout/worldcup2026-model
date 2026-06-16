@@ -446,6 +446,7 @@ class MatchReplayer:
             except Exception as _fh_exc:
                 log.debug("First-half PMF metrics failed: %s", _fh_exc)
 
+
         return ReplayCheckpoint(
             match_id=state.match_id,
             home_team=state.home_team,

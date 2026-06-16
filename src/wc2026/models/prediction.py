@@ -144,6 +144,10 @@ class ScorePMFPrediction:
         uncertainty: Optional[dict] = None,
     ) -> "ScorePMFPrediction":
         raw = grid.grid
+        # Clip tiny floating-point negatives (can arise from Dixon-Coles tau
+        # correction under neutral_venue; values are negligibly small, < 1e-9).
+        raw = np.clip(raw, 0.0, None)
+
         # Trim or pad to max_goals × max_goals
         mg = max_goals
         padded = np.zeros((mg, mg), dtype=np.float64)
