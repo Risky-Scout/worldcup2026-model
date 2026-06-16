@@ -24,20 +24,20 @@ except ImportError:
 DEPLOYMENTS = [
     {
         "local": REPO_ROOT / "docs" / "pre-match.html",
-        "remote_dir": "/tools/odds-scanner/predictions/world cup",
-        "remote_file": "pre match.html",
+        "remote_dir": "/tools/odds-scanner/predictions/worldcup",
+        "remote_file": "pre-match.html",
         "description": "Pre-match predictions page",
     },
     {
         "local": REPO_ROOT / "docs" / "pmf-distributions.html",
         "remote_dir": "/tools/odds-scanner/predictions/world-cup/pre-match",
-        "remote_file": "Probability Distributions.html",
+        "remote_file": "probability-distributions.html",
         "description": "Pre-game PMF distributions page",
     },
     {
         "local": REPO_ROOT / "docs" / "live-pmf.html",
         "remote_dir": "/tools/odds-scanner/predictions/world-cup/live",
-        "remote_file": "Probability Distributions.html",
+        "remote_file": "probability-distributions.html",
         "description": "Live in-play PMF distributions page",
     },
 ]

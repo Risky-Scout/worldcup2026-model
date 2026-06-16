@@ -39,8 +39,9 @@ except ImportError:
 
 ET = ZoneInfo("America/New_York")
 
-REMOTE_DIR = "/tools/odds-scanner/predictions/world cup"
+REMOTE_DIR = "/tools/odds-scanner/predictions/worldcup"
 REMOTE_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/pre-match"
+REMOTE_DIR_WC_ROOT = "/tools/odds-scanner/predictions/world-cup"
 REMOTE_FILE = "wc-predictions.json"
 
 
@@ -118,17 +119,27 @@ def upload(date: str | None = None) -> None:
         except Exception:
             pass
 
-        # Mirror to world-cup/pre-match/ for PMF distributions page
+        # Mirror to world-cup/pre-match/ for PMF distributions page (./wc-predictions.json)
         _ensure_remote_dir(ftp, REMOTE_DIR_HYPHEN)
         ftp.cwd(REMOTE_DIR_HYPHEN)
         ftp.storbinary(f"STOR {REMOTE_FILE}", io.BytesIO(payload_bytes))
         try:
             ftp.sendcmd(f"SITE CHMOD 775 {REMOTE_DIR_HYPHEN}/{REMOTE_FILE}")
             ftp.sendcmd(f"SITE CHMOD 2775 {REMOTE_DIR_HYPHEN}")
-            ftp.sendcmd(f"SITE CHMOD 2775 /tools/odds-scanner/predictions/world-cup")
         except Exception:
             pass
         print(f"  ✓ Mirrored: {REMOTE_DIR_HYPHEN}/{REMOTE_FILE}")
+
+        # Also mirror to world-cup/ root for ../wc-predictions.json fallback
+        _ensure_remote_dir(ftp, REMOTE_DIR_WC_ROOT)
+        ftp.cwd(REMOTE_DIR_WC_ROOT)
+        ftp.storbinary(f"STOR {REMOTE_FILE}", io.BytesIO(payload_bytes))
+        try:
+            ftp.sendcmd(f"SITE CHMOD 775 {REMOTE_DIR_WC_ROOT}/{REMOTE_FILE}")
+            ftp.sendcmd(f"SITE CHMOD 2775 {REMOTE_DIR_WC_ROOT}")
+        except Exception:
+            pass
+        print(f"  ✓ Mirrored: {REMOTE_DIR_WC_ROOT}/{REMOTE_FILE}")
 
     print(f"Done. {len(doc.get('matches', []))} matches uploaded.")
 
