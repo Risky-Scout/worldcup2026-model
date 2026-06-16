@@ -22,6 +22,7 @@ except ImportError:
     pass
 
 DEPLOYMENTS = [
+    # Pre-match — both canonical and -live copy
     {
         "local": REPO_ROOT / "docs" / "pre-match.html",
         "remote_dir": "/tools/odds-scanner/predictions/worldcup",
@@ -29,16 +30,36 @@ DEPLOYMENTS = [
         "description": "Pre-match predictions page",
     },
     {
+        "local": REPO_ROOT / "docs" / "pre-match.html",
+        "remote_dir": "/tools/odds-scanner/predictions/worldcup",
+        "remote_file": "pre-match-live.html",
+        "description": "Pre-match predictions page (live copy)",
+    },
+    # PMF distributions — both canonical and -live copy
+    {
         "local": REPO_ROOT / "docs" / "pmf-distributions.html",
         "remote_dir": "/tools/odds-scanner/predictions/world-cup/pre-match",
         "remote_file": "probability-distributions.html",
         "description": "Pre-game PMF distributions page",
     },
     {
+        "local": REPO_ROOT / "docs" / "pmf-distributions.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/pre-match",
+        "remote_file": "probability-distributions-live.html",
+        "description": "Pre-game PMF distributions page (live copy)",
+    },
+    # Live PMF — both canonical and -live copy
+    {
         "local": REPO_ROOT / "docs" / "live-pmf.html",
         "remote_dir": "/tools/odds-scanner/predictions/world-cup/live",
         "remote_file": "probability-distributions.html",
         "description": "Live in-play PMF distributions page",
+    },
+    {
+        "local": REPO_ROOT / "docs" / "live-pmf.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/live",
+        "remote_file": "probability-distributions-live.html",
+        "description": "Live in-play PMF distributions page (live copy)",
     },
 ]
 
