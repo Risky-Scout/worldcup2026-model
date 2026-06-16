@@ -1,6 +1,6 @@
 # Score PMF Calibration Report
 
-**Generated**: 2026-06-15T22:53:44Z
+**Generated**: 2026-06-16T00:21:03Z
 
 ## Temperature calibration methodology
 
@@ -24,12 +24,12 @@ log-loss over out-of-fold predictions only (never training data).
 | equal_probability | 118 | 3.0219 | **1.077** | near-neutral (T close to 1.0) |
 | elo | 118 | 3.1493 | **1.255** | overconfident — calibration spreads probability mass |
 | historical_base_rate | 118 | 4.0844 | **0.492** | underconfident — calibration sharpens probability mass |
-| negative_binomial | 106 | 4.5158 | **2.997** | overconfident — calibration spreads probability mass |
-| dixon_coles | 86 | 4.8898 | **3.000** | overconfident — calibration spreads probability mass |
-| bivariate_poisson | 106 | 4.9445 | **3.000** | overconfident — calibration spreads probability mass |
-| poisson | 106 | 5.1645 | **3.000** | overconfident — calibration spreads probability mass |
-| zero_inflated_poisson | 106 | 5.1683 | **3.000** | overconfident — calibration spreads probability mass |
-| weibull_copula | 106 | 6.6891 | **3.000** | overconfident — calibration spreads probability mass |
+| negative_binomial | 106 | 4.4369 | **2.923** | overconfident — calibration spreads probability mass |
+| dixon_coles | 86 | 4.8899 | **3.000** | overconfident — calibration spreads probability mass |
+| bivariate_poisson | 106 | 4.9404 | **3.000** | overconfident — calibration spreads probability mass |
+| poisson | 106 | 5.1621 | **3.000** | overconfident — calibration spreads probability mass |
+| zero_inflated_poisson | 106 | 5.1658 | **3.000** | overconfident — calibration spreads probability mass |
+| weibull_copula | 106 | 6.7547 | **3.000** | overconfident — calibration spreads probability mass |
 
 ## Interpretation
 
@@ -54,9 +54,9 @@ As 2026 match results accumulate, T will be re-fitted with more OOF data.
 | equal_probability | nan | nan | slightly off |
 | elo | 2.277 | -0.114 | underconfident |
 | historical_base_rate | -1.596 | 1.151 | overconfident |
-| negative_binomial | 0.058 | 0.420 | overconfident |
-| dixon_coles | 0.003 | 0.476 | overconfident |
-| bivariate_poisson | -0.000 | 0.444 | overconfident |
-| poisson | 0.045 | 0.424 | overconfident |
-| zero_inflated_poisson | 0.083 | 0.408 | overconfident |
-| weibull_copula | 0.085 | 0.407 | overconfident |
+| negative_binomial | 0.069 | 0.415 | overconfident |
+| dixon_coles | 0.004 | 0.475 | overconfident |
+| bivariate_poisson | 0.009 | 0.440 | overconfident |
+| poisson | 0.046 | 0.424 | overconfident |
+| zero_inflated_poisson | 0.085 | 0.408 | overconfident |
+| weibull_copula | 0.066 | 0.414 | overconfident |

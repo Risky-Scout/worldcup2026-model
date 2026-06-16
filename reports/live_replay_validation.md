@@ -1,6 +1,6 @@
 # Live Model Replay Validation — 2022 World Cup
 
-**Generated**: 2026-06-15T22:53:44Z
+**Generated**: 2026-06-16T00:21:03Z
 **Matches replayed**: 64
 **Checkpoints per match**: 10
 
@@ -51,6 +51,19 @@ The hazard model uses:
 | drawn | 382 | -0.1263 | -0.0461 |
 | hw1 | 84 | -0.0932 | 0.1222 |
 | hw2+ | 68 | -0.1477 | -0.2348 |
+
+## First-Half Market Calibration
+
+Evaluated using Log Loss (Ignorance Score) per penaltyblog's recommendation.
+Checkpoints ≤ 45 min where first-half actual scores are available.
+
+| Minute bucket | N | Mean FH NLL | Mean FH Brier |
+|--------------|---|------------|--------------|
+| 0 (pre-kickoff) | 64 | 1.5201 | 0.6388 |
+| 1–15 | 192 | 1.4173 | 0.5871 |
+| 16–30 | 64 | 1.0850 | 0.4236 |
+
+**Overall first-half PMF: n=320  mean_NLL=1.3714**
 
 ## Live model implementation status
 
