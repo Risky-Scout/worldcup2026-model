@@ -9,6 +9,9 @@ on:
     - cron: "*/2 0-4 * * *"
   workflow_dispatch: {}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: live-snapshot
   cancel-in-progress: true
