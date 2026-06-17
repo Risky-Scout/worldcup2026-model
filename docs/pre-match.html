@@ -323,6 +323,14 @@ function inferGroup(m) {
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────
+function _dbgStatus(msg) {
+  try {
+    const tb = document.getElementById('table-body');
+    if (tb) tb.innerHTML = `<tr><td colspan="9" class="loading-state" style="color:#f0c040;font-size:11px;padding:8px">${msg}</td></tr>`;
+  } catch(e) {}
+  console.log('[DBG]', msg);
+}
+
 async function loadData() {
   const urls = [
     './wc-predictions.json',
@@ -333,23 +341,14 @@ async function loadData() {
   let data = null;
   for (const url of urls) {
     try {
-      // #region agent log
-      console.log('[DEBUG-A] Fetching:', url);
-      // #endregion
+      _dbgStatus('Fetching: ' + url);
       const r = await fetch(url + '?t=' + Date.now(), { signal: AbortSignal.timeout(8000) });
-      // #region agent log
-      console.log('[DEBUG-A] Response:', url, r.status, r.ok);
-      // #endregion
-      if (r.ok) { data = await r.json(); break; }
+      _dbgStatus('Got ' + r.status + ' from ' + url);
+      if (r.ok) { data = await r.json(); _dbgStatus('Parsed JSON ok, matches=' + (data?.matches?.length ?? '?')); break; }
     } catch (e) {
-      // #region agent log
-      console.warn('[DEBUG-A] Fetch error:', url, String(e));
-      // #endregion
+      _dbgStatus('Error on ' + url + ': ' + String(e));
     }
   }
-  // #region agent log
-  console.log('[DEBUG-C] loadData result: hasData=' + !!data + ' matchCount=' + (data?.matches?.length ?? 0));
-  // #endregion
   return data;
 }
 
@@ -694,58 +693,52 @@ function renderTable(matches) {
   }).join('');
 }
 
-// ── Bankroll/Kelly reactivity ──────────────────────────────────────────────
-document.getElementById('bankroll-input').addEventListener('input', e => {
-  STATE.bankroll = Math.max(1, parseFloat(e.target.value) || 1000);
-  renderTable(ALL_MATCHES);
+// ── Bankroll/Kelly reactivity (event delegation — elements live inside detail rows) ──
+document.addEventListener('input', e => {
+  if (e.target.id === 'bankroll-input') {
+    STATE.bankroll = Math.max(1, parseFloat(e.target.value) || 1000);
+    renderTable(ALL_MATCHES);
+  }
 });
-document.getElementById('kelly-select').addEventListener('change', e => {
-  STATE.kelly = parseFloat(e.target.value);
-  renderTable(ALL_MATCHES);
+document.addEventListener('change', e => {
+  if (e.target.id === 'kelly-select') {
+    STATE.kelly = parseFloat(e.target.value);
+    renderTable(ALL_MATCHES);
+  }
 });
 
 // ── Main init ──────────────────────────────────────────────────────────────
 async function init() {
-  // #region agent log
-  console.log('[DEBUG-C] init() start');
-  // #endregion
+  _dbgStatus('init() starting...');
   let data;
   try {
     data = await loadData();
   } catch(loadErr) {
-    // #region agent log
-    console.error('[DEBUG-C] loadData threw:', loadErr);
-    document.getElementById('table-body').innerHTML =
-      `<tr><td colspan="9" class="loading-state">Load error: ${loadErr}</td></tr>`;
-    // #endregion
+    _dbgStatus('loadData threw: ' + loadErr);
     return;
   }
   if (!data || !data.matches) {
-    // #region agent log
-    console.warn('[DEBUG-C] No data or no matches key. data=', JSON.stringify(data)?.slice(0,200));
-    // #endregion
+    _dbgStatus('No data returned. data=' + JSON.stringify(data)?.slice(0,100));
     document.getElementById('table-body').innerHTML =
       `<tr><td colspan="9" class="loading-state">No predictions available. Check back before kickoff.</td></tr>`;
     return;
   }
 
-  // #region agent log
-  console.log('[DEBUG-C] Rendering', data.matches.length, 'matches');
-  // #endregion
+  _dbgStatus('Got ' + data.matches.length + ' matches — rendering...');
 
   ALL_MATCHES = data.matches;
   LOAD_TIME = data.generated_at;
 
   try {
     updateKPIs(ALL_MATCHES);
-  } catch(e) { console.error('[DEBUG-C] updateKPIs threw:', e); }
+  } catch(e) { _dbgStatus('updateKPIs threw: ' + e); }
   try {
     buildGroupChips(ALL_MATCHES);
-  } catch(e) { console.error('[DEBUG-C] buildGroupChips threw:', e); }
+  } catch(e) { _dbgStatus('buildGroupChips threw: ' + e); }
   try {
     renderTable(ALL_MATCHES);
   } catch(e) {
-    console.error('[DEBUG-C] renderTable threw:', e);
+    _dbgStatus('renderTable threw: ' + e);
     document.getElementById('table-body').innerHTML =
       `<tr><td colspan="9" class="loading-state">Render error: ${e}</td></tr>`;
   }
