@@ -257,8 +257,8 @@ def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -
     return sorted(shots, key=lambda s: s["minute"])
 
 
-def _extract_events(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
-    """Build events[] from shots that resulted in goals."""
+def _extract_goals_from_shots(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
+    """Fallback: build events[] from shots that resulted in goals (used when match_events unavailable)."""
     if not bdl_shots:
         return []
     events = []
@@ -282,13 +282,177 @@ def _extract_events(bdl_shots: list | None, home_name: str, away_name: str) -> l
                     pass
         events.append({
             "minute": minute,
+            "added_time": 0,
             "type": "goal",
+            "incident_class": "regular",
             "team": home_name if is_home else away_name,
+            "is_home": is_home,
             "player_name": player_name,
             "player_jersey": jersey,
-            "description": f"Goal — {player_name or (home_name if is_home else away_name)}",
+            "description": f"{minute}' ⚽ {player_name or (home_name if is_home else away_name)}",
         })
     return sorted(events, key=lambda e: e["minute"])
+
+
+def _extract_events_from_bdl(
+    bdl_events: list | None,
+    home_name: str,
+    away_name: str,
+    bdl_shots: list | None = None,
+) -> list[dict]:
+    """
+    Build events[] from BDL match_events rows (goals, cards, substitutions).
+    Falls back to _extract_goals_from_shots when bdl_events is empty/None.
+
+    Included incident_types: goal, card, substitution.
+    Skipped: period, injuryTime, penaltyShootout.
+    Rescinded cards are skipped.
+    """
+    _SKIP_TYPES = {"period", "injurytime", "injury_time", "penaltyshootout", "penalty_shootout"}
+
+    if not bdl_events:
+        return _extract_goals_from_shots(bdl_shots, home_name, away_name)
+
+    events: list[dict] = []
+    for row in bdl_events:
+        raw_type = str(row.get("incident_type") or "").strip()
+        norm_type = raw_type.lower().replace(" ", "").replace("_", "")
+        if norm_type in _SKIP_TYPES:
+            continue
+        if row.get("rescinded"):
+            continue
+
+        is_home = bool(row.get("is_home"))
+        team_name = home_name if is_home else away_name
+
+        player = row.get("player") or {}
+        player_name = player.get("display_name") or player.get("name") or ""
+        player_jersey = str(player.get("jersey_number") or player.get("number") or "")
+
+        minute = int(row.get("time_minute") or row.get("minute") or 0)
+        added = int(row.get("added_time") or 0)
+        min_str = f"{minute}" + (f"+{added}" if added else "")
+
+        incident_class = str(row.get("incident_class") or "").lower()
+
+        if norm_type in ("goal", "penalty", "owngoal"):
+            if incident_class == "penalty":
+                desc = f"{min_str}' ⚽ {player_name} (pen)"
+            elif incident_class == "owngoal":
+                desc = f"{min_str}' ⚽ {player_name} (og)"
+            else:
+                desc = f"{min_str}' ⚽ {player_name}"
+
+            assist = row.get("assist_player") or {}
+            assist_name = assist.get("display_name") or assist.get("name") or ""
+
+            events.append({
+                "minute": minute,
+                "added_time": added,
+                "type": "goal",
+                "incident_class": incident_class or "regular",
+                "team": team_name,
+                "is_home": is_home,
+                "player_name": player_name,
+                "player_jersey": player_jersey,
+                "assist_player": assist_name,
+                "home_score": row.get("home_score"),
+                "away_score": row.get("away_score"),
+                "description": desc,
+            })
+
+        elif norm_type == "card":
+            if incident_class in ("yellowred", "yellow_red"):
+                card_type = "red_card"
+                emoji = "🟥"
+            elif incident_class == "red":
+                card_type = "red_card"
+                emoji = "🟥"
+            elif incident_class == "yellow":
+                card_type = "yellow_card"
+                emoji = "🟨"
+            else:
+                continue  # Unknown card class — skip
+
+            events.append({
+                "minute": minute,
+                "added_time": added,
+                "type": card_type,
+                "incident_class": incident_class,
+                "team": team_name,
+                "is_home": is_home,
+                "player_name": player_name,
+                "player_jersey": player_jersey,
+                "description": f"{min_str}' {emoji} {player_name}",
+            })
+
+        elif norm_type == "substitution":
+            player_out = row.get("player_out") or {}
+            player_in = row.get("player_in") or {}
+            out_name = player_out.get("display_name") or player_out.get("name") or player_name
+            in_name = player_in.get("display_name") or player_in.get("name") or ""
+
+            events.append({
+                "minute": minute,
+                "added_time": added,
+                "type": "substitution",
+                "team": team_name,
+                "is_home": is_home,
+                "player_out_name": out_name,
+                "player_in_name": in_name,
+                "description": f"{min_str}' 🔄 {out_name} → {in_name}",
+            })
+
+    return sorted(events, key=lambda e: (e["minute"], e.get("added_time", 0)))
+
+
+def _extract_player_stats(bdl_player_stats: list | None) -> list[dict]:
+    """Build player_stats[] from BDL player_match_stats rows."""
+    if not bdl_player_stats:
+        return []
+
+    stats: list[dict] = []
+    for row in bdl_player_stats:
+        player = row.get("player") or {}
+        player_name = player.get("display_name") or player.get("name") or ""
+        player_id = str(player.get("id") or row.get("player_id") or "")
+        is_home = bool(row.get("is_home"))
+
+        def _int(key: str, aliases: list[str] | None = None) -> int:
+            for k in [key] + (aliases or []):
+                v = row.get(k)
+                if v is not None:
+                    try:
+                        return int(float(str(v)))
+                    except Exception:
+                        pass
+            return 0
+
+        def _float(key: str, aliases: list[str] | None = None) -> float:
+            for k in [key] + (aliases or []):
+                v = row.get(k)
+                if v is not None:
+                    try:
+                        return round(float(str(v)), 3)
+                    except Exception:
+                        pass
+            return 0.0
+
+        stats.append({
+            "player_id": player_id,
+            "is_home": is_home,
+            "player_name": player_name,
+            "minutes_played": _int("minutes_played", ["minutes"]),
+            "goals": _int("goals", ["goals_scored"]),
+            "assists": _int("assists"),
+            "shots_on_target": _int("shots_on_goal", ["shots_on_target"]),
+            "expected_goals": _float("expected_goals", ["xg", "xG"]),
+            "rating": _float("rating", ["match_rating"]),
+            "touches": _int("touches", ["ball_touches"]),
+            "tackles": _int("tackles", ["tackles_won"]),
+        })
+
+    return stats
 
 
 def _load_lineup_for_match(
@@ -580,10 +744,12 @@ def run_live_snapshot() -> dict:
         log.error("Failed to fetch matches: %s", exc)
         live_matches, upcoming = [], []
 
-    # Fetch live team stats + shots for all live matches in one batch call each
+    # Fetch live team stats + shots + events + player stats for all live matches in one batch each
     live_ids = [m.get("id") for m in live_matches if m.get("id")]
-    live_team_stats: dict[str, list] = {}   # match_id → [team_match_stats rows]
-    live_shots: dict[str, list] = {}        # match_id → [match_shots rows]
+    live_team_stats: dict[str, list] = {}    # match_id → [team_match_stats rows]
+    live_shots: dict[str, list] = {}         # match_id → [match_shots rows]
+    live_events: dict[str, list] = {}        # match_id → [match_events rows]
+    live_player_stats: dict[str, list] = {}  # match_id → [player_match_stats rows]
     if live_ids:
         try:
             from wc2026.data.providers.bdl import BDLProvider
@@ -596,6 +762,24 @@ def run_live_snapshot() -> dict:
             for row in shots_rows:
                 key = str(row.get("match_id", ""))
                 live_shots.setdefault(key, []).append(row)
+            try:
+                events_rows = _stats_provider.fetch_events(match_ids=live_ids)
+                for row in events_rows:
+                    key = str(row.get("match_id", ""))
+                    live_events.setdefault(key, []).append(row)
+                log.info("Live events fetched: %d event rows for %d matches",
+                         len(events_rows), len(live_ids))
+            except Exception as exc:
+                log.warning("Could not fetch live match events: %s", exc)
+            try:
+                pstats_rows = _stats_provider.fetch_player_stats(match_ids=live_ids)
+                for row in pstats_rows:
+                    key = str(row.get("match_id", ""))
+                    live_player_stats.setdefault(key, []).append(row)
+                log.info("Live player stats fetched: %d player-stat rows for %d matches",
+                         len(pstats_rows), len(live_ids))
+            except Exception as exc:
+                log.warning("Could not fetch live player stats: %s", exc)
             log.info("Live stats fetched: %d team-stat rows, %d shot rows for %d matches",
                      len(stats_rows), len(shots_rows), len(live_ids))
         except Exception as exc:
@@ -611,6 +795,8 @@ def run_live_snapshot() -> dict:
         lh, la = pregame_lambdas.get(mid, pregame_lambdas.get(f"{home}|{away}", (1.35, 1.00)))
         bdl_stats = live_team_stats.get(mid) or None
         bdl_shots = live_shots.get(mid) or None
+        bdl_match_events = live_events.get(mid) or None
+        bdl_pstats = live_player_stats.get(mid) or None
 
         # 3A — Populate live odds: try BDL match data first; fall back to pregame
         _live_hw_odds = bdl_m.get("home_odds") or bdl_m.get("odds_home") or None
@@ -653,11 +839,14 @@ def run_live_snapshot() -> dict:
                 )
                 d["live_edge"] = live_edge
 
-                # Pitch visualization enrichment — shots, stats, lineup
+                # Pitch visualization enrichment — shots, events, player stats, lineup
                 try:
                     match_stats = _extract_team_stats(bdl_stats, home, away)
                     shots_list = _extract_shot_list(bdl_shots, home, away)
-                    events_list = _extract_events(bdl_shots, home, away)
+                    events_list = _extract_events_from_bdl(
+                        bdl_match_events, home, away, bdl_shots
+                    )
+                    player_stats_list = _extract_player_stats(bdl_pstats)
                     lineup_home, lineup_away = _load_lineup_for_match(mid, home, away, today_et)
                     d.update({
                         "home_possession":      match_stats["home_possession"],
@@ -676,14 +865,19 @@ def run_live_snapshot() -> dict:
                         "away_red_cards":       match_stats["away_red_cards"],
                         "shots":                shots_list,
                         "events":               events_list,
+                        "player_stats":         player_stats_list,
                         "lineup_home":          lineup_home,
                         "lineup_away":          lineup_away,
                         "home_color":           TEAM_COLORS.get(home, "#1a56db"),
                         "away_color":           TEAM_COLORS.get(away, "#e63946"),
                     })
-                    log.debug("Pitch data: %d shots, %d events, %d+%d lineup players",
-                              len(shots_list), len(events_list),
-                              len(lineup_home), len(lineup_away))
+                    log.debug(
+                        "Pitch data: %d shots, %d events (%s), %d player stats, %d+%d lineup",
+                        len(shots_list), len(events_list),
+                        "bdl" if bdl_match_events else "shots-fallback",
+                        len(player_stats_list),
+                        len(lineup_home), len(lineup_away),
+                    )
                 except Exception as enrich_exc:
                     log.warning("Pitch enrichment failed for %s vs %s: %s", home, away, enrich_exc)
 
