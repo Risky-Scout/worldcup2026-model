@@ -1,12 +1,12 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-06-17T17:42:30Z
+**Generated**: 2026-06-17T19:55:15Z
 
 ## Publish mode distribution
 
 | Mode | Count | Description |
 |------|-------|-------------|
-| market_reconciled | 52 | Market + model blend (default publish) |
+| market_reconciled | 51 | Market + model blend (default publish) |
 | market_implied | 0 | Pure market PMF, no model |
 | pure_model | 0 | Model only, no odds available |
 
@@ -29,10 +29,10 @@ Market quality score (0-1) determines α:
 - 6 vendors + correct score → quality ≈ 0.82 → α ≈ 0.82
 - 6 vendors, no correct score → quality ≈ 0.62 → α ≈ 0.62
 
-**2026 predictions generated**: 52 named matches
-  market_reconciled: 52
+**2026 predictions generated**: 51 named matches
+  market_reconciled: 51
   with correct-score data: 49
   correct-score vendors breakdown: 1-vendor=49, 2+vendors=0
 
 ## Vendors
-fanduel, draftkings, betmgm, betrivers, caesars, fanatics (377 total rows)
+fanduel, draftkings, betmgm, betrivers, caesars, fanatics (378 total rows)
