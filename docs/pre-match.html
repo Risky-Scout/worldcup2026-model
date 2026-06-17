@@ -323,14 +323,6 @@ function inferGroup(m) {
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────
-function _dbgStatus(msg) {
-  try {
-    const tb = document.getElementById('table-body');
-    if (tb) tb.innerHTML = `<tr><td colspan="9" class="loading-state" style="color:#f0c040;font-size:11px;padding:8px">${msg}</td></tr>`;
-  } catch(e) {}
-  console.log('[DBG]', msg);
-}
-
 async function loadData() {
   const urls = [
     './wc-predictions.json',
@@ -341,13 +333,9 @@ async function loadData() {
   let data = null;
   for (const url of urls) {
     try {
-      _dbgStatus('Fetching: ' + url);
       const r = await fetch(url + '?t=' + Date.now(), { signal: AbortSignal.timeout(8000) });
-      _dbgStatus('Got ' + r.status + ' from ' + url);
-      if (r.ok) { data = await r.json(); _dbgStatus('Parsed JSON ok, matches=' + (data?.matches?.length ?? '?')); break; }
-    } catch (e) {
-      _dbgStatus('Error on ' + url + ': ' + String(e));
-    }
+      if (r.ok) { data = await r.json(); break; }
+    } catch (e) {}
   }
   return data;
 }
@@ -709,39 +697,19 @@ document.addEventListener('change', e => {
 
 // ── Main init ──────────────────────────────────────────────────────────────
 async function init() {
-  _dbgStatus('init() starting...');
-  let data;
-  try {
-    data = await loadData();
-  } catch(loadErr) {
-    _dbgStatus('loadData threw: ' + loadErr);
-    return;
-  }
+  const data = await loadData();
   if (!data || !data.matches) {
-    _dbgStatus('No data returned. data=' + JSON.stringify(data)?.slice(0,100));
     document.getElementById('table-body').innerHTML =
       `<tr><td colspan="9" class="loading-state">No predictions available. Check back before kickoff.</td></tr>`;
     return;
   }
 
-  _dbgStatus('Got ' + data.matches.length + ' matches — rendering...');
-
   ALL_MATCHES = data.matches;
   LOAD_TIME = data.generated_at;
 
-  try {
-    updateKPIs(ALL_MATCHES);
-  } catch(e) { _dbgStatus('updateKPIs threw: ' + e); }
-  try {
-    buildGroupChips(ALL_MATCHES);
-  } catch(e) { _dbgStatus('buildGroupChips threw: ' + e); }
-  try {
-    renderTable(ALL_MATCHES);
-  } catch(e) {
-    _dbgStatus('renderTable threw: ' + e);
-    document.getElementById('table-body').innerHTML =
-      `<tr><td colspan="9" class="loading-state">Render error: ${e}</td></tr>`;
-  }
+  updateKPIs(ALL_MATCHES);
+  buildGroupChips(ALL_MATCHES);
+  renderTable(ALL_MATCHES);
 
   const updatedTag = document.getElementById('updated-tag');
   if (data.generated_at) {
