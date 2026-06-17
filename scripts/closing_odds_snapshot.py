@@ -527,7 +527,10 @@ def _run_backfill(provider) -> None:
                     "away_team": rec.away_team,
                 }
 
-    # Exclude matches already fully marked as closing_missing (previously attempted)
+    # Exclude matches that have already been attempted (via closing_missing=true flag
+    # set by _mark_closing_missing, or via closing_source="backfill_invalid" set by
+    # set_closing's guard when BDL returned post-match prices).
+    # Both conditions mean "we tried and it didn't produce valid closing odds".
     already_attempted: set[str] = set()
     with open(CLV_PATH) as f:
         for line in f:
@@ -536,18 +539,22 @@ def _run_backfill(provider) -> None:
                 continue
             try:
                 d = json.loads(line)
-                if d.get("closing_missing") and d.get("closing_prob") is None:
-                    already_attempted.add(str(d.get("match_id")))
+                mid = str(d.get("match_id", ""))
+                if not mid:
+                    continue
+                # closing_missing=True  → BDL had no odds data at all
+                # backfill_invalid      → BDL had odds but they were post-match (guard rejected)
+                if (d.get("closing_missing") or d.get("closing_source") == "backfill_invalid"):
+                    already_attempted.add(mid)
             except Exception:
                 pass
 
-    # Remove matches where ALL records are already marked missing
-    # (check if every record for that match_id has closing_missing=true)
+    # Remove matches where any record was already attempted (avoid redundant API calls
+    # and repeated "backfill_invalid" churn).
     for mid in list(needs_backfill.keys()):
-        match_records = [r for r in records if str(r.match_id) == mid]
-        # If every outcome record is already marked missing, skip
-        # We detect this via JSON directly since CLVRecord doesn't have closing_missing
-        pass
+        if mid in already_attempted:
+            log.debug("Backfill: skipping match_id=%s (already attempted)", mid)
+            del needs_backfill[mid]
 
     if not needs_backfill:
         log.info("Backfill: no matches need closing odds — already complete")

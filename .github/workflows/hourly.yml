@@ -20,7 +20,7 @@ concurrency:
 jobs:
   hourly-refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -55,6 +55,18 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/run_real_pipeline.py
+
+      - name: Closing odds forward scan (catch imminent matches missed by pre-match.yml)
+        # Runs after the main pipeline (CLV store already populated with prediction records).
+        # Scans for any match kicking off in the next 15 minutes; if found, sleeps until
+        # T-3 minutes then fetches live closing odds.  This is the primary safety net when
+        # GitHub throttles the */15 cron in pre-match.yml (which fires only ~6-10×/day
+        # instead of the expected ~84×/day).  Max sleep ≤ 12 minutes (LOOKAHEAD=15 −
+        # CLOSING_BEFORE=3), so this step never adds more than ~12 min to the hourly run.
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
+        run: python scripts/closing_odds_snapshot.py
+        continue-on-error: true
 
       - name: Closing odds fallback (catch any match that just kicked off)
         # Runs after the main pipeline so the CLV store already has prediction records.
