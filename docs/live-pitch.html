@@ -438,8 +438,6 @@ footer{
   <div id="main-wrap">
     <!-- Stats panel -->
     <aside id="stats-panel">
-      <div class="stats-header">Match Stats</div>
-
       <div class="win-prob-wrap">
         <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Win Probability</div>
         <div class="win-prob-bar">
@@ -503,41 +501,23 @@ footer{
       <div id="pitch-svg-wrap">
         <!-- SVG injected by JS -->
       </div>
-      <div id="no-live-state" style="display:none;">
-        <div id="no-live-message">
-          <h2>No live matches right now</h2>
-          <p>The pitch activates when a World Cup match is in play.</p>
-        </div>
-      </div>
+      <div id="no-live-state" style="display:none;"></div>
     </div>
   </div>
 
-  <!-- Upcoming matches -->
   <div id="upcoming-wrap">
-    <div class="upcoming-header">Up Next Today</div>
     <div id="upcoming-list"></div>
   </div>
 
-  <!-- Event feed -->
   <div id="event-feed-section">
-    <div class="event-feed-hdr">
-      <span class="event-feed-title">Live Events</span>
-      <span id="event-feed-meta" style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);"></span>
-    </div>
+    <span id="event-feed-meta" style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);display:none;"></span>
     <div id="event-feed"></div>
   </div>
-
-  <p id="disclaimer">
-    Player positions reflect tactical formations and shot data from BallDontLie API.
-    Real-time GPS tracking requires a licensed tracking data provider.
-  </p>
 </div>
 
 <div id="shot-tooltip"></div>
 
-<footer>
-  Live Pitch · WC 2026 · Updates every 60s · Not financial advice
-</footer>
+<footer></footer>
 
 <script>
 'use strict';
@@ -742,163 +722,15 @@ function buildPitchSVG() {
   <!-- Corner flags -->
   ${flags}
 
-  <!-- Dynamic layers (populated by JS) -->
-  <g id="possession-zone-layer"></g>
+  <!-- Shot markers layer -->
   <g id="shot-markers-layer"></g>
-  <g id="away-formation"></g>
-  <g id="home-formation"></g>
 
   <!-- Vignette overlay -->
   <rect x="-3" y="-2" width="111" height="72" fill="url(#vig-grad)" pointer-events="none"/>
 </svg>`;
 }
 
-// ── Position mapping ──────────────────────────────────────────────────────────
-const POS_X_HOME = {
-  GK:3, SW:10,
-  CB:15, CD:15, RCB:15, LCB:15,
-  RB:20, LB:20, WB:22, RWB:22, LWB:22, RD:20, LD:20,
-  CDM:32, DM:32, CM:40, RM:40, LM:40, MF:40,
-  CAM:45, AM:45, OM:45,
-  RW:50, LW:50, W:50, SS:48,
-  ST:55, CF:55, FW:55, F:55,
-};
-
-function posXHome(pos) {
-  return POS_X_HOME[pos.toUpperCase()] || 35;
-}
-function posXAway(pos) {
-  const hx = posXHome(pos);
-  return 105 - hx;
-}
-
-function defaultFormation(isHome) {
-  // 4-3-3
-  const f = isHome ? [
-    {n:'1', pos:'GK', x:3, y:34},
-    {n:'2', pos:'RB', x:20, y:18},
-    {n:'5', pos:'CB', x:15, y:26},
-    {n:'4', pos:'CB', x:15, y:42},
-    {n:'3', pos:'LB', x:20, y:50},
-    {n:'8', pos:'CM', x:38, y:20},
-    {n:'6', pos:'CM', x:38, y:34},
-    {n:'10',pos:'CM', x:38, y:48},
-    {n:'7', pos:'RW', x:50, y:13},
-    {n:'9', pos:'ST', x:55, y:34},
-    {n:'11',pos:'LW', x:50, y:55},
-  ] : [
-    {n:'1', pos:'GK', x:102, y:34},
-    {n:'2', pos:'LB', x:85, y:18},
-    {n:'5', pos:'CB', x:90, y:26},
-    {n:'4', pos:'CB', x:90, y:42},
-    {n:'3', pos:'RB', x:85, y:50},
-    {n:'8', pos:'CM', x:67, y:20},
-    {n:'6', pos:'CM', x:67, y:34},
-    {n:'10',pos:'CM', x:67, y:48},
-    {n:'7', pos:'LW', x:55, y:13},
-    {n:'9', pos:'ST', x:50, y:34},
-    {n:'11',pos:'RW', x:55, y:55},
-  ];
-  return f;
-}
-
-function buildFormation(lineup, isHome) {
-  if (!lineup || lineup.length === 0) return defaultFormation(isHome);
-  // Group by position to spread y
-  const groups = {};
-  lineup.forEach(p => {
-    const pos = (p.position || 'CM').toUpperCase();
-    (groups[pos] = groups[pos] || []).push(p);
-  });
-
-  const result = [];
-  const yMargin = 7;
-  Object.entries(groups).forEach(([pos, players]) => {
-    const bx = isHome ? posXHome(pos) : posXAway(pos);
-    players.forEach((p, i) => {
-      let y;
-      if (players.length === 1) {
-        y = 34;
-      } else {
-        y = yMargin + (i / (players.length - 1)) * (68 - 2 * yMargin);
-      }
-      result.push({
-        n: String(p.jersey_number || p.number || ''),
-        pos,
-        x: p.x !== undefined ? p.x : bx,
-        y: p.y !== undefined ? p.y : y,
-        name: p.name || '',
-      });
-    });
-  });
-  return result;
-}
-
-// ── Create player token SVG element ──────────────────────────────────────────
-function createPlayerToken(player, color, idx) {
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('class', 'player-token');
-
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', player.x);
-  circle.setAttribute('cy', player.y);
-  circle.setAttribute('r', '1.8');
-  circle.setAttribute('fill', color);
-  circle.setAttribute('filter', 'url(#pshadow)');
-  circle.setAttribute('stroke', 'rgba(255,255,255,0.7)');
-  circle.setAttribute('stroke-width', '0.18');
-  g.appendChild(circle);
-
-  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  text.setAttribute('x', player.x);
-  text.setAttribute('y', player.y);
-  text.setAttribute('text-anchor', 'middle');
-  text.setAttribute('dominant-baseline', 'central');
-  text.setAttribute('font-family', 'Courier New, monospace');
-  text.setAttribute('font-size', '1.7');
-  text.setAttribute('font-weight', '700');
-  text.setAttribute('fill', '#ffffff');
-  text.setAttribute('pointer-events', 'none');
-  text.textContent = player.n.slice(0, 2);
-  g.appendChild(text);
-
-  return g;
-}
-
-// ── Render players ────────────────────────────────────────────────────────────
-function renderPlayers(homeLineup, awayLineup, homeColor, awayColor) {
-  const homeGroup = document.getElementById('home-formation');
-  const awayGroup = document.getElementById('away-formation');
-  if (!homeGroup || !awayGroup) return;
-  homeGroup.innerHTML = '';
-  awayGroup.innerHTML = '';
-
-  homeLineup.forEach((p, i) => {
-    homeGroup.appendChild(createPlayerToken(p, homeColor, i));
-  });
-  awayLineup.forEach((p, i) => {
-    awayGroup.appendChild(createPlayerToken(p, awayColor, i + 20));
-  });
-}
-
-// ── Formation shift on possession ─────────────────────────────────────────────
-let lastHomePoss = 50;
-function applyPossessionShift(homePoss) {
-  if (Math.abs(homePoss - lastHomePoss) < 3) return;
-  lastHomePoss = homePoss;
-
-  const homeGroup = document.getElementById('home-formation');
-  const awayGroup = document.getElementById('away-formation');
-  if (!homeGroup || !awayGroup) return;
-
-  const shift = clamp((homePoss - 50) * 0.1, -5, 5);
-  homeGroup.style.transition = 'transform 2s ease';
-  awayGroup.style.transition = 'transform 2s ease';
-  homeGroup.style.transform = `translateX(${shift}px)`;
-  awayGroup.style.transform = `translateX(${-shift}px)`;
-}
-
-// ── Possession zone ───────────────────────────────────────────────────────────
+// ── Possession zone (no-op — zone removed) ────────────────────────────────────
 function updatePossessionZone(homePoss, homeColor) {
   const layer = document.getElementById('possession-zone-layer');
   if (!layer) return;
@@ -938,53 +770,77 @@ function addShotMarker(shot, homeColor, awayColor) {
 
   const color = shot.is_home ? homeColor : awayColor;
   const xg = shot.xg || 0;
-  const r = clamp(0.5 + xg * 8, 0.5, 2.5);
+  const x = clamp(shot.x, 1, 104);
+  const y = clamp(shot.y, 1, 67);
+  const result = (shot.result || '').toLowerCase();
+  const isGoal = result === 'goal';
+  const isBlocked = result === 'blocked';
+  // on_target covers saved shots; anything else is missed/off-target
+  const isSaved = !isGoal && !isBlocked && shot.on_target;
 
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'shot-marker');
   g.setAttribute('cursor', 'pointer');
 
-  const x = clamp(shot.x, 1, 104);
-  const y = clamp(shot.y, 1, 67);
+  const NS = 'http://www.w3.org/2000/svg';
+  const r = clamp(0.7 + xg * 7, 0.7, 2.8);
 
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', r);
-  if (shot.on_target) {
-    circle.setAttribute('fill', color);
-    circle.setAttribute('opacity', '1');
+  if (isGoal) {
+    // Outer ring
+    const ring = document.createElementNS(NS, 'circle');
+    ring.setAttribute('cx', x); ring.setAttribute('cy', y);
+    ring.setAttribute('r', r + 1.2);
+    ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', color);
+    ring.setAttribute('stroke-width', '0.3');
+    ring.setAttribute('opacity', '0.7');
+    g.appendChild(ring);
+    // Filled circle
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r);
+    c.setAttribute('fill', color); c.setAttribute('opacity', '1');
+    g.appendChild(c);
+  } else if (isBlocked) {
+    // Diamond (rotated square)
+    const d = document.createElementNS(NS, 'polygon');
+    const s = r * 1.2;
+    d.setAttribute('points', `${x},${y-s} ${x+s},${y} ${x},${y+s} ${x-s},${y}`);
+    d.setAttribute('fill', 'none');
+    d.setAttribute('stroke', color);
+    d.setAttribute('stroke-width', '0.3');
+    d.setAttribute('opacity', '0.75');
+    g.appendChild(d);
+  } else if (isSaved) {
+    // Filled circle, medium opacity
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r);
+    c.setAttribute('fill', color); c.setAttribute('opacity', '0.7');
+    g.appendChild(c);
   } else {
-    circle.setAttribute('fill', 'none');
-    circle.setAttribute('stroke', color);
-    circle.setAttribute('stroke-width', '0.25');
-    circle.setAttribute('opacity', '1');
+    // Missed — empty circle outline, faded
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r);
+    c.setAttribute('fill', 'none');
+    c.setAttribute('stroke', color);
+    c.setAttribute('stroke-width', '0.22');
+    c.setAttribute('opacity', '0.45');
+    g.appendChild(c);
   }
-  g.appendChild(circle);
 
-  // Pop + fade animation
-  const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+  // Pop-in animation
+  const anim = document.createElementNS(NS, 'animate');
   anim.setAttribute('attributeName', 'opacity');
-  anim.setAttribute('values', '0;1;1;1;0.4');
-  anim.setAttribute('keyTimes', '0;0.08;0.15;0.2;1');
-  anim.setAttribute('dur', '10s');
+  anim.setAttribute('values', isGoal ? '0;1;0.85;1' : '0;1');
+  anim.setAttribute('dur', isGoal ? '1.2s' : '0.4s');
   anim.setAttribute('fill', 'freeze');
   g.appendChild(anim);
 
-  const scaleAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
-  scaleAnim.setAttribute('attributeName', 'transform');
-  scaleAnim.setAttribute('type', 'scale');
-  scaleAnim.setAttribute('values', '0;1.3;1');
-  scaleAnim.setAttribute('keyTimes', '0;0.1;0.2');
-  scaleAnim.setAttribute('dur', '0.6s');
-  scaleAnim.setAttribute('fill', 'freeze');
-  scaleAnim.setAttribute('additive', 'sum');
-  g.appendChild(scaleAnim);
-
+  const resultLabel = isGoal ? 'Goal' : isBlocked ? 'Blocked' : isSaved ? 'Saved' : 'Missed';
   const tt = document.getElementById('shot-tooltip');
   g.addEventListener('mouseenter', evt => {
     tt.style.display = 'block';
-    tt.textContent = `${shot.minute}' Shot by #${shot.player_jersey||'?'} — xG: ${fmt(shot.xg,3)} ${shot.on_target?'(on target)':'(off target)'}`;
+    const name = shot.player_name ? shot.player_name : `#${shot.player_jersey||'?'}`;
+    tt.textContent = `${shot.minute}' ${resultLabel} — ${name} · xG ${fmt(xg, 3)}`;
     tt.style.left = (evt.clientX + 14) + 'px';
     tt.style.top = (evt.clientY - 10) + 'px';
   });
@@ -1196,14 +1052,6 @@ function render(data) {
 
   updateScoreboard(m, homeColor, awayColor);
   updateStats(m);
-
-  const homePoss = m.home_possession ?? 50;
-  applyPossessionShift(homePoss);
-  updatePossessionZone(homePoss, homeColor);
-
-  const homeLineup = buildFormation(m.lineup_home, true);
-  const awayLineup = buildFormation(m.lineup_away, false);
-  renderPlayers(homeLineup, awayLineup, homeColor, awayColor);
 
   const shots = m.shots || [];
   shots.forEach(shot => addShotMarker(shot, homeColor, awayColor));
