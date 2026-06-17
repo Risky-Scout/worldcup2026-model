@@ -542,10 +542,6 @@ function render(data){
       upHtml='<div class="upcoming-list">'+upcoming.map(buildUpcomingCard).join('')+'</div>';
     }
     wrap.innerHTML=`<div class="quiet-state">
-      <h2>No live matches right now.</h2>
-      <!-- WOO_REVIEW: check if this text belongs in CMS -->
-      <p>The live PMF engine activates when a World Cup match is in play.
-         Pre-game distributions are available until kickoff.</p>
       ${upHtml}
     </div>`;
     return;
