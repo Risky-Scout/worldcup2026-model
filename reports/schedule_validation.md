@@ -1,6 +1,6 @@
 # Schedule Validation (2026 World Cup)
 
-**Generated**: 2026-06-17T10:21:59Z
+**Generated**: 2026-06-17T12:13:12Z
 
 ## 2026 World Cup format
 
@@ -37,7 +37,7 @@
 |----------|-------|------|
 | Named matches predicted | 52 | Excludes TBD knockouts |
 | With BDL odds (1X2) | 52 | ≥1 vendor |
-| With correct-score odds | 50 | Used in KL reconciliation |
+| With correct-score odds | 49 | Used in KL reconciliation |
 | Published as market_reconciled | 52 | Default publish mode |
 | Skipped (TBD teams) | 32 | Cannot predict: W73 v W75 etc. |
 | June 11 ET matches | 0 | Mexico v SA + South Korea v Czechia |
