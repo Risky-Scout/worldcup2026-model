@@ -862,24 +862,6 @@ function createPlayerToken(player, color, idx) {
   text.textContent = player.n.slice(0, 2);
   g.appendChild(text);
 
-  // Wobble animation — unique per player
-  const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
-  anim.setAttribute('attributeName', 'transform');
-  anim.setAttribute('type', 'translate');
-  const seed = idx * 7;
-  const dx1 = (((seed * 3) % 6) - 3) * 0.08;
-  const dy1 = (((seed * 5) % 6) - 3) * 0.08;
-  const dx2 = (((seed * 11) % 6) - 3) * 0.08;
-  const dy2 = (((seed * 13) % 6) - 3) * 0.08;
-  anim.setAttribute('values', `0,0; ${dx1.toFixed(3)},${dy1.toFixed(3)}; ${dx2.toFixed(3)},${dy2.toFixed(3)}; 0,0`);
-  const dur = 3.2 + (idx % 5) * 0.35;
-  const begin = (idx * 0.27) % 3.0;
-  anim.setAttribute('dur', `${dur.toFixed(2)}s`);
-  anim.setAttribute('begin', `${begin.toFixed(2)}s`);
-  anim.setAttribute('repeatCount', 'indefinite');
-  anim.setAttribute('additive', 'sum');
-  g.appendChild(anim);
-
   return g;
 }
 
