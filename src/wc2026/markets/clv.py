@@ -82,6 +82,7 @@ class CLVRecord:
     closing_prob: Optional[float] = None
     closing_odds_decimal: Optional[float] = None
     closing_timestamp: Optional[str] = None
+    closing_source: Optional[str] = None     # "live_capture" | "backfill_invalid"
 
     # Frozen model prob — captured at the moment the closing line is set so
     # subsequent upserts with a live-refreshing model_prob don't corrupt CLV.
@@ -100,15 +101,31 @@ class CLVRecord:
     outcome: Optional[bool] = None           # True if the outcome occurred
     outcome_timestamp: Optional[str] = None
 
-    def set_closing(self, closing_odds_decimal: float, timestamp: str) -> None:
-        """Record the closing line and compute CLV metrics."""
+    def set_closing(self, closing_odds_decimal: float, timestamp: str,
+                    source: str = "live_capture") -> None:
+        """Record the closing line and compute CLV metrics.
+
+        Rejects closing odds timestamped AFTER the outcome was recorded —
+        that means the backfill fetched post-match prices which reflect the
+        known result, producing meaningless CLV numbers.
+        """
         if closing_odds_decimal <= 1.0:
             log.warning("CLV: invalid closing odds %.4f for %s %s",
                         closing_odds_decimal, self.match_id, self.market)
             return
+        # Guard: closing must precede outcome — post-match BDL odds are invalid
+        if self.outcome_timestamp and timestamp > self.outcome_timestamp:
+            log.warning(
+                "CLV: closing_timestamp %s is AFTER outcome_timestamp %s for %s %s — "
+                "rejecting post-match backfill odds (they reflect the known result)",
+                timestamp[:16], self.outcome_timestamp[:16], self.match_id, self.market,
+            )
+            self.closing_source = "backfill_invalid"
+            return
         self.closing_odds_decimal = round(closing_odds_decimal, 4)
         self.closing_prob = round(1.0 / closing_odds_decimal, 6)
         self.closing_timestamp = timestamp
+        self.closing_source = source
         # Freeze model_prob at closing time so later upserts don't corrupt CLV
         if self.frozen_model_prob is None:
             self.frozen_model_prob = self.model_prob
