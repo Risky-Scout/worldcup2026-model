@@ -61,6 +61,13 @@ DEPLOYMENTS = [
         "remote_file": "probability-distributions-live.html",
         "description": "Live in-play PMF distributions page (live copy)",
     },
+    # Live Pitch
+    {
+        "local": REPO_ROOT / "docs" / "live-pitch.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/live",
+        "remote_file": "live-pitch.html",
+        "description": "Live retro-turf pitch visualization page",
+    },
 ]
 
 

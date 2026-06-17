@@ -60,6 +60,290 @@ FTP_DIR_SPACE = "/tools/odds-scanner/predictions/world cup"
 FTP_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/live"
 LIVE_FILE = "wc-live.json"
 
+# Static jersey colors for World Cup teams (used by live-pitch.html via JSON output)
+TEAM_COLORS: dict[str, str] = {
+    "Argentina": "#75aadb", "France": "#002395", "Brazil": "#009c3b",
+    "England": "#cf091e", "Germany": "#dddddd", "Spain": "#aa151b",
+    "Portugal": "#006600", "Netherlands": "#ff6600", "USA": "#b22234",
+    "Mexico": "#006847", "Morocco": "#c1272d", "Japan": "#bc002d",
+    "Senegal": "#00853f", "Algeria": "#006233", "Norway": "#ef2b2d",
+    "Austria": "#ed2939", "Iraq": "#007a3d", "Jordan": "#007a3d",
+    "Croatia": "#ff0000", "Ghana": "#006b3f", "Panama": "#da121a",
+    "DR Congo": "#007fff", "Ecuador": "#ffdd00", "Uruguay": "#5eb6e4",
+    "Colombia": "#fcd116", "Chile": "#d52b1e", "Switzerland": "#ff0000",
+    "Belgium": "#000000", "Denmark": "#c60c30", "Sweden": "#006aa7",
+    "Canada": "#ff0000", "Costa Rica": "#002b7f", "Saudi Arabia": "#006c35",
+    "South Korea": "#c60c30", "Australia": "#ffcd00", "Cameroon": "#007a5e",
+    "Tunisia": "#e70013", "Nigeria": "#008751", "Ivory Coast": "#f77f00",
+    "Serbia": "#c6363c", "Poland": "#dc143c", "Ukraine": "#005bbc",
+    "Qatar": "#8d1b3d",
+}
+
+# Position → x-coordinate on home side of pitch (0–105)
+_POS_X_HOME: dict[str, float] = {
+    "GK": 3.0, "SW": 10.0, "CB": 15.0, "CD": 15.0, "RCB": 15.0, "LCB": 15.0,
+    "RB": 20.0, "LB": 20.0, "WB": 22.0, "RWB": 22.0, "LWB": 22.0,
+    "CDM": 32.0, "DM": 32.0, "CM": 40.0, "RM": 40.0, "LM": 40.0, "MF": 40.0,
+    "CAM": 45.0, "AM": 45.0, "OM": 45.0,
+    "RW": 50.0, "LW": 50.0, "W": 50.0, "SS": 48.0,
+    "ST": 55.0, "CF": 55.0, "FW": 55.0, "F": 55.0,
+}
+
+
+def _map_pos_to_coords(position: str, is_home: bool, y_index: int, y_total: int) -> tuple[float, float]:
+    """Map position abbreviation to (x, y) coordinates on the pitch (0–105, 0–68)."""
+    pos = position.upper().strip()
+    hx = _POS_X_HOME.get(pos, 35.0)
+    x = hx if is_home else round(105.0 - hx, 1)
+    y_margin = 7.0
+    if y_total <= 1:
+        y = 34.0
+    else:
+        y = y_margin + (y_index / (y_total - 1)) * (68.0 - 2 * y_margin)
+    return round(x, 1), round(y, 1)
+
+
+def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) -> dict:
+    """Extract possession, shots, xG, corners, cards from BDL team-stats rows."""
+    out: dict = {
+        "home_possession": 50, "away_possession": 50,
+        "home_shots": 0, "away_shots": 0,
+        "home_shots_on_target": 0, "away_shots_on_target": 0,
+        "home_xg": 0.0, "away_xg": 0.0,
+        "home_corners": 0, "away_corners": 0,
+        "home_yellow_cards": 0, "away_yellow_cards": 0,
+        "home_red_cards": 0, "away_red_cards": 0,
+    }
+    if not bdl_stats:
+        return out
+
+    for row in bdl_stats:
+        team_obj = row.get("team") or {}
+        team_name = team_obj.get("name") or team_obj.get("full_name") or ""
+        ha = str(row.get("home_away") or "").lower()
+        is_home = (team_name == home_name) or (ha == "home")
+        p = "home" if is_home else "away"
+
+        def _int(key: str, aliases: list[str] = []) -> int | None:
+            for k in [key] + aliases:
+                v = row.get(k)
+                if v is not None:
+                    try:
+                        return int(float(str(v)))
+                    except Exception:
+                        pass
+            return None
+
+        def _float(key: str, aliases: list[str] = []) -> float | None:
+            for k in [key] + aliases:
+                v = row.get(k)
+                if v is not None:
+                    try:
+                        return float(str(v).replace("%", ""))
+                    except Exception:
+                        pass
+            return None
+
+        poss = _float("possession", ["ball_possession", "possession_pct"])
+        if poss is not None:
+            out[f"{p}_possession"] = round(poss, 1)
+
+        shots = _int("shots", ["total_shots", "shots_total"])
+        if shots is not None:
+            out[f"{p}_shots"] = shots
+
+        sot = _int("shots_on_goal", ["shots_on_target", "shots_on"])
+        if sot is not None:
+            out[f"{p}_shots_on_target"] = sot
+
+        xg = _float("expected_goals", ["xg", "xG"])
+        if xg is not None:
+            out[f"{p}_xg"] = round(xg, 3)
+
+        corners = _int("corners", ["corner_kicks"])
+        if corners is not None:
+            out[f"{p}_corners"] = corners
+
+        yellow = _int("yellow_cards", ["yellowcards"])
+        if yellow is not None:
+            out[f"{p}_yellow_cards"] = yellow
+
+        red = _int("red_cards", ["redcards"])
+        if red is not None:
+            out[f"{p}_red_cards"] = red
+
+    # Sync possession to sum to 100 when only one side was updated
+    hp, ap = out["home_possession"], out["away_possession"]
+    if hp != 50 and ap == 50:
+        out["away_possession"] = round(100.0 - hp, 1)
+    elif ap != 50 and hp == 50:
+        out["home_possession"] = round(100.0 - ap, 1)
+
+    return out
+
+
+def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
+    """Build shots[] from BDL shot rows, mapping coordinates to pitch space."""
+    if not bdl_shots:
+        return []
+
+    shots = []
+    for row in bdl_shots:
+        team_obj = row.get("team") or {}
+        team_name = team_obj.get("name") or team_obj.get("full_name") or ""
+        ha = str(row.get("home_away") or "").lower()
+        is_home = (team_name == home_name) or (ha == "home")
+
+        player = row.get("player") or {}
+        player_name = player.get("display_name") or player.get("name") or ""
+        jersey = str(player.get("jersey_number") or player.get("number") or "")
+
+        def _coord(keys: list[str], default: float, pitch_max: float) -> float:
+            for k in keys:
+                v = row.get(k)
+                if v is not None:
+                    try:
+                        fv = float(v)
+                        # If value appears to be a percentage (0–100) rather than meters
+                        if 0 <= fv <= 100 and pitch_max > 100:
+                            fv = fv * pitch_max / 100.0
+                        return round(fv, 2)
+                    except Exception:
+                        pass
+            return default
+
+        x = _coord(["x", "location_x", "position_x", "coord_x"], 52.5, 105.0)
+        y = _coord(["y", "location_y", "position_y", "coord_y"], 34.0, 68.0)
+        xg_val = 0.0
+        for k in ["xg", "expected_goals", "xG"]:
+            if row.get(k) is not None:
+                try:
+                    xg_val = float(row[k]); break
+                except Exception:
+                    pass
+        xgot_val = 0.0
+        for k in ["xgot", "expected_goals_on_target", "xGoT"]:
+            if row.get(k) is not None:
+                try:
+                    xgot_val = float(row[k]); break
+                except Exception:
+                    pass
+
+        result_str = str(row.get("result") or row.get("type") or row.get("shot_result") or "").lower()
+        on_target = result_str in ("goal", "saved", "saved_shot", "on_target", "on target")
+
+        minute = 0
+        for k in ["minute", "clock_minute", "match_minute"]:
+            if row.get(k) is not None:
+                try:
+                    minute = int(row[k]); break
+                except Exception:
+                    pass
+
+        shots.append({
+            "minute": minute,
+            "team": home_name if is_home else away_name,
+            "is_home": is_home,
+            "player_name": player_name,
+            "player_jersey": jersey,
+            "x": max(0.5, min(x, 104.5)),
+            "y": max(0.5, min(y, 67.5)),
+            "xg": round(xg_val, 3),
+            "xgot": round(xgot_val, 3),
+            "on_target": on_target,
+            "result": result_str,
+        })
+
+    return sorted(shots, key=lambda s: s["minute"])
+
+
+def _extract_events(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
+    """Build events[] from shots that resulted in goals."""
+    if not bdl_shots:
+        return []
+    events = []
+    for row in bdl_shots:
+        result_str = str(row.get("result") or row.get("shot_result") or "").lower()
+        if result_str != "goal":
+            continue
+        team_obj = row.get("team") or {}
+        team_name = team_obj.get("name") or team_obj.get("full_name") or ""
+        ha = str(row.get("home_away") or "").lower()
+        is_home = (team_name == home_name) or (ha == "home")
+        player = row.get("player") or {}
+        player_name = player.get("display_name") or player.get("name") or ""
+        jersey = str(player.get("jersey_number") or player.get("number") or "")
+        minute = 0
+        for k in ["minute", "clock_minute", "match_minute"]:
+            if row.get(k) is not None:
+                try:
+                    minute = int(row[k]); break
+                except Exception:
+                    pass
+        events.append({
+            "minute": minute,
+            "type": "goal",
+            "team": home_name if is_home else away_name,
+            "player_name": player_name,
+            "player_jersey": jersey,
+            "description": f"Goal — {player_name or (home_name if is_home else away_name)}",
+        })
+    return sorted(events, key=lambda e: e["minute"])
+
+
+def _load_lineup_for_match(
+    mid: str, home: str, away: str, date: str
+) -> tuple[list[dict], list[dict]]:
+    """
+    Load starting lineup from published data and map positions to pitch coordinates.
+    Scans today ±2 days to handle pipeline timing variance.
+    """
+    from datetime import date as _date, timedelta
+    base = _date.fromisoformat(date)
+
+    for delta in range(-1, 3):
+        d = (base + timedelta(days=delta)).isoformat()
+        pub_path = REPO_ROOT / "data" / "published" / f"{d}.json"
+        if not pub_path.exists():
+            continue
+        try:
+            doc = json.loads(pub_path.read_text())
+        except Exception:
+            continue
+
+        for m in doc.get("matches", []):
+            m_id = str(m.get("match_id", ""))
+            m_home = m.get("home_team", "")
+            m_away = m.get("away_team", "")
+            if m_id != mid and f"{m_home}|{m_away}" != f"{home}|{away}":
+                continue
+
+            raw_lineups = m.get("lineups") or m.get("lineup") or {}
+            home_raw = raw_lineups.get("home") or raw_lineups.get(m_home) or []
+            away_raw = raw_lineups.get("away") or raw_lineups.get(m_away) or []
+
+            def build_lineup(players: list, is_home: bool) -> list[dict]:
+                pos_groups: dict[str, list] = {}
+                for p in players:
+                    pos = str(p.get("position") or p.get("pos") or "CM").upper()
+                    pos_groups.setdefault(pos, []).append(p)
+                result: list[dict] = []
+                for pos, group in pos_groups.items():
+                    for i, p in enumerate(group):
+                        x, y = _map_pos_to_coords(pos, is_home, i, len(group))
+                        result.append({
+                            "name": p.get("display_name") or p.get("name") or "",
+                            "jersey_number": str(p.get("jersey_number") or p.get("number") or ""),
+                            "position": pos,
+                            "x": x,
+                            "y": y,
+                        })
+                return result
+
+            return build_lineup(home_raw, True), build_lineup(away_raw, False)
+
+    return [], []
+
 
 def _load_pregame_data(date: str) -> tuple[dict, dict]:
     """
@@ -368,6 +652,40 @@ def run_live_snapshot() -> dict:
                     _pregame_fallback, home, away,
                 )
                 d["live_edge"] = live_edge
+
+                # Pitch visualization enrichment — shots, stats, lineup
+                try:
+                    match_stats = _extract_team_stats(bdl_stats, home, away)
+                    shots_list = _extract_shot_list(bdl_shots, home, away)
+                    events_list = _extract_events(bdl_shots, home, away)
+                    lineup_home, lineup_away = _load_lineup_for_match(mid, home, away, today_et)
+                    d.update({
+                        "home_possession":      match_stats["home_possession"],
+                        "away_possession":      match_stats["away_possession"],
+                        "home_shots":           match_stats["home_shots"],
+                        "away_shots":           match_stats["away_shots"],
+                        "home_shots_on_target": match_stats["home_shots_on_target"],
+                        "away_shots_on_target": match_stats["away_shots_on_target"],
+                        "home_xg":              match_stats["home_xg"],
+                        "away_xg":              match_stats["away_xg"],
+                        "home_corners":         match_stats["home_corners"],
+                        "away_corners":         match_stats["away_corners"],
+                        "home_yellow_cards":    match_stats["home_yellow_cards"],
+                        "away_yellow_cards":    match_stats["away_yellow_cards"],
+                        "home_red_cards":       match_stats["home_red_cards"],
+                        "away_red_cards":       match_stats["away_red_cards"],
+                        "shots":                shots_list,
+                        "events":               events_list,
+                        "lineup_home":          lineup_home,
+                        "lineup_away":          lineup_away,
+                        "home_color":           TEAM_COLORS.get(home, "#1a56db"),
+                        "away_color":           TEAM_COLORS.get(away, "#e63946"),
+                    })
+                    log.debug("Pitch data: %d shots, %d events, %d+%d lineup players",
+                              len(shots_list), len(events_list),
+                              len(lineup_home), len(lineup_away))
+                except Exception as enrich_exc:
+                    log.warning("Pitch enrichment failed for %s vs %s: %s", home, away, enrich_exc)
 
                 results.append(d)
                 log.info("  Live PMF OK: %s vs %s  min=%.0f score=%d-%d hw=%.3f dr=%.3f aw=%.3f",

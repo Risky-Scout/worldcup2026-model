@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WC 2026 Live Pitch · Wizard of Odds</title>
+<style>
+:root {
+  --bg:#1a1a1a;
+  --panel:#1e1e1e;
+  --panel-2:#222222;
+  --border:#2d2d2d;
+  --border-2:#3a3a3a;
+  --text:#d4c5a9;
+  --text-dim:#8a7a68;
+  --text-muted:#5a4a3a;
+  --gold:#c9a227;
+  --gold-dim:rgba(201,162,39,.15);
+  --live:#cc3333;
+  --live-dim:rgba(204,51,51,.15);
+  --green:#4a8f4a;
+  --pitch-base:#1e5c2e;
+  --pitch-stripe:#245f33;
+  --pitch-line:#e8ddb5;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html,body{
+  background:#1a1a1a;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.008) 2px,rgba(255,255,255,.008) 4px);
+  color:var(--text);
+  font-family:Georgia,'Times New Roman',serif;
+  min-height:100vh;
+}
+
+header{
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,#111 0%,var(--bg) 100%);
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+}
+.logo{display:flex;align-items:baseline;gap:10px;}
+.logo-mark{font-size:26px;font-weight:700;color:var(--gold);font-style:italic;}
+.logo-name{font-size:18px;font-weight:400;font-style:italic;}
+.logo-tag{font-family:'Courier New',monospace;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.15em;padding-left:10px;border-left:1px solid var(--border);}
+.nav{display:flex;gap:6px;flex-wrap:wrap;}
+.nav a{
+  color:var(--text-dim);text-decoration:none;
+  padding:6px 14px;border-radius:3px;
+  font-family:'Courier New',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:.12em;
+  border:1px solid var(--border);
+  transition:all .15s;
+}
+.nav a:hover{color:var(--text);border-color:var(--border-2);}
+.nav a.active{background:var(--live-dim);border-color:var(--live);color:var(--live);}
+
+/* ── Scoreboard ── */
+#scoreboard-bar{
+  background:linear-gradient(180deg,#141414 0%,#111 100%);
+  border-bottom:1px solid var(--border);
+  padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+#scoreboard-teams{
+  display:flex;align-items:center;gap:14px;
+}
+.sb-team{font-size:16px;font-weight:700;letter-spacing:.03em;}
+.sb-score{
+  font-family:'Courier New',monospace;
+  font-size:30px;font-weight:700;
+  color:var(--text);
+  letter-spacing:.1em;
+  background:var(--panel);
+  padding:4px 16px;border-radius:4px;
+  border:1px solid var(--border-2);
+}
+.sb-sep{color:var(--text-muted);}
+.sb-clock{
+  font-family:'Courier New',monospace;
+  font-size:12px;font-weight:700;
+  color:var(--live);
+  background:var(--live-dim);
+  border:1px solid var(--live);
+  border-radius:3px;
+  padding:4px 10px;
+}
+.live-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--live-dim);border:1px solid var(--live);
+  border-radius:3px;padding:4px 10px;
+  font-family:'Courier New',monospace;font-size:10px;font-weight:700;
+  color:var(--live);text-transform:uppercase;letter-spacing:.1em;
+}
+.live-dot{
+  width:7px;height:7px;background:var(--live);border-radius:50%;
+  animation:pulse 1s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+
+#sb-probs{
+  display:flex;align-items:center;gap:10px;
+  font-family:'Courier New',monospace;font-size:11px;
+  color:var(--text-dim);
+}
+.sb-prob-bar{
+  display:flex;height:6px;border-radius:3px;overflow:hidden;width:140px;
+}
+.sb-prob-seg{height:100%;transition:width .6s ease;}
+
+/* ── Main layout ── */
+#main-wrap{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:0;
+  max-width:1400px;
+  margin:0 auto;
+  padding:16px 20px;
+  align-items:start;
+}
+
+/* ── Stats panel ── */
+#stats-panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+  position:sticky;
+  top:16px;
+}
+.stats-header{
+  padding:10px 14px;
+  background:var(--panel-2);
+  border-bottom:1px solid var(--border);
+  font-family:'Courier New',monospace;
+  font-size:9px;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  font-weight:700;
+}
+.stat-row{
+  display:flex;align-items:center;
+  padding:7px 14px;
+  border-bottom:1px solid rgba(45,45,45,.6);
+  gap:6px;
+}
+.stat-row:last-child{border-bottom:none;}
+.stat-home{
+  font-family:'Courier New',monospace;
+  font-size:12px;font-weight:700;
+  color:var(--text);
+  text-align:right;
+  flex:0 0 36px;
+}
+.stat-label{
+  flex:1;text-align:center;
+  font-family:'Courier New',monospace;
+  font-size:9px;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.1em;
+}
+.stat-away{
+  font-family:'Courier New',monospace;
+  font-size:12px;font-weight:700;
+  color:var(--text);
+  text-align:left;
+  flex:0 0 36px;
+}
+
+/* Possession bar */
+.poss-wrap{padding:10px 14px 8px;border-bottom:1px solid var(--border);}
+.poss-bar{
+  display:flex;height:8px;border-radius:4px;overflow:hidden;margin:5px 0;
+}
+.poss-home,.poss-away{height:100%;transition:width .6s ease;}
+.poss-labels{
+  display:flex;justify-content:space-between;
+  font-family:'Courier New',monospace;font-size:9px;color:var(--text-dim);
+}
+
+/* Win prob bar in stats */
+.win-prob-wrap{padding:8px 14px 10px;border-bottom:1px solid var(--border);}
+.win-prob-bar{
+  display:flex;height:12px;border-radius:3px;overflow:hidden;margin:5px 0;
+}
+.win-home,.win-draw,.win-away{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  font-family:'Courier New',monospace;font-size:8px;font-weight:700;
+  transition:width .6s ease;
+}
+.win-home{background:rgba(201,162,39,.3);color:var(--gold);}
+.win-draw{background:rgba(100,100,100,.25);color:var(--text-muted);}
+.win-away{background:rgba(96,140,200,.3);color:#7ab0e0;}
+.win-prob-labels{
+  display:flex;justify-content:space-between;
+  font-family:'Courier New',monospace;font-size:9px;color:var(--text-dim);
+}
+
+/* ── Pitch container ── */
+#pitch-container{
+  position:relative;
+  padding-left:16px;
+}
+#pitch-svg-wrap{
+  background:#0d0d0d;
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 4px 24px rgba(0,0,0,.6);
+}
+#pitch-svg{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+/* Shot tooltip */
+#shot-tooltip{
+  position:fixed;
+  display:none;
+  background:#111;
+  border:1px solid var(--border-2);
+  color:var(--text);
+  padding:5px 10px;
+  font-family:'Courier New',monospace;
+  font-size:11px;
+  border-radius:3px;
+  pointer-events:none;
+  z-index:1000;
+  white-space:nowrap;
+}
+
+/* ── No-live overlay ── */
+#no-live-state{
+  display:none;
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:4px;
+  z-index:20;
+}
+#no-live-message{
+  text-align:center;
+  padding:20px;
+}
+#no-live-message h2{
+  font-size:18px;
+  font-weight:400;
+  color:var(--text-dim);
+  margin-bottom:8px;
+}
+#no-live-message p{
+  font-family:'Courier New',monospace;
+  font-size:11px;
+  color:var(--text-muted);
+}
+
+/* Dimmed pitch */
+#pitch-container.no-live #pitch-svg-wrap{
+  opacity:.35;
+}
+
+/* Upcoming list (no-live state) */
+#upcoming-wrap{
+  display:none;
+  max-width:1400px;
+  margin:0 auto;
+  padding:0 20px 16px;
+}
+.upcoming-header{
+  font-family:'Courier New',monospace;
+  font-size:9px;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.15em;
+  padding:10px 0 6px;
+}
+.upcoming-match-card{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:3px;padding:10px 14px;
+  margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+}
+.upcoming-match-teams{font-size:14px;font-weight:500;}
+.upcoming-match-time{
+  font-family:'Courier New',monospace;font-size:10px;color:var(--text-dim);
+  margin-top:3px;
+}
+.upcoming-countdown{
+  font-family:'Courier New',monospace;font-size:13px;
+  color:var(--gold);font-weight:700;
+  text-align:right;
+}
+.upcoming-probs{
+  font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);
+  margin-top:2px;
+}
+
+/* ── Event feed ── */
+#event-feed-section{
+  max-width:1400px;
+  margin:0 auto;
+  padding:0 20px 12px;
+}
+.event-feed-hdr{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0 6px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:6px;
+}
+.event-feed-title{
+  font-family:'Courier New',monospace;
+  font-size:9px;color:var(--gold);
+  text-transform:uppercase;letter-spacing:.18em;font-weight:700;
+}
+#event-feed{
+  max-height:160px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.event-item{
+  display:flex;align-items:baseline;gap:8px;
+  padding:5px 4px;
+  border-bottom:1px solid rgba(45,45,45,.5);
+  font-family:'Courier New',monospace;
+  font-size:11px;
+  animation:fadeSlideIn .4s ease;
+}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+.event-item:last-child{border-bottom:none;}
+.event-min{color:var(--text-muted);flex-shrink:0;min-width:26px;text-align:right;}
+.event-icon{flex-shrink:0;font-size:12px;}
+.event-desc{color:var(--text-dim);flex:1;}
+.event-desc strong{color:var(--text);}
+
+/* ── Disclaimer ── */
+#disclaimer{
+  max-width:1400px;
+  margin:8px auto 16px;
+  padding:0 20px;
+  font-family:'Courier New',monospace;
+  font-size:9px;color:var(--text-muted);
+  text-align:center;
+}
+
+footer{
+  text-align:center;padding:20px;
+  color:var(--text-muted);
+  font-family:'Courier New',monospace;
+  font-size:9px;text-transform:uppercase;letter-spacing:.12em;
+  border-top:1px solid var(--border);
+}
+
+/* ── Responsive ── */
+@media(max-width:860px){
+  #main-wrap{grid-template-columns:1fr;padding:10px 12px;}
+  #pitch-container{padding-left:0;padding-top:12px;}
+  #stats-panel{position:static;}
+  #scoreboard-bar{padding:10px 12px;}
+  #event-feed-section,#upcoming-wrap{padding-left:12px;padding-right:12px;}
+}
+@media(max-width:480px){
+  .sb-score{font-size:22px;}
+  .sb-team{font-size:13px;}
+}
+
+/* ── Loading ── */
+#loading-state{
+  max-width:1400px;margin:60px auto;
+  text-align:center;
+  font-family:'Courier New',monospace;font-size:11px;color:var(--text-muted);
+}
+.spinner{
+  display:inline-block;width:18px;height:18px;
+  border:2px solid var(--border-2);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .8s linear infinite;
+  margin-bottom:12px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="app-root">
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">WC 2026</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match.html">WC Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html">PMF Dist.</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html">Live PMF</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/live-pitch.html" class="active">Live Pitch ⚽</a>
+  </nav>
+</header>
+
+<!-- Scoreboard -->
+<div id="scoreboard-bar" style="display:none;">
+  <div id="scoreboard-teams">
+    <span class="sb-team" id="sb-home">Home</span>
+    <span class="sb-score">
+      <span id="sb-home-score">0</span>
+      <span class="sb-sep"> – </span>
+      <span id="sb-away-score">0</span>
+    </span>
+    <span class="sb-team" id="sb-away">Away</span>
+    <span class="sb-clock" id="sb-clock" style="margin-left:8px;">0'</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div id="sb-probs">
+      <span id="sb-prob-home-label" style="font-family:'Courier New',monospace;font-size:10px;"></span>
+      <div class="sb-prob-bar">
+        <div class="sb-prob-seg" id="sb-phome" style="background:var(--gold);opacity:.6;"></div>
+        <div class="sb-prob-seg" id="sb-pdraw" style="background:#555;opacity:.6;"></div>
+        <div class="sb-prob-seg" id="sb-paway" style="background:#5080b0;opacity:.6;"></div>
+      </div>
+      <span id="sb-prob-away-label" style="font-family:'Courier New',monospace;font-size:10px;"></span>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>Live</div>
+  </div>
+</div>
+
+<!-- Loading state -->
+<div id="loading-state">
+  <div class="spinner"></div><br>
+  Connecting to live engine…
+</div>
+
+<!-- Main content (hidden until data loads) -->
+<div id="content-wrap" style="display:none;">
+  <div id="main-wrap">
+    <!-- Stats panel -->
+    <aside id="stats-panel">
+      <div class="stats-header">Match Stats</div>
+
+      <div class="win-prob-wrap">
+        <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Win Probability</div>
+        <div class="win-prob-bar">
+          <div class="win-home" id="sp-wh"></div>
+          <div class="win-draw" id="sp-wd"></div>
+          <div class="win-away" id="sp-wa"></div>
+        </div>
+        <div class="win-prob-labels">
+          <span id="sp-wh-lbl">—</span>
+          <span>Draw</span>
+          <span id="sp-wa-lbl">—</span>
+        </div>
+      </div>
+
+      <div class="poss-wrap">
+        <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Possession</div>
+        <div class="poss-bar">
+          <div class="poss-home" id="sp-ph" style="background:var(--gold);opacity:.65;"></div>
+          <div class="poss-away" id="sp-pa" style="background:#5080b0;opacity:.55;"></div>
+        </div>
+        <div class="poss-labels">
+          <span id="sp-ph-lbl">50%</span>
+          <span id="sp-pa-lbl">50%</span>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-home" id="sp-shots-h">—</span>
+        <span class="stat-label">Shots</span>
+        <span class="stat-away" id="sp-shots-a">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-home" id="sp-sot-h">—</span>
+        <span class="stat-label">On Target</span>
+        <span class="stat-away" id="sp-sot-a">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-home" id="sp-xg-h">—</span>
+        <span class="stat-label">xG</span>
+        <span class="stat-away" id="sp-xg-a">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-home" id="sp-corners-h">—</span>
+        <span class="stat-label">Corners</span>
+        <span class="stat-away" id="sp-corners-a">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-home" id="sp-yc-h" style="color:#d4a017;">—</span>
+        <span class="stat-label">🟨 Yellow</span>
+        <span class="stat-away" id="sp-yc-a" style="color:#d4a017;">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-home" id="sp-rc-h" style="color:#c0392b;">—</span>
+        <span class="stat-label">🟥 Red</span>
+        <span class="stat-away" id="sp-rc-a" style="color:#c0392b;">—</span>
+      </div>
+    </aside>
+
+    <!-- Pitch -->
+    <div id="pitch-container">
+      <div id="pitch-svg-wrap">
+        <!-- SVG injected by JS -->
+      </div>
+      <div id="no-live-state" style="display:none;">
+        <div id="no-live-message">
+          <h2>No live matches right now</h2>
+          <p>The pitch activates when a World Cup match is in play.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming matches -->
+  <div id="upcoming-wrap">
+    <div class="upcoming-header">Up Next Today</div>
+    <div id="upcoming-list"></div>
+  </div>
+
+  <!-- Event feed -->
+  <div id="event-feed-section">
+    <div class="event-feed-hdr">
+      <span class="event-feed-title">Live Events</span>
+      <span id="event-feed-meta" style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);"></span>
+    </div>
+    <div id="event-feed"></div>
+  </div>
+
+  <p id="disclaimer">
+    Player positions reflect tactical formations and shot data from BallDontLie API.
+    Real-time GPS tracking requires a licensed tracking data provider.
+  </p>
+</div>
+
+<div id="shot-tooltip"></div>
+
+<footer>
+  Live Pitch · WC 2026 · Updates every 60s · Not financial advice
+</footer>
+
+<script>
+'use strict';
+
+// ── Team colors ──────────────────────────────────────────────────────────────
+const TEAM_COLORS = {
+  'Argentina':   '#75aadb',
+  'France':      '#002395',
+  'Brazil':      '#009c3b',
+  'England':     '#cf091e',
+  'Germany':     '#dddddd',
+  'Spain':       '#aa151b',
+  'Portugal':    '#006600',
+  'Netherlands': '#ff6600',
+  'USA':         '#b22234',
+  'Mexico':      '#006847',
+  'Morocco':     '#c1272d',
+  'Japan':       '#bc002d',
+  'Senegal':     '#00853f',
+  'Algeria':     '#006233',
+  'Norway':      '#ef2b2d',
+  'Austria':     '#ed2939',
+  'Iraq':        '#007a3d',
+  'Jordan':      '#007a3d',
+  'Croatia':     '#ff0000',
+  'Ghana':       '#006b3f',
+  'Panama':      '#da121a',
+  'DR Congo':    '#007fff',
+  'Ecuador':     '#ffdd00',
+  'Uruguay':     '#5eb6e4',
+  'Colombia':    '#fcd116',
+  'Chile':       '#d52b1e',
+  'Switzerland': '#ff0000',
+  'Belgium':     '#000000',
+  'Denmark':     '#c60c30',
+  'Sweden':      '#006aa7',
+  'Poland':      '#dc143c',
+  'Ukraine':     '#005bbc',
+  'Serbia':      '#c6363c',
+  'Czech Rep':   '#d7141a',
+  'Scotland':    '#005eb8',
+  'Wales':       '#c8102e',
+  'Iran':        '#239f40',
+  'Saudi Arabia':'#006c35',
+  'South Korea': '#c60c30',
+  'Australia':   '#ffcd00',
+  'Cameroon':    '#007a5e',
+  'Tunisia':     '#e70013',
+  'Nigeria':     '#008751',
+  'Ivory Coast': '#f77f00',
+  'Egypt':       '#c8102e',
+  'Venezuela':   '#cf142b',
+  'Paraguay':    '#d52b1e',
+  'Bolivia':     '#007a3d',
+  'Peru':        '#d91023',
+  'Canada':      '#ff0000',
+  'Costa Rica':  '#002b7f',
+  'Honduras':    '#0073cf',
+  'Guatemala':   '#4997d0',
+  'El Salvador': '#0f47af',
+  'Haiti':       '#00209f',
+  'Jamaica':     '#000000',
+  'Cuba':        '#002a8f',
+  'Qatar':       '#8d1b3d',
+  'UAE':         '#00732f',
+  'Uzbekistan':  '#1eb53a',
+  'Thailand':    '#a51931',
+  'China':       '#de2910',
+  'New Zealand': '#000000',
+};
+
+function getColor(team) {
+  return TEAM_COLORS[team] || '#1a56db';
+}
+
+// ── Data URLs ────────────────────────────────────────────────────────────────
+const DATA_URLS = [
+  './wc-live.json',
+  '../wc-live.json',
+  'https://sportsodds.wizardofodds.com/tools/odds-scanner/predictions/worldcup/wc-live.json',
+  'https://sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/live/wc-live.json',
+];
+const REFRESH_MS = 60000;
+
+// ── State ────────────────────────────────────────────────────────────────────
+let pollTimer = null;
+let countdownTimer = null;
+let countdownSecs = REFRESH_MS / 1000;
+let currentMatch = null;
+let lastShotIds = new Set();
+
+// ── Utility ──────────────────────────────────────────────────────────────────
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function pct(n,d=1){if(n==null||isNaN(+n))return'—';return(+n).toFixed(d)+'%';}
+function fmt(n,d=2){if(n==null||isNaN(+n))return'—';return(+n).toFixed(d);}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+// ── Static pitch SVG ─────────────────────────────────────────────────────────
+// Dimensions: pitch 105×68 (FIFA meters), viewBox extended for goals + margin
+const VB = '-3 -2 111 72';
+const LW  = '0.3';  // line stroke-width
+const LC  = '#e8ddb5';  // line color
+const G1  = '#1e5c2e';  // grass base
+const G2  = '#245f33';  // grass stripe
+
+function buildPitchSVG() {
+  // Grass stripes — 7 bands of 15m
+  let stripes = '';
+  for (let i = 0; i < 7; i++) {
+    stripes += `<rect x="${i*15}" y="0" width="15" height="68" fill="${i%2===0?G1:G2}"/>`;
+  }
+
+  // Corner flags
+  const fc = '#c9a227';
+  const flags = [
+    `<line x1="0" y1="0" x2="0" y2="-1.6" stroke="${fc}" stroke-width="0.22"/>
+     <polygon points="0,-1.6 0.9,-1.2 0,-0.8" fill="${fc}"/>`,
+    `<line x1="105" y1="0" x2="105" y2="-1.6" stroke="${fc}" stroke-width="0.22"/>
+     <polygon points="105,-1.6 104.1,-1.2 105,-0.8" fill="${fc}"/>`,
+    `<line x1="0" y1="68" x2="0" y2="69.6" stroke="${fc}" stroke-width="0.22"/>
+     <polygon points="0,69.6 0.9,69.2 0,68.8" fill="${fc}"/>`,
+    `<line x1="105" y1="68" x2="105" y2="69.6" stroke="${fc}" stroke-width="0.22"/>
+     <polygon points="105,69.6 104.1,69.2 105,68.8" fill="${fc}"/>`,
+  ].join('');
+
+  return `<svg id="pitch-svg" viewBox="${VB}" xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- Net grid pattern -->
+    <pattern id="net-pat" x="0" y="0" width="0.5" height="0.5" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0.5" y2="0" stroke="rgba(210,210,210,.28)" stroke-width="0.05"/>
+      <line x1="0" y1="0" x2="0" y2="0.5" stroke="rgba(210,210,210,.28)" stroke-width="0.05"/>
+    </pattern>
+    <!-- Player drop shadow -->
+    <filter id="pshadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0.35" stdDeviation="0.45" flood-color="rgba(0,0,0,.75)"/>
+    </filter>
+    <!-- Pitch vignette -->
+    <radialGradient id="vig-grad" cx="50%" cy="50%" r="68%" gradientUnits="objectBoundingBox">
+      <stop offset="45%" stop-color="transparent" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.52"/>
+    </radialGradient>
+    <!-- Clip for left penalty arc (only outside penalty area) -->
+    <clipPath id="lparc-clip">
+      <rect x="16.5" y="-5" width="92" height="78"/>
+    </clipPath>
+    <!-- Clip for right penalty arc -->
+    <clipPath id="rparc-clip">
+      <rect x="-5" y="-5" width="93.5" height="78"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background base -->
+  <rect x="-3" y="-2" width="111" height="72" fill="${G1}"/>
+  <!-- Grass stripes -->
+  ${stripes}
+
+  <!-- Goal nets -->
+  <rect x="-2.44" y="30.34" width="2.44" height="7.32" fill="url(#net-pat)" stroke="${LC}" stroke-width="0.2" opacity="0.7"/>
+  <rect x="105" y="30.34" width="2.44" height="7.32" fill="url(#net-pat)" stroke="${LC}" stroke-width="0.2" opacity="0.7"/>
+  <!-- Goal posts -->
+  <line x1="0" y1="30.34" x2="0" y2="37.66" stroke="${LC}" stroke-width="0.55"/>
+  <line x1="0" y1="30.34" x2="-2.44" y2="30.34" stroke="${LC}" stroke-width="0.4"/>
+  <line x1="0" y1="37.66" x2="-2.44" y2="37.66" stroke="${LC}" stroke-width="0.4"/>
+  <line x1="105" y1="30.34" x2="105" y2="37.66" stroke="${LC}" stroke-width="0.55"/>
+  <line x1="105" y1="30.34" x2="107.44" y2="30.34" stroke="${LC}" stroke-width="0.4"/>
+  <line x1="105" y1="37.66" x2="107.44" y2="37.66" stroke="${LC}" stroke-width="0.4"/>
+
+  <!-- Pitch boundary -->
+  <rect x="0" y="0" width="105" height="68" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Halfway line -->
+  <line x1="52.5" y1="0" x2="52.5" y2="68" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Center circle -->
+  <circle cx="52.5" cy="34" r="9.15" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Center spot -->
+  <circle cx="52.5" cy="34" r="0.4" fill="${LC}"/>
+
+  <!-- Left penalty area -->
+  <rect x="0" y="13.84" width="16.5" height="40.32" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Left goal area -->
+  <rect x="0" y="24.84" width="5.5" height="18.32" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Left penalty spot -->
+  <circle cx="11" cy="34" r="0.4" fill="${LC}"/>
+  <!-- Left penalty arc (clipped to outside penalty area) -->
+  <circle cx="11" cy="34" r="9.15" fill="none" stroke="${LC}" stroke-width="${LW}" clip-path="url(#lparc-clip)"/>
+
+  <!-- Right penalty area -->
+  <rect x="88.5" y="13.84" width="16.5" height="40.32" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Right goal area -->
+  <rect x="99.5" y="24.84" width="5.5" height="18.32" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <!-- Right penalty spot -->
+  <circle cx="94" cy="34" r="0.4" fill="${LC}"/>
+  <!-- Right penalty arc -->
+  <circle cx="94" cy="34" r="9.15" fill="none" stroke="${LC}" stroke-width="${LW}" clip-path="url(#rparc-clip)"/>
+
+  <!-- Corner arcs -->
+  <path d="M 1,0 A 1,1 0 0 1 0,1" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <path d="M 104,0 A 1,1 0 0 0 105,1" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <path d="M 0,67 A 1,1 0 0 0 1,68" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+  <path d="M 105,67 A 1,1 0 0 1 104,68" fill="none" stroke="${LC}" stroke-width="${LW}"/>
+
+  <!-- Corner flags -->
+  ${flags}
+
+  <!-- Dynamic layers (populated by JS) -->
+  <g id="possession-zone-layer"></g>
+  <g id="shot-markers-layer"></g>
+  <g id="away-formation"></g>
+  <g id="home-formation"></g>
+
+  <!-- Vignette overlay -->
+  <rect x="-3" y="-2" width="111" height="72" fill="url(#vig-grad)" pointer-events="none"/>
+</svg>`;
+}
+
+// ── Position mapping ──────────────────────────────────────────────────────────
+const POS_X_HOME = {
+  GK:3, SW:10,
+  CB:15, CD:15, RCB:15, LCB:15,
+  RB:20, LB:20, WB:22, RWB:22, LWB:22, RD:20, LD:20,
+  CDM:32, DM:32, CM:40, RM:40, LM:40, MF:40,
+  CAM:45, AM:45, OM:45,
+  RW:50, LW:50, W:50, SS:48,
+  ST:55, CF:55, FW:55, F:55,
+};
+
+function posXHome(pos) {
+  return POS_X_HOME[pos.toUpperCase()] || 35;
+}
+function posXAway(pos) {
+  const hx = posXHome(pos);
+  return 105 - hx;
+}
+
+function defaultFormation(isHome) {
+  // 4-3-3
+  const f = isHome ? [
+    {n:'1', pos:'GK', x:3, y:34},
+    {n:'2', pos:'RB', x:20, y:18},
+    {n:'5', pos:'CB', x:15, y:26},
+    {n:'4', pos:'CB', x:15, y:42},
+    {n:'3', pos:'LB', x:20, y:50},
+    {n:'8', pos:'CM', x:38, y:20},
+    {n:'6', pos:'CM', x:38, y:34},
+    {n:'10',pos:'CM', x:38, y:48},
+    {n:'7', pos:'RW', x:50, y:13},
+    {n:'9', pos:'ST', x:55, y:34},
+    {n:'11',pos:'LW', x:50, y:55},
+  ] : [
+    {n:'1', pos:'GK', x:102, y:34},
+    {n:'2', pos:'LB', x:85, y:18},
+    {n:'5', pos:'CB', x:90, y:26},
+    {n:'4', pos:'CB', x:90, y:42},
+    {n:'3', pos:'RB', x:85, y:50},
+    {n:'8', pos:'CM', x:67, y:20},
+    {n:'6', pos:'CM', x:67, y:34},
+    {n:'10',pos:'CM', x:67, y:48},
+    {n:'7', pos:'LW', x:55, y:13},
+    {n:'9', pos:'ST', x:50, y:34},
+    {n:'11',pos:'RW', x:55, y:55},
+  ];
+  return f;
+}
+
+function buildFormation(lineup, isHome) {
+  if (!lineup || lineup.length === 0) return defaultFormation(isHome);
+  // Group by position to spread y
+  const groups = {};
+  lineup.forEach(p => {
+    const pos = (p.position || 'CM').toUpperCase();
+    (groups[pos] = groups[pos] || []).push(p);
+  });
+
+  const result = [];
+  const yMargin = 7;
+  Object.entries(groups).forEach(([pos, players]) => {
+    const bx = isHome ? posXHome(pos) : posXAway(pos);
+    players.forEach((p, i) => {
+      let y;
+      if (players.length === 1) {
+        y = 34;
+      } else {
+        y = yMargin + (i / (players.length - 1)) * (68 - 2 * yMargin);
+      }
+      result.push({
+        n: String(p.jersey_number || p.number || ''),
+        pos,
+        x: p.x !== undefined ? p.x : bx,
+        y: p.y !== undefined ? p.y : y,
+        name: p.name || '',
+      });
+    });
+  });
+  return result;
+}
+
+// ── Create player token SVG element ──────────────────────────────────────────
+function createPlayerToken(player, color, idx) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'player-token');
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', player.x);
+  circle.setAttribute('cy', player.y);
+  circle.setAttribute('r', '1.8');
+  circle.setAttribute('fill', color);
+  circle.setAttribute('filter', 'url(#pshadow)');
+  circle.setAttribute('stroke', 'rgba(255,255,255,0.7)');
+  circle.setAttribute('stroke-width', '0.18');
+  g.appendChild(circle);
+
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.setAttribute('x', player.x);
+  text.setAttribute('y', player.y);
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('dominant-baseline', 'central');
+  text.setAttribute('font-family', 'Courier New, monospace');
+  text.setAttribute('font-size', '1.7');
+  text.setAttribute('font-weight', '700');
+  text.setAttribute('fill', '#ffffff');
+  text.setAttribute('pointer-events', 'none');
+  text.textContent = player.n.slice(0, 2);
+  g.appendChild(text);
+
+  // Wobble animation — unique per player
+  const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+  anim.setAttribute('attributeName', 'transform');
+  anim.setAttribute('type', 'translate');
+  const seed = idx * 7;
+  const dx1 = (((seed * 3) % 6) - 3) * 0.08;
+  const dy1 = (((seed * 5) % 6) - 3) * 0.08;
+  const dx2 = (((seed * 11) % 6) - 3) * 0.08;
+  const dy2 = (((seed * 13) % 6) - 3) * 0.08;
+  anim.setAttribute('values', `0,0; ${dx1.toFixed(3)},${dy1.toFixed(3)}; ${dx2.toFixed(3)},${dy2.toFixed(3)}; 0,0`);
+  const dur = 3.2 + (idx % 5) * 0.35;
+  const begin = (idx * 0.27) % 3.0;
+  anim.setAttribute('dur', `${dur.toFixed(2)}s`);
+  anim.setAttribute('begin', `${begin.toFixed(2)}s`);
+  anim.setAttribute('repeatCount', 'indefinite');
+  anim.setAttribute('additive', 'sum');
+  g.appendChild(anim);
+
+  return g;
+}
+
+// ── Render players ────────────────────────────────────────────────────────────
+function renderPlayers(homeLineup, awayLineup, homeColor, awayColor) {
+  const homeGroup = document.getElementById('home-formation');
+  const awayGroup = document.getElementById('away-formation');
+  if (!homeGroup || !awayGroup) return;
+  homeGroup.innerHTML = '';
+  awayGroup.innerHTML = '';
+
+  homeLineup.forEach((p, i) => {
+    homeGroup.appendChild(createPlayerToken(p, homeColor, i));
+  });
+  awayLineup.forEach((p, i) => {
+    awayGroup.appendChild(createPlayerToken(p, awayColor, i + 20));
+  });
+}
+
+// ── Formation shift on possession ─────────────────────────────────────────────
+let lastHomePoss = 50;
+function applyPossessionShift(homePoss) {
+  if (Math.abs(homePoss - lastHomePoss) < 3) return;
+  lastHomePoss = homePoss;
+
+  const homeGroup = document.getElementById('home-formation');
+  const awayGroup = document.getElementById('away-formation');
+  if (!homeGroup || !awayGroup) return;
+
+  const shift = clamp((homePoss - 50) * 0.1, -5, 5);
+  homeGroup.style.transition = 'transform 2s ease';
+  awayGroup.style.transition = 'transform 2s ease';
+  homeGroup.style.transform = `translateX(${shift}px)`;
+  awayGroup.style.transform = `translateX(${-shift}px)`;
+}
+
+// ── Possession zone ───────────────────────────────────────────────────────────
+function updatePossessionZone(homePoss, homeColor) {
+  const layer = document.getElementById('possession-zone-layer');
+  if (!layer) return;
+
+  // Center x: 50% → 52.5 (center), 100% → 70, 0% → 35
+  const cx = 52.5 + (homePoss - 50) * 0.37;
+  const cy = 34;
+  const rx = 12 + (Math.abs(homePoss - 50)) * 0.15;
+  const ry = 14;
+  const hex = homeColor.replace('#', '');
+  const r = parseInt(hex.substring(0,2)||'26',16);
+  const g = parseInt(hex.substring(2,4)||'90',16);
+  const b = parseInt(hex.substring(4,6)||'ff',16);
+
+  let el = layer.querySelector('ellipse');
+  if (!el) {
+    el = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    el.style.transition = 'cx 2s ease, cy 2s ease, rx 2s ease';
+    layer.appendChild(el);
+  }
+  el.setAttribute('cx', cx.toFixed(1));
+  el.setAttribute('cy', cy.toFixed(1));
+  el.setAttribute('rx', rx.toFixed(1));
+  el.setAttribute('ry', ry.toFixed(1));
+  el.setAttribute('fill', `rgba(${r},${g},${b},0.18)`);
+  el.setAttribute('pointer-events', 'none');
+}
+
+// ── Shot markers ──────────────────────────────────────────────────────────────
+function addShotMarker(shot, homeColor, awayColor) {
+  const layer = document.getElementById('shot-markers-layer');
+  if (!layer) return;
+
+  const shotId = `${shot.minute}-${shot.player_jersey}-${Math.round(shot.x)}-${Math.round(shot.y)}`;
+  if (lastShotIds.has(shotId)) return;
+  lastShotIds.add(shotId);
+
+  const color = shot.is_home ? homeColor : awayColor;
+  const xg = shot.xg || 0;
+  const r = clamp(0.5 + xg * 8, 0.5, 2.5);
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'shot-marker');
+  g.setAttribute('cursor', 'pointer');
+
+  const x = clamp(shot.x, 1, 104);
+  const y = clamp(shot.y, 1, 67);
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', x);
+  circle.setAttribute('cy', y);
+  circle.setAttribute('r', r);
+  if (shot.on_target) {
+    circle.setAttribute('fill', color);
+    circle.setAttribute('opacity', '1');
+  } else {
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', '0.25');
+    circle.setAttribute('opacity', '1');
+  }
+  g.appendChild(circle);
+
+  // Pop + fade animation
+  const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+  anim.setAttribute('attributeName', 'opacity');
+  anim.setAttribute('values', '0;1;1;1;0.4');
+  anim.setAttribute('keyTimes', '0;0.08;0.15;0.2;1');
+  anim.setAttribute('dur', '10s');
+  anim.setAttribute('fill', 'freeze');
+  g.appendChild(anim);
+
+  const scaleAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+  scaleAnim.setAttribute('attributeName', 'transform');
+  scaleAnim.setAttribute('type', 'scale');
+  scaleAnim.setAttribute('values', '0;1.3;1');
+  scaleAnim.setAttribute('keyTimes', '0;0.1;0.2');
+  scaleAnim.setAttribute('dur', '0.6s');
+  scaleAnim.setAttribute('fill', 'freeze');
+  scaleAnim.setAttribute('additive', 'sum');
+  g.appendChild(scaleAnim);
+
+  const tt = document.getElementById('shot-tooltip');
+  g.addEventListener('mouseenter', evt => {
+    tt.style.display = 'block';
+    tt.textContent = `${shot.minute}' Shot by #${shot.player_jersey||'?'} — xG: ${fmt(shot.xg,3)} ${shot.on_target?'(on target)':'(off target)'}`;
+    tt.style.left = (evt.clientX + 14) + 'px';
+    tt.style.top = (evt.clientY - 10) + 'px';
+  });
+  g.addEventListener('mousemove', evt => {
+    tt.style.left = (evt.clientX + 14) + 'px';
+    tt.style.top = (evt.clientY - 10) + 'px';
+  });
+  g.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+
+  layer.appendChild(g);
+}
+
+// ── Stats panel update ────────────────────────────────────────────────────────
+function setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updateStats(m) {
+  const hw = m.home_win_prob || (m.derived_markets||{}).home_win || 0;
+  const dr = m.draw_prob || (m.derived_markets||{}).draw || 0;
+  const aw = m.away_win_prob || (m.derived_markets||{}).away_win || 0;
+  const hwP = Math.round(hw * 100);
+  const drP = Math.round(dr * 100);
+  const awP = Math.round(aw * 100);
+
+  const spWh = document.getElementById('sp-wh');
+  const spWd = document.getElementById('sp-wd');
+  const spWa = document.getElementById('sp-wa');
+  if (spWh) { spWh.style.width = hwP + '%'; spWh.textContent = hwP >= 14 ? hwP + '%' : ''; }
+  if (spWd) { spWd.style.width = drP + '%'; spWd.textContent = drP >= 12 ? drP + '%' : ''; }
+  if (spWa) { spWa.style.width = awP + '%'; spWa.textContent = awP >= 14 ? awP + '%' : ''; }
+  setEl('sp-wh-lbl', m.home_team ? m.home_team.split(' ').slice(-1)[0] + ' ' + hwP + '%' : hwP + '%');
+  setEl('sp-wa-lbl', m.away_team ? m.away_team.split(' ').slice(-1)[0] + ' ' + awP + '%' : awP + '%');
+
+  const hp = m.home_possession ?? 50;
+  const ap = m.away_possession ?? (100 - hp);
+  const spPh = document.getElementById('sp-ph');
+  const spPa = document.getElementById('sp-pa');
+  if (spPh) spPh.style.width = hp + '%';
+  if (spPa) spPa.style.width = ap + '%';
+  setEl('sp-ph-lbl', hp.toFixed(0) + '%');
+  setEl('sp-pa-lbl', ap.toFixed(0) + '%');
+
+  setEl('sp-shots-h', m.home_shots ?? '—');
+  setEl('sp-shots-a', m.away_shots ?? '—');
+  setEl('sp-sot-h', m.home_shots_on_target ?? '—');
+  setEl('sp-sot-a', m.away_shots_on_target ?? '—');
+  setEl('sp-xg-h', m.home_xg != null ? fmt(m.home_xg) : '—');
+  setEl('sp-xg-a', m.away_xg != null ? fmt(m.away_xg) : '—');
+  setEl('sp-corners-h', m.home_corners ?? '—');
+  setEl('sp-corners-a', m.away_corners ?? '—');
+  setEl('sp-yc-h', m.home_yellow_cards ?? '—');
+  setEl('sp-yc-a', m.away_yellow_cards ?? '—');
+  setEl('sp-rc-h', m.home_red_cards ?? '—');
+  setEl('sp-rc-a', m.away_red_cards ?? '—');
+}
+
+// ── Scoreboard update ─────────────────────────────────────────────────────────
+function updateScoreboard(m, homeColor, awayColor) {
+  const bar = document.getElementById('scoreboard-bar');
+  if (bar) bar.style.display = '';
+
+  const sbHome = document.getElementById('sb-home');
+  const sbAway = document.getElementById('sb-away');
+  if (sbHome) { sbHome.textContent = m.home_team || 'Home'; sbHome.style.color = homeColor; }
+  if (sbAway) { sbAway.textContent = m.away_team || 'Away'; sbAway.style.color = awayColor; }
+  setEl('sb-home-score', m.current_home_goals ?? m.current_score?.home ?? 0);
+  setEl('sb-away-score', m.current_away_goals ?? m.current_score?.away ?? 0);
+  setEl('sb-clock', (m.clock_display || Math.round(m.regulation_minute || 0)) + "'");
+
+  const hw = m.home_win_prob || (m.derived_markets||{}).home_win || 0;
+  const dr = m.draw_prob || (m.derived_markets||{}).draw || 0;
+  const aw = m.away_win_prob || (m.derived_markets||{}).away_win || 0;
+  const sbPh = document.getElementById('sb-phome');
+  const sbPd = document.getElementById('sb-pdraw');
+  const sbPa = document.getElementById('sb-paway');
+  if (sbPh) sbPh.style.width = Math.round(hw*100) + '%';
+  if (sbPd) sbPd.style.width = Math.round(dr*100) + '%';
+  if (sbPa) sbPa.style.width = Math.round(aw*100) + '%';
+  setEl('sb-prob-home-label', Math.round(hw*100) + '%');
+  setEl('sb-prob-away-label', Math.round(aw*100) + '%');
+}
+
+// ── Event feed ────────────────────────────────────────────────────────────────
+const EVENT_ICONS = {
+  goal: '⚽', yellow_card: '🟨', red_card: '🟥',
+  substitution: '↕', corner: '🚩', penalty: '🥅',
+  offside: '🚫', foul: '⚠',
+};
+
+function buildEventFeed(events, homeTeam, awayTeam) {
+  const feed = document.getElementById('event-feed');
+  if (!feed) return;
+  if (!events || events.length === 0) {
+    feed.innerHTML = `<div style="padding:8px 4px;font-family:'Courier New',monospace;font-size:10px;color:var(--text-muted);">No events logged yet.</div>`;
+    return;
+  }
+  const sorted = [...events].sort((a, b) => (b.minute||0) - (a.minute||0));
+  feed.innerHTML = sorted.map(ev => {
+    const icon = EVENT_ICONS[ev.type] || '·';
+    const teamLabel = ev.team === homeTeam ? `<strong>${esc(ev.team)}</strong>` : `<span style="color:#7ab0e0">${esc(ev.team)}</span>`;
+    const playerPart = ev.player_name ? ` — ${esc(ev.player_name)}${ev.player_jersey ? ' #' + esc(ev.player_jersey) : ''}` : '';
+    return `<div class="event-item">
+      <span class="event-min">${ev.minute||'?'}'</span>
+      <span class="event-icon">${icon}</span>
+      <span class="event-desc">${teamLabel}${playerPart}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Synthesize events from goals (fallback when events[] is empty) ───────────
+function synthesizeEvents(m) {
+  const events = [];
+  const h0 = m.current_home_goals ?? 0;
+  const a0 = m.current_away_goals ?? 0;
+  const min = m.regulation_minute || 0;
+
+  // Create a rough event entry for current score
+  for (let i = 0; i < h0; i++) {
+    events.push({minute: Math.max(1, Math.round(min * (i+1) / Math.max(h0,1))), type:'goal', team: m.home_team, player_name:'', player_jersey:''});
+  }
+  for (let i = 0; i < a0; i++) {
+    events.push({minute: Math.max(1, Math.round(min * (i+1) / Math.max(a0,1))), type:'goal', team: m.away_team, player_name:'', player_jersey:''});
+  }
+  // Cards from stats
+  for (let i = 0; i < (m.home_yellow_cards||0); i++) {
+    events.push({minute: Math.max(1, Math.round(min * 0.6)), type:'yellow_card', team: m.home_team, player_name:'', player_jersey:''});
+  }
+  for (let i = 0; i < (m.away_yellow_cards||0); i++) {
+    events.push({minute: Math.max(1, Math.round(min * 0.65)), type:'yellow_card', team: m.away_team, player_name:'', player_jersey:''});
+  }
+  return events;
+}
+
+// ── Upcoming matches ──────────────────────────────────────────────────────────
+const countdownIntervals = {};
+
+function renderUpcoming(upcoming) {
+  const wrap = document.getElementById('upcoming-wrap');
+  const list = document.getElementById('upcoming-list');
+  if (!upcoming || upcoming.length === 0) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  if (wrap) wrap.style.display = 'block';
+  if (!list) return;
+
+  list.innerHTML = upcoming.map(m => {
+    const hw = m.home_win_prob || 0;
+    const dr = m.draw_prob || 0;
+    const aw = m.away_win_prob || 0;
+    return `<div class="upcoming-match-card">
+      <div>
+        <div class="upcoming-match-teams">${esc(m.home_team)} <span style="color:var(--text-muted)">vs</span> ${esc(m.away_team)}</div>
+        <div class="upcoming-match-time">Kickoff ${esc(m.kickoff_et)}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="upcoming-countdown" id="cd-${m.match_id}">—</div>
+        <div class="upcoming-probs">${Math.round(hw*100)}% / ${Math.round(dr*100)}% / ${Math.round(aw*100)}%</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  upcoming.forEach(m => {
+    if (countdownIntervals[m.match_id]) clearInterval(countdownIntervals[m.match_id]);
+    const el = document.getElementById('cd-' + m.match_id);
+    if (!el) return;
+    function tick() {
+      const diff = new Date(m.kickoff_utc) - Date.now();
+      if (diff <= 0) { el.textContent = 'Starting…'; return; }
+      const h = Math.floor(diff / 3600000);
+      const min = Math.floor((diff % 3600000) / 60000);
+      const sec = Math.floor((diff % 60000) / 1000);
+      el.textContent = h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+    }
+    tick();
+    countdownIntervals[m.match_id] = setInterval(tick, 1000);
+  });
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function render(data) {
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('content-wrap').style.display = '';
+
+  const live = data.live_matches || [];
+  const upcoming = data.upcoming_today || [];
+
+  renderUpcoming(upcoming);
+
+  if (live.length === 0) {
+    document.getElementById('scoreboard-bar').style.display = 'none';
+    document.getElementById('no-live-state').style.display = 'flex';
+    document.getElementById('pitch-container').classList.add('no-live');
+    document.getElementById('event-feed').innerHTML =
+      `<div style="padding:8px 4px;font-family:'Courier New',monospace;font-size:10px;color:var(--text-muted);">No live match.</div>`;
+    return;
+  }
+
+  document.getElementById('no-live-state').style.display = 'none';
+  document.getElementById('pitch-container').classList.remove('no-live');
+
+  const m = live[0];
+  currentMatch = m;
+
+  const homeColor = getColor(m.home_team);
+  const awayColor = getColor(m.away_team);
+
+  updateScoreboard(m, homeColor, awayColor);
+  updateStats(m);
+
+  const homePoss = m.home_possession ?? 50;
+  applyPossessionShift(homePoss);
+  updatePossessionZone(homePoss, homeColor);
+
+  const homeLineup = buildFormation(m.lineup_home, true);
+  const awayLineup = buildFormation(m.lineup_away, false);
+  renderPlayers(homeLineup, awayLineup, homeColor, awayColor);
+
+  const shots = m.shots || [];
+  shots.forEach(shot => addShotMarker(shot, homeColor, awayColor));
+
+  let events = m.events || [];
+  if (events.length === 0) events = synthesizeEvents(m);
+  buildEventFeed(events, m.home_team, m.away_team);
+}
+
+// ── Polling ───────────────────────────────────────────────────────────────────
+async function pollOnce() {
+  let data = null;
+  for (const url of DATA_URLS) {
+    try {
+      const r = await fetch(url + '?t=' + Date.now(), {signal: AbortSignal.timeout(5000)});
+      if (r.ok) { data = await r.json(); break; }
+    } catch(e) {}
+  }
+  if (!data) {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('content-wrap').style.display = '';
+    document.getElementById('no-live-state').style.display = 'flex';
+    document.getElementById('pitch-container').classList.add('no-live');
+    return;
+  }
+  render(data);
+}
+
+function startCountdown() {
+  countdownSecs = REFRESH_MS / 1000;
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdownSecs = Math.max(0, countdownSecs - 1);
+  }, 1000);
+}
+
+async function schedulePoll() {
+  clearTimeout(pollTimer);
+  await pollOnce();
+  startCountdown();
+  pollTimer = setTimeout(schedulePoll, REFRESH_MS);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  const wrap = document.getElementById('pitch-svg-wrap');
+  if (wrap) wrap.innerHTML = buildPitchSVG();
+  schedulePoll();
+}
+
+init();
+</script>
+
+<!-- Iframe height postMessage script -->
+<script>
+(function() {
+  if (window.self === window.top) { return; }
+  let lastSentHeight = 0;
+  function sendHeightToParent() {
+    try {
+      const body = document.body;
+      const html = document.documentElement;
+      if (!body || !html) return;
+      const contentWrapper = document.getElementById('app-root') || body;
+      const currentHeight = Math.ceil(contentWrapper.getBoundingClientRect().height || html.scrollHeight);
+      if (currentHeight > 0 && Math.abs(currentHeight - lastSentHeight) > 2) {
+        lastSentHeight = currentHeight;
+        window.parent.postMessage({ frameHeight: currentHeight }, 'https://wizardofodds.com');
+      }
+    } catch (error) {
+      console.warn('Skipped frame height calculation:', error.message);
+    }
+  }
+  window.addEventListener('load', sendHeightToParent);
+  document.addEventListener('DOMContentLoaded', sendHeightToParent);
+  document.addEventListener('click', function() { setTimeout(sendHeightToParent, 150); });
+  if (window.MutationObserver) {
+    const observer = new MutationObserver(sendHeightToParent);
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+  }
+  if (window.ResizeObserver) {
+    const resizeObserver = new ResizeObserver(sendHeightToParent);
+    resizeObserver.observe(document.body);
+  }
+  setInterval(sendHeightToParent, 1000);
+})();
+</script>
+
+</div><!-- #app-root -->
+</body>
+</html>
