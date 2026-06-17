@@ -103,12 +103,24 @@ def deploy() -> None:
             content = local_path.read_bytes()
             _ensure_remote_dir(ftp, d["remote_dir"])
             ftp.cwd(d["remote_dir"])
-            ftp.storbinary(f'STOR {d["remote_file"]}', io.BytesIO(content))
             remote_path = f'{d["remote_dir"]}/{d["remote_file"]}'
+
+            # Delete before upload so FTP permission errors on overwrite never block deploys
             try:
-                ftp.sendcmd(f"SITE CHMOD 775 {remote_path}")
+                ftp.delete(d["remote_file"])
             except Exception:
                 pass
+
+            ftp.storbinary(f'STOR {d["remote_file"]}', io.BytesIO(content))
+
+            # Set 755 so nginx can serve the file
+            for mode in ("755", "644"):
+                try:
+                    ftp.sendcmd(f"SITE CHMOD {mode} {remote_path}")
+                    break
+                except Exception:
+                    pass
+
             size_kb = len(content) / 1024
             print(f"  ✓ {d['description']}: {remote_path} ({size_kb:.1f} KB)")
 

@@ -333,19 +333,22 @@ async function loadData() {
   let data = null;
   for (const url of urls) {
     try {
-      const r = await fetch(url + '?t=' + Date.now());
       // #region agent log
-      fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:fetch',message:'fetch attempt',data:{url,status:r.status,ok:r.ok},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      console.log('[DEBUG-A] Fetching:', url);
+      // #endregion
+      const r = await fetch(url + '?t=' + Date.now(), { signal: AbortSignal.timeout(8000) });
+      // #region agent log
+      console.log('[DEBUG-A] Response:', url, r.status, r.ok);
       // #endregion
       if (r.ok) { data = await r.json(); break; }
     } catch (e) {
       // #region agent log
-      fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:fetch-error',message:'fetch failed',data:{url,error:String(e)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      console.warn('[DEBUG-A] Fetch error:', url, String(e));
       // #endregion
     }
   }
   // #region agent log
-  fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:loadData',message:'data loaded',data:{hasData:!!data,matchCount:data?.matches?.length??0,generatedAt:data?.generated_at??null},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+  console.log('[DEBUG-C] loadData result: hasData=' + !!data + ' matchCount=' + (data?.matches?.length ?? 0));
   // #endregion
   return data;
 }
@@ -703,19 +706,49 @@ document.getElementById('kelly-select').addEventListener('change', e => {
 
 // ── Main init ──────────────────────────────────────────────────────────────
 async function init() {
-  const data = await loadData();
+  // #region agent log
+  console.log('[DEBUG-C] init() start');
+  // #endregion
+  let data;
+  try {
+    data = await loadData();
+  } catch(loadErr) {
+    // #region agent log
+    console.error('[DEBUG-C] loadData threw:', loadErr);
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="9" class="loading-state">Load error: ${loadErr}</td></tr>`;
+    // #endregion
+    return;
+  }
   if (!data || !data.matches) {
+    // #region agent log
+    console.warn('[DEBUG-C] No data or no matches key. data=', JSON.stringify(data)?.slice(0,200));
+    // #endregion
     document.getElementById('table-body').innerHTML =
       `<tr><td colspan="9" class="loading-state">No predictions available. Check back before kickoff.</td></tr>`;
     return;
   }
 
+  // #region agent log
+  console.log('[DEBUG-C] Rendering', data.matches.length, 'matches');
+  // #endregion
+
   ALL_MATCHES = data.matches;
   LOAD_TIME = data.generated_at;
 
-  updateKPIs(ALL_MATCHES);
-  buildGroupChips(ALL_MATCHES);
-  renderTable(ALL_MATCHES);
+  try {
+    updateKPIs(ALL_MATCHES);
+  } catch(e) { console.error('[DEBUG-C] updateKPIs threw:', e); }
+  try {
+    buildGroupChips(ALL_MATCHES);
+  } catch(e) { console.error('[DEBUG-C] buildGroupChips threw:', e); }
+  try {
+    renderTable(ALL_MATCHES);
+  } catch(e) {
+    console.error('[DEBUG-C] renderTable threw:', e);
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="9" class="loading-state">Render error: ${e}</td></tr>`;
+  }
 
   const updatedTag = document.getElementById('updated-tag');
   if (data.generated_at) {
