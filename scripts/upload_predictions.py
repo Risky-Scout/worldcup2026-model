@@ -42,6 +42,7 @@ ET = ZoneInfo("America/New_York")
 REMOTE_DIR = "/tools/odds-scanner/predictions/worldcup"
 REMOTE_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/pre-match"
 REMOTE_DIR_WC_ROOT = "/tools/odds-scanner/predictions/world-cup"
+REMOTE_DIR_SPACE = "/tools/odds-scanner/predictions/world cup"   # legacy path — WoO admin page 96 still points here
 REMOTE_FILE = "wc-predictions.json"
 
 
@@ -140,6 +141,17 @@ def upload(date: str | None = None) -> None:
         except Exception:
             pass
         print(f"  ✓ Mirrored: {REMOTE_DIR_WC_ROOT}/{REMOTE_FILE}")
+
+        # Mirror to legacy "world cup" (space) path — WoO admin page 96 iframe src still uses this
+        _ensure_remote_dir(ftp, REMOTE_DIR_SPACE)
+        ftp.cwd(REMOTE_DIR_SPACE)
+        ftp.storbinary(f"STOR {REMOTE_FILE}", io.BytesIO(payload_bytes))
+        try:
+            ftp.sendcmd(f"SITE CHMOD 644 {REMOTE_DIR_SPACE}/{REMOTE_FILE}")
+            ftp.sendcmd(f"SITE CHMOD 755 {REMOTE_DIR_SPACE}")
+        except Exception:
+            pass
+        print(f"  ✓ Mirrored: {REMOTE_DIR_SPACE}/{REMOTE_FILE}")
 
     print(f"Done. {len(doc.get('matches', []))} matches uploaded.")
 

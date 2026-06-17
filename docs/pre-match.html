@@ -327,14 +327,26 @@ async function loadData() {
   const urls = [
     './wc-predictions.json',
     '../wc-predictions.json',
+    '../worldcup/wc-predictions.json',
+    '../../predictions/worldcup/wc-predictions.json',
   ];
   let data = null;
   for (const url of urls) {
     try {
       const r = await fetch(url + '?t=' + Date.now());
+      // #region agent log
+      fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:fetch',message:'fetch attempt',data:{url,status:r.status,ok:r.ok},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       if (r.ok) { data = await r.json(); break; }
-    } catch (e) {}
+    } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:fetch-error',message:'fetch failed',data:{url,error:String(e)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    }
   }
+  // #region agent log
+  fetch('http://127.0.0.1:7420/ingest/fa49ce5a-212f-4965-931c-d7655f1fe6a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3f8dcc'},body:JSON.stringify({sessionId:'3f8dcc',location:'pre-match.html:loadData',message:'data loaded',data:{hasData:!!data,matchCount:data?.matches?.length??0,generatedAt:data?.generated_at??null},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
   return data;
 }
 
