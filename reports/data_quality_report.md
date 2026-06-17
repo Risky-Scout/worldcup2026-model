@@ -1,6 +1,6 @@
 # Data Quality Report (Real BDL Data)
 
-**Generated**: 2026-06-16T23:56:31Z
+**Generated**: 2026-06-17T00:07:33Z
 **Data version**: v1
 
 ## Overview
@@ -8,10 +8,10 @@
 | Metric | Value |
 |--------|-------|
 | Total matches | 232 |
-| Completed | 145 |
+| Completed | 146 |
 | Missing goals | 0 |
-| Odds rows | 366 |
-| Correct-score rows | 4859 |
+| Odds rows | 368 |
+| Correct-score rows | 4855 |
 | Season 2018 | 64 matches |
 | Season 2022 | 64 matches |
 | Season 2026 | 104 matches |
@@ -20,9 +20,9 @@
 
 | Stat | Value |
 |------|-------|
-| Mean home goals | 1.566 |
-| Mean away goals | 1.131 |
-| Mean total goals | 2.697 |
-| Home win rate | 0.434 |
-| Draw rate | 0.248 |
-| Away win rate | 0.317 |
+| Mean home goals | 1.562 |
+| Mean away goals | 1.151 |
+| Mean total goals | 2.712 |
+| Home win rate | 0.432 |
+| Draw rate | 0.247 |
+| Away win rate | 0.322 |
