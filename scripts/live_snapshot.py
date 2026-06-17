@@ -569,8 +569,7 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
         all_matches = provider.fetch_matches(seasons=[2026])
     except Exception as exc:
         log.error("BDL fetch failed: %s", exc)
-        log.error("BDL fetch failed: %s", exc)
-        return []
+        return [], []
 
     log.info("BDL fetch complete: %d total matches, sample_status=%s",
              len(all_matches), all_matches[0].get("status") if all_matches else None)
