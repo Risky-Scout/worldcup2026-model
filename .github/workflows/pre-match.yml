@@ -49,11 +49,15 @@ jobs:
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
 
       - name: Capture closing odds (sleeps until T-3 min if match imminent)
+        # continue-on-error so a single failed market capture doesn't abort the
+        # whole workflow and lose the sentinel file needed by subsequent steps.
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: python scripts/closing_odds_snapshot.py
+        continue-on-error: true
 
       - name: Commit updated CLV records if closing odds were captured
+        # Commits partial results too — partial capture is better than nothing.
         run: |
           STATUS=$(python3 -c "
           import json, pathlib
@@ -65,16 +69,16 @@ jobs:
               print(d.get('captured', 0))
           " 2>/dev/null || echo "0")
           echo "Closing odds captured for $STATUS match(es)"
-          if [ "$STATUS" != "0" ]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/clv/2026/records.jsonl data/live/pre_match_status.json || true
-            git diff --staged --quiet || git commit -m "chore: closing odds captured at T-3 [skip ci]"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/clv/2026/records.jsonl data/live/pre_match_status.json || true
+          if git diff --staged --quiet; then
+            echo "No CLV changes to commit"
+          else
+            git commit -m "chore: closing odds captured at T-3 ($STATUS match(es)) [skip ci]"
             git pull --rebase origin main || true
             git push || true
             echo "Committed and pushed closing odds update"
-          else
-            echo "No imminent matches — nothing to commit"
           fi
 
       - name: Bootstrap live snapshot chain at kickoff

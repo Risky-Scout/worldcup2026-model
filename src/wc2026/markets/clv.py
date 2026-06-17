@@ -83,6 +83,11 @@ class CLVRecord:
     closing_odds_decimal: Optional[float] = None
     closing_timestamp: Optional[str] = None
 
+    # Frozen model prob — captured at the moment the closing line is set so
+    # subsequent upserts with a live-refreshing model_prob don't corrupt CLV.
+    frozen_model_prob: Optional[float] = None
+    frozen_at: Optional[str] = None
+
     # CLV metrics (computed after closing line is known)
     clv_raw: Optional[float] = None          # model_prob - closing_prob
     clv_pct: Optional[float] = None          # clv_raw / closing_prob × 100
@@ -104,6 +109,10 @@ class CLVRecord:
         self.closing_odds_decimal = round(closing_odds_decimal, 4)
         self.closing_prob = round(1.0 / closing_odds_decimal, 6)
         self.closing_timestamp = timestamp
+        # Freeze model_prob at closing time so later upserts don't corrupt CLV
+        if self.frozen_model_prob is None:
+            self.frozen_model_prob = self.model_prob
+            self.frozen_at = timestamp
         self._compute_clv()
 
     def set_outcome(self, outcome: bool, timestamp: Optional[str] = None) -> None:
@@ -113,7 +122,8 @@ class CLVRecord:
     def _compute_clv(self) -> None:
         if self.closing_prob is None or self.closing_prob < _EPS:
             return
-        mp = max(self.model_prob, _EPS)
+        # Prefer frozen_model_prob (set at closing time) over live model_prob
+        mp = max(self.frozen_model_prob if self.frozen_model_prob is not None else self.model_prob, _EPS)
         cp = max(self.closing_prob, _EPS)
         self.clv_raw = round(mp - cp, 6)
         self.clv_pct = round((mp - cp) / cp * 100, 4)
@@ -332,6 +342,18 @@ class CLVStore:
                     record.beat_close = existing.beat_close
                     record.opening_drift = existing.opening_drift
                     record.model_vs_opening = existing.model_vs_opening
+                    record.frozen_model_prob = existing.frozen_model_prob
+                    record.frozen_at = existing.frozen_at
+                    # Don't overwrite model_prob with a stale live value once
+                    # the closing line is locked in — preserve the frozen state.
+                    log.debug(
+                        "CLV upsert: closing line already set for %s %s — "
+                        "preserving frozen_model_prob=%.6f, not refreshing model_prob",
+                        existing.match_id, existing.market,
+                        existing.frozen_model_prob or existing.model_prob,
+                    )
+                    record.model_prob = existing.model_prob
+                    record.model_fair_odds = existing.model_fair_odds
                 if existing.outcome is not None and record.outcome is None:
                     record.outcome = existing.outcome
                     record.outcome_timestamp = existing.outcome_timestamp

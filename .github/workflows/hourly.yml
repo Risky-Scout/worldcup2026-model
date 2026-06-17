@@ -53,6 +53,16 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/run_real_pipeline.py
 
+      - name: Closing odds fallback (catch any match that just kicked off)
+        # Runs after the main pipeline so the CLV store already has prediction records.
+        # Captures closing odds for any match that kicked off within the last 15 minutes
+        # whose closing line wasn't captured by pre-match.yml (e.g. cron drift).
+        # Skips matches that already have a closing line recorded.
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
+        run: python scripts/closing_odds_snapshot.py --fallback-window 15
+        continue-on-error: true
+
       - name: Upload predictions to server (FTP)
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
