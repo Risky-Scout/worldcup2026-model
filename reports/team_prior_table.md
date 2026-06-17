@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-06-16T23:45:36Z
+**Generated**: 2026-06-16T23:56:31Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -10,13 +10,13 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
 | Germany | ✅ | ✅ | UEFA | 7 | 1499 | 0.042 | 2.786 | 0.847 | 3 | **3.061** | **1.175** | LOW | market_implied+fifa_ranking+qualifying |
 | USA | ❌ | ✅ | CONCACAF | 5 | 1489 | 0.076 | 2.440 | 0.830 | 3 | **2.365** | **1.083** | LOW | market_implied+fifa_ranking+qualifying |
-| France | ✅ | ✅ | UEFA | 15 | 1407 | 0.663 | 2.459 | 0.565 | 3 | **2.345** | **1.037** | LOW | market_implied+fifa_ranking+qualifying |
+| France | ✅ | ✅ | UEFA | 15 | 1407 | 0.663 | 2.465 | 0.565 | 3 | **2.347** | **1.037** | LOW | market_implied+fifa_ranking+qualifying |
 | Sweden | ✅ | ❌ | UEFA | 6 | 1481 | 0.153 | 1.990 | 1.199 | 3 | **2.215** | **1.328** | LOW | market_implied+fifa_ranking+qualifying |
 | Mexico | ✅ | ✅ | CONCACAF | 8 | 1491 | -0.204 | 2.202 | 0.675 | 3 | **2.064** | **0.751** | LOW | market_implied+fifa_ranking+qualifying |
-| Argentina | ✅ | ✅ | CONMEBOL | 11 | 1475 | 0.290 | 2.090 | 0.715 | 3 | **2.045** | **1.079** | LOW | market_implied+fifa_ranking+qualifying |
-| Portugal | ✅ | ✅ | UEFA | 9 | 1491 | 0.179 | 2.038 | 0.785 | 3 | **1.990** | **1.146** | LOW | market_implied+fifa_ranking+qualifying |
+| Argentina | ✅ | ✅ | CONMEBOL | 11 | 1475 | 0.290 | 2.082 | 0.719 | 3 | **2.041** | **1.081** | LOW | market_implied+fifa_ranking+qualifying |
+| Norway | ❌ | ❌ | UEFA | 0 | 1500 | — | 2.171 | 1.107 | 3 | **1.988** | **1.329** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | England | ✅ | ✅ | UEFA | 12 | 1479 | 0.169 | 2.056 | 0.742 | 3 | **1.988** | **1.106** | LOW | market_implied+fifa_ranking+qualifying |
-| Norway | ❌ | ❌ | UEFA | 0 | 1500 | — | 2.122 | 1.096 | 3 | **1.960** | **1.323** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Portugal | ✅ | ✅ | UEFA | 9 | 1491 | 0.179 | 2.033 | 0.782 | 3 | **1.987** | **1.145** | LOW | market_implied+fifa_ranking+qualifying |
 | Côte d'Ivoire | ❌ | ❌ | CAF | 1 | 1490 | 0.070 | 2.335 | 0.916 | 3 | **1.940** | **0.921** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | South Korea | ✅ | ✅ | AFC | 8 | 1505 | 0.290 | 1.754 | 0.755 | 3 | **1.885** | **1.119** | LOW | market_implied+fifa_ranking+qualifying |
 | Switzerland | ✅ | ✅ | UEFA | 9 | 1501 | -0.353 | 1.319 | 0.616 | 3 | **1.792** | **1.099** | LOW | market_implied+fifa_ranking+qualifying |
@@ -35,7 +35,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | G2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.454** | **1.454** | HIGH | penaltyblog_elo+confederation |
 | H1 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.454** | **1.454** | HIGH | penaltyblog_elo+confederation |
 | H2 | ❌ | ❌ | GLOBAL | 0 | 1500 | — | — | — | 0 | **1.454** | **1.454** | HIGH | penaltyblog_elo+confederation |
-| Algeria | ❌ | ❌ | CAF | 0 | 1500 | — | 1.216 | 1.368 | 3 | **1.424** | **1.487** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Algeria | ❌ | ❌ | CAF | 0 | 1500 | — | 1.220 | 1.360 | 3 | **1.426** | **1.482** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Uruguay | ✅ | ✅ | CONMEBOL | 9 | 1475 | 0.037 | 1.002 | 0.900 | 3 | **1.405** | **1.170** | LOW | market_implied+fifa_ranking+qualifying |
 | Japan | ✅ | ✅ | AFC | 9 | 1498 | -0.093 | 1.089 | 0.596 | 3 | **1.392** | **1.336** | LOW | market_implied+fifa_ranking+qualifying |
 | Egypt | ✅ | ❌ | CAF | 4 | 1527 | -0.246 | 1.221 | 0.842 | 3 | **1.375** | **1.202** | LOW | market_implied+qualifying+penaltyblog_pi |
@@ -46,14 +46,14 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Senegal | ✅ | ✅ | CAF | 8 | 1507 | -0.467 | 1.161 | 1.621 | 3 | **1.260** | **2.080** | LOW | market_implied+fifa_ranking+qualifying |
 | New Zealand | ❌ | ❌ | OFC | 1 | 1500 | -0.100 | 0.483 | 1.380 | 3 | **1.213** | **1.718** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Panama | ✅ | ❌ | CONCACAF | 3 | 1529 | -0.176 | 0.827 | 1.822 | 3 | **1.213** | **1.811** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| DR Congo | ❌ | ❌ | CAF | 0 | 1500 | — | 0.863 | 1.701 | 3 | **1.203** | **1.689** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| DR Congo | ❌ | ❌ | CAF | 0 | 1500 | — | 0.860 | 1.696 | 3 | **1.201** | **1.687** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Türkiye | ❌ | ❌ | UEFA | 1 | 1510 | -0.103 | 0.957 | 1.674 | 3 | **1.197** | **1.821** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Czechia | ❌ | ❌ | UEFA | 1 | 1510 | -0.093 | 0.850 | 1.686 | 3 | **1.196** | **1.826** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Uzbekistan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.792 | 1.920 | 3 | **1.162** | **1.800** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Saudi Arabia | ✅ | ✅ | AFC | 7 | 1518 | -0.115 | 0.686 | 1.565 | 3 | **1.152** | **1.488** | LOW | market_implied+fifa_ranking+qualifying |
 | Paraguay | ❌ | ❌ | CONMEBOL | 1 | 1510 | -0.125 | 0.881 | 2.188 | 3 | **1.148** | **2.613** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Jordan | ❌ | ❌ | AFC | 0 | 1500 | — | 0.684 | 2.188 | 3 | **1.106** | **1.946** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Iraq | ❌ | ❌ | AFC | 0 | 1500 | — | 0.526 | 2.986 | 3 | **1.025** | **2.385** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Iraq | ❌ | ❌ | AFC | 0 | 1500 | — | 0.537 | 3.041 | 3 | **1.032** | **2.416** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Curaçao | ❌ | ❌ | CONCACAF | 1 | 1510 | -0.140 | 0.628 | 3.550 | 3 | **0.995** | **3.703** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Qatar | ❌ | ✅ | AFC | 4 | 1528 | 0.014 | 0.482 | 1.593 | 3 | **0.993** | **1.506** | LOW | market_implied+fifa_ranking+qualifying |
 | Tunisia | ✅ | ✅ | CAF | 7 | 1516 | -0.179 | 0.606 | 2.669 | 3 | **0.989** | **2.882** | LOW | market_implied+fifa_ranking+qualifying |
