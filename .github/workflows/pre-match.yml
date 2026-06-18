@@ -1,6 +1,6 @@
 name: Pre-Match Closing Odds
 
-# Runs every 15 minutes during World Cup match hours (09:00–03:00 ET = 13:00–07:00 UTC).
+# Runs every ~20 minutes during World Cup match hours (12:00–04:00 ET = 16:00–08:00 UTC).
 # Each run scans for any match kicking off within the next 15 minutes.
 # If found: sleeps until T-3 minutes, fetches live BDL odds, records the
 # closing line in the CLV store, commits the updated records.jsonl, then
@@ -10,12 +10,17 @@ name: Pre-Match Closing Odds
 # GitHub's throttled */2 cron to fire at the exact right moment, the pre-match
 # job — which already runs right before kickoff — triggers the first live run.
 # The self-chain in live.yml then keeps updates coming every ~90 seconds.
+#
+# NOTE: GitHub Actions throttles wildcard crons (*/15) on free-tier repos to
+# ~6–10×/day instead of 96×/day. Explicit minute lists (0,20,40) are honored
+# much more reliably — 3 attempts/hour = coverage every ~20 min (well under 45).
 
 on:
   schedule:
-    # Every 15 minutes from 13:00 UTC (9 AM ET) through 07:00 UTC (3 AM ET next day)
-    - cron: "*/15 13-23 * * *"
-    - cron: "*/15 0-7 * * *"
+    # Every 20 minutes from 16:00–03:59 UTC to guarantee 45-min coverage
+    # Uses explicit minutes (0,20,40) which GitHub honors more reliably than */20
+    - cron: "0,20,40 16-23 * * *"
+    - cron: "0,20,40 0-4 * * *"
   workflow_dispatch: {}
 
 env:

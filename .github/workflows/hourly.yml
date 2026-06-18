@@ -1,13 +1,21 @@
 name: Hourly Refresh (Pre-Match)
 
-# Runs every hour to keep pre-match pages fresh.
-# Always runs the prediction pipeline (using cached data if BDL_API_KEY unavailable).
-# Uploads today's predictions to the WOO FTP server.
+# Runs every 30 minutes during match hours (16:00–04:00 UTC) and once per hour
+# during off-hours to keep pre-match pages fresh.  Also acts as a closing-odds
+# safety net: scans for imminent kickoffs and sleeps up to ~12 min to capture T-3
+# odds when GitHub throttles the pre-match.yml cron.
+#
+# NOTE: GitHub Actions throttles wildcard crons on free-tier repos. Explicit minute
+# lists (0,30) are honored more reliably than */30, giving 2 runs/hour = 30-min
+# cadence during match windows (well under the 45-min coverage guarantee).
 
 on:
   schedule:
-    - cron: "0 6-23 * * *"
-    - cron: "0 0-5 * * *"
+    # Every 30 min during match hours (16:00–04:00 UTC)
+    - cron: "0,30 16-23 * * *"
+    - cron: "0,30 0-4 * * *"
+    # Once per hour during off-hours (covers daily model health)
+    - cron: "0 5-15 * * *"
   workflow_dispatch: {}
 
 env:
@@ -20,7 +28,8 @@ concurrency:
 jobs:
   hourly-refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 35 min: install (~3) + pipeline (~10) + closing-odds sleep (up to 12) + upload/commit (~5)
+    timeout-minutes: 35
     permissions:
       contents: write
     steps:

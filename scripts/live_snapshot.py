@@ -529,7 +529,11 @@ def _load_pregame_data(date: str) -> tuple[dict, dict]:
         pub_path = REPO_ROOT / "data" / "published" / f"{d}.json"
         if not pub_path.exists():
             continue
-        doc = json.loads(pub_path.read_text())
+        try:
+            doc = json.loads(pub_path.read_text())
+        except Exception as _parse_exc:
+            log.warning("Skipping malformed published file %s: %s", pub_path.name, _parse_exc)
+            continue
         for m in doc.get("matches", []):
             pred = m.get("prediction", {})
             lh = pred.get("expected_home_goals", 1.35)
@@ -1112,20 +1116,29 @@ def main() -> None:
 
     try:
         snapshot = run_live_snapshot()
-        log.info("Snapshot: status=%s, %d live matches", snapshot["status"], snapshot["n_live"])
-        upload_snapshot(snapshot)
-        # Write to local data/live/ for the FastAPI server to serve
-        live_dir = REPO_ROOT / "data" / "live"
-        live_dir.mkdir(parents=True, exist_ok=True)
-        (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
-        # Push to live server for instant WebSocket broadcast
-        push_to_live_server(snapshot)
-        write_health_status(True, f"Live snapshot OK — {snapshot['n_live']} live matches",
-                            {"n_live": snapshot["n_live"], "snapshot_status": snapshot["status"]})
     except Exception as exc:
-        log.error("Snapshot failed: %s", exc)
+        log.error("Snapshot computation failed: %s", exc)
         write_health_status(False, f"Live snapshot failed: {exc}")
         sys.exit(1)
+
+    log.info("Snapshot: status=%s, %d live matches", snapshot["status"], snapshot["n_live"])
+
+    # Write local file FIRST so the self-chain logic can read it even if FTP fails.
+    live_dir = REPO_ROOT / "data" / "live"
+    live_dir.mkdir(parents=True, exist_ok=True)
+    (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
+
+    # FTP upload — log and continue on failure; the chain must not die due to FTP issues.
+    try:
+        upload_snapshot(snapshot)
+    except Exception as ftp_exc:
+        log.error("FTP upload failed (chain continues): %s", ftp_exc)
+        write_health_status(False, f"FTP upload failed: {ftp_exc}")
+
+    # Push to live server for instant WebSocket broadcast
+    push_to_live_server(snapshot)
+    write_health_status(True, f"Live snapshot OK — {snapshot['n_live']} live matches",
+                        {"n_live": snapshot["n_live"], "snapshot_status": snapshot["status"]})
     log.info("Done in %.1fs", time.time() - t0)
 
 
