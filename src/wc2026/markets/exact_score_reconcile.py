@@ -693,15 +693,6 @@ def reconcile(
     # Formula: alpha scales with market quality up to 0.45 max.
     alpha = min(market_quality * 0.70, 0.45)
     result.market_blend_alpha = alpha
-    # #region agent log H-B: verify alpha value
-    try:
-        import json as _j, time as _t
-        _ep = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
-        with open(_ep, "a") as _f:
-            _f.write(_j.dumps({"sessionId":"3f8dcc","runId":"pre-fix","hypothesisId":"H-B","location":"exact_score_reconcile.py:694","message":"alpha_computed","data":{"alpha":round(alpha,4),"market_quality":round(market_quality,4)},"timestamp":int(_t.time()*1000)}) + "\n")
-    except Exception: pass
-    import logging as _l; _l.getLogger("reconcile.debug").info("[DBG-H-B] alpha=%.4f market_quality=%.4f", alpha, market_quality)
-    # #endregion
 
     if market_quality < min_market_quality:
         result.warnings.append(f"market_quality_too_low: {market_quality:.2f}")

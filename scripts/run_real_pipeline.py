@@ -1500,14 +1500,6 @@ def predict_all_2026(
     # _adaptive_market_weight = _auto_select_market_weight(
     #     matches_df, odds_df, markets_df, n_required=8,
     # )
-    # #region agent log H-D: verify market_weight and pipeline state
-    try:
-        import json as _j, time as _t
-        _ep = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
-        with open(_ep, "a") as _f:
-            _f.write(_j.dumps({"sessionId":"3f8dcc","runId":"pre-fix","hypothesisId":"H-D","location":"run_real_pipeline.py:1496","message":"market_weight_set","data":{"market_weight":_adaptive_market_weight,"n_completed":_n_completed},"timestamp":int(_t.time()*1000)}) + "\n")
-    except Exception: pass
-    # #endregion
 
     # Enhancement 6: Dynamically recalibrate host nation attack bonus
     _host_bonus = _recalibrate_host_bonus(_completed_2026_df)
