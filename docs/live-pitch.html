@@ -1034,17 +1034,50 @@ function render(data) {
 
   if (live.length === 0) {
     document.getElementById('scoreboard-bar').style.display = 'none';
-    document.getElementById('no-live-state').style.display = 'flex';
+    document.getElementById('stats-panel').style.display = 'none';
     document.getElementById('pitch-container').classList.add('no-live');
+    // Show next-match countdown inside the pitch overlay
+    const nextMatch = upcoming[0];
+    const noLive = document.getElementById('no-live-state');
+    noLive.innerHTML = nextMatch
+      ? `<div id="no-live-message">
+           <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Next Match</div>
+           <div style="font-size:15px;color:var(--text);margin-bottom:6px;">${esc(nextMatch.home_team)} <span style="color:var(--text-muted)">vs</span> ${esc(nextMatch.away_team)}</div>
+           <div style="font-family:'Courier New',monospace;font-size:11px;color:var(--text-dim);" id="no-live-countdown">—</div>
+         </div>`
+      : `<div id="no-live-message"><div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">No Matches Scheduled</div></div>`;
+    noLive.style.display = 'flex';
+    if (nextMatch) {
+      (function tickCountdown() {
+        const el = document.getElementById('no-live-countdown');
+        if (!el) return;
+        const diff = new Date(nextMatch.kickoff_utc) - Date.now();
+        if (diff <= 0) { el.textContent = 'Starting…'; return; }
+        const h = Math.floor(diff / 3600000);
+        const min = Math.floor((diff % 3600000) / 60000);
+        const sec = Math.floor((diff % 60000) / 1000);
+        el.textContent = h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+        setTimeout(tickCountdown, 1000);
+      })();
+    }
     document.getElementById('event-feed').innerHTML =
       `<div style="padding:8px 4px;font-family:'Courier New',monospace;font-size:10px;color:var(--text-muted);">No live match.</div>`;
     return;
   }
 
   document.getElementById('no-live-state').style.display = 'none';
+  document.getElementById('stats-panel').style.display = '';
   document.getElementById('pitch-container').classList.remove('no-live');
 
   const m = live[0];
+
+  // Clear shot markers when a new match starts
+  if (!currentMatch || currentMatch.match_id !== m.match_id) {
+    const layer = document.getElementById('shot-markers-layer');
+    if (layer) layer.innerHTML = '';
+    lastShotIds.clear();
+  }
+
   currentMatch = m;
 
   const homeColor = getColor(m.home_team);
