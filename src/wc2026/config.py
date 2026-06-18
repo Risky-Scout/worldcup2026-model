@@ -69,3 +69,20 @@ LIVE_MOMENTUM_CAP: float = 0.20
 GROUP_INCENTIVE_PMF_LEVEL: bool = True  # When True, use PMF-level group incentive adjustment
 DEFAULT_AH_LINES: list = [round(x * 0.25, 2) for x in range(-12, 13)]
 TOTAL_LINES: list = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]
+
+# --------------------------------------------------------------------------
+# Elite model feature flags — ALL disabled by default for production safety
+# Live outputs remain byte-identical when all flags below are False/default.
+# Override at runtime via environment variables (set to "true" to enable).
+# --------------------------------------------------------------------------
+WC_EGM_LAYER_ENABLED: bool = os.getenv("WC_EGM_LAYER_ENABLED", "false").lower() == "true"
+WC_EGM_SHADOW_MODE: bool = os.getenv("WC_EGM_SHADOW_MODE", "true").lower() == "true"
+WC_USE_EGM_FOR_PUBLIC: bool = os.getenv("WC_USE_EGM_FOR_PUBLIC", "false").lower() == "true"
+WC_USE_MARKET_STRENGTH_FOR_PUBLIC: bool = os.getenv("WC_USE_MARKET_STRENGTH_FOR_PUBLIC", "false").lower() == "true"
+WC_USE_PREDICTED_CLOSE_FOR_PUBLIC: bool = os.getenv("WC_USE_PREDICTED_CLOSE_FOR_PUBLIC", "false").lower() == "true"
+WC_USE_PREDICTED_CLOSE_FOR_BETS: bool = os.getenv("WC_USE_PREDICTED_CLOSE_FOR_BETS", "false").lower() == "true"
+WC_USE_CANONICAL_GRID_FOR_PUBLIC: bool = os.getenv("WC_USE_CANONICAL_GRID_FOR_PUBLIC", "false").lower() == "true"
+WC_USE_NEW_PLAYER_STRENGTH: bool = os.getenv("WC_USE_NEW_PLAYER_STRENGTH", "false").lower() == "true"
+WC_USE_PLAYER_PROPS_SIGNALS: bool = os.getenv("WC_USE_PLAYER_PROPS_SIGNALS", "false").lower() == "true"
+WC_BREAKING_SCHEMA_CHANGES_ALLOWED: bool = os.getenv("WC_BREAKING_SCHEMA_CHANGES_ALLOWED", "false").lower() == "true"
+WC_USE_NEW_CLV_REPORTING: bool = os.getenv("WC_USE_NEW_CLV_REPORTING", "true").lower() == "true"
