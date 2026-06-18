@@ -54,28 +54,31 @@ jobs:
         # scheduler (which can skip runs by 30-60+ min under load).
         # Fires when a match is currently live OR kicks off within 90 minutes.
         # Chain stops automatically outside these windows.
+        # Also dispatches pre-match.yml when a match is within 20 minutes of
+        # kickoff — guaranteeing the T-3 closing odds capture fires on every
+        # live cycle through the critical window (no cron gap possible).
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SHOULD_CHAIN=$(python3 -c "
+          CHAIN_INFO=$(python3 -c "
           import json, pathlib, datetime, sys
 
           f = pathlib.Path('data/live/latest.json')
           if not f.exists():
-              print('no')
+              print('no|no')
               sys.exit(0)
 
           d = json.loads(f.read_text())
           status = d.get('status', 'quiet')
 
-          # Always chain when a match is live
-          if status == 'live':
-              print('yes')
-              sys.exit(0)
-
-          # Also chain when any upcoming match kicks off within 90 minutes
           now = datetime.datetime.now(datetime.timezone.utc)
+          should_chain = False
+          kickoff_imminent = False  # match within 20 min of kickoff
+
+          if status == 'live':
+              should_chain = True
+
           for m in d.get('upcoming_today', []):
               ko_str = m.get('kickoff_utc') or m.get('kickoff_et', '')
               if not ko_str:
@@ -84,14 +87,32 @@ jobs:
                   ko = datetime.datetime.fromisoformat(ko_str.replace('Z', '+00:00'))
                   mins_until = (ko - now).total_seconds() / 60
                   if -5 <= mins_until <= 90:
-                      print('yes')
-                      sys.exit(0)
+                      should_chain = True
+                  # Dispatch pre-match closing odds capture in the T-20 window
+                  if 0 < mins_until <= 20:
+                      kickoff_imminent = True
               except Exception:
                   pass
 
-          print('no')
-          " 2>/dev/null || echo "no")
-          echo "Should chain: $SHOULD_CHAIN"
+          chain = 'yes' if should_chain else 'no'
+          imminent = 'yes' if kickoff_imminent else 'no'
+          print(f'{chain}|{imminent}')
+          " 2>/dev/null || echo "no|no")
+
+          SHOULD_CHAIN=$(echo "$CHAIN_INFO" | cut -d'|' -f1)
+          KICKOFF_IMMINENT=$(echo "$CHAIN_INFO" | cut -d'|' -f2)
+
+          echo "Should chain: $SHOULD_CHAIN | Kickoff imminent: $KICKOFF_IMMINENT"
+
+          # Dispatch pre-match closing odds workflow when kickoff is within 20 min.
+          # pre-match.yml will sleep until T-3 and capture closing odds.
+          # Running it on every live cycle through this window guarantees capture
+          # regardless of cron scheduler gaps.
+          if [ "$KICKOFF_IMMINENT" = "yes" ]; then
+            gh workflow run pre-match.yml --repo ${{ github.repository }}
+            echo "Dispatched pre-match.yml (kickoff within 20 min)"
+          fi
+
           if [ "$SHOULD_CHAIN" = "yes" ]; then
             sleep 90
             gh workflow run live.yml --repo ${{ github.repository }}
