@@ -568,7 +568,24 @@ def build_clv_records_from_prediction(
     # Anchoring CLV to this pre-reconciliation probability ensures we measure
     # the model's true edge against the closing line, not the blended/market-diluted value.
     comp_rating = prediction.get("composite_rating_markets", {}) or {}
+    # #region agent log H-A: verify composite_rating_markets keys and lookup
+    import json as _json, time as _time, logging as _logging
+    _clv_log = _logging.getLogger("clv.debug")
+    _dbg_path = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
+    def _dlog(msg, data, hyp):
+        _clv_log.info("[DBG-%s] %s %s", hyp, msg, data)
+        try:
+            import json as _j
+            entry = _j.dumps({"sessionId":"3f8dcc","runId":"pre-fix","hypothesisId":hyp,"location":"clv.py:build_clv_records","message":msg,"data":data,"timestamp":int(_time.time()*1000)})
+            with open(_dbg_path, "a") as _f: _f.write(entry + "\n")
+        except Exception: pass
+    _comp_keys = list(comp_rating.keys())[:6]
+    _derived_keys = list(derived.keys())[:6]
+    _dlog("comp_rating_keys_sample", {"comp_keys": _comp_keys, "derived_keys": _derived_keys, "n_comp": len(comp_rating), "n_derived": len(derived)}, "H-A")
+    # #endregion
     records: list[CLVRecord] = []
+    _used_comp = 0
+    _used_derived = 0
 
     for mkt in markets_to_track:
         # derived_markets uses dot notation ("over_2.5") while markets_to_track
@@ -580,11 +597,16 @@ def build_clv_records_from_prediction(
             derived_key = mkt
         # Prefer composite_rating_markets (independent, pre-reconciliation signal).
         # Fall back to edge_map then derived_markets if composite value absent.
-        model_p = (
-            comp_rating.get(mkt) or comp_rating.get(derived_key)
-            or edge_map.get(mkt)
-            or derived.get(mkt) or derived.get(derived_key)
-        )
+        _from_comp = comp_rating.get(mkt) or comp_rating.get(derived_key)
+        _from_edge = edge_map.get(mkt)
+        _from_derived = derived.get(mkt) or derived.get(derived_key)
+        model_p = _from_comp or _from_edge or _from_derived
+        # #region agent log H-A: track source counts
+        if _from_comp:
+            _used_comp += 1
+        elif model_p:
+            _used_derived += 1
+        # #endregion
         if model_p is None or float(model_p) <= 0:
             continue
 
@@ -615,6 +637,10 @@ def build_clv_records_from_prediction(
             except (TypeError, ValueError):
                 pass
         records.append(r)
+
+    # #region agent log H-A: summary of source usage
+    _dlog("clv_source_summary", {"used_composite": _used_comp, "used_derived_fallback": _used_derived, "total_records": len(records), "match": f"{home_team} v {away_team}"}, "H-A")
+    # #endregion
 
     # Enhancement 5: Track top-10 correct-score markets by model probability
     # BDL does not currently provide correct-score closing odds from its standard

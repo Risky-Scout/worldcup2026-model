@@ -545,6 +545,15 @@ class CompositeTeamPrior:
                     "xG WC2026 precomputed: %d teams with att xG, %d with def xG",
                     len(xg_att_per_game), len(xg_def_per_game),
                 )
+        # #region agent log H-C: xG precomputation results
+        try:
+            import json as _j, time as _t
+            _ep = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
+            with open(_ep, "a") as _f:
+                _f.write(_j.dumps({"sessionId":"3f8dcc","runId":"pre-fix","hypothesisId":"H-C","location":"composite.py:fit","message":"xg_precompute_result","data":{"n_xg_att":len(xg_att_per_game),"n_xg_def":len(xg_def_per_game),"sample":list(xg_att_per_game.items())[:3],"team_stats_df_provided":team_stats_df is not None},"timestamp":int(_t.time()*1000)}) + "\n")
+        except Exception: pass
+        log.info("[DBG-H-C] xG precompute: n_att=%d n_def=%d team_stats_provided=%s", len(xg_att_per_game), len(xg_def_per_game), team_stats_df is not None)
+        # #endregion
 
         # ── 5. Compute composite prior for each team ─────────────────────
         for team in sorted(all_2026_teams):
