@@ -81,6 +81,11 @@ _DEGENERATE = {"equal_probability", "historical_base_rate"}
 # Kept for diagnostics but NEVER used as publish or rating champion
 _DIAGNOSTIC_ONLY = {"equal_probability", "historical_base_rate", "elo"}
 
+# Markets suppressed from published edge signals (keep in raw data for diagnostics).
+# Poisson systematically underestimates extreme tail probabilities, producing
+# large spurious edges on over_5.5 / over_6.5 (-20pp to -99pp CLV observed).
+_SUPPRESSED_EDGE_MARKETS = {"over_5_5", "over_6_5"}
+
 
 def _select_champions(results: list) -> dict:
     """
@@ -583,6 +588,12 @@ def _auto_select_market_weight(
         "nll=%s  rps=%s → selected=%.2f (combined=%.4f)",
         n, scores, scores_rps, best_w, best_score,
     )
+    # #region agent log — H-E: market weight selection
+    try:
+        import json as _j, time as _t
+        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-E","location":"run_real_pipeline.py:market-weight","message":"market weight selected","data":{"selected":best_w,"scores_nll":scores,"scores_rps":scores_rps,"n_completed":n},"timestamp":int(_t.time()*1000)})+"\n")
+    except Exception: pass
+    # #endregion
     return best_w
 
 
@@ -682,14 +693,17 @@ def _write_calibration_health(
     calib_temperature: float,
     calib_rho: float,
     predictions: list,
+    calib_rho_source: str = "prior",
 ) -> None:
     """
     Append a single daily calibration health record to data/calibration/health.jsonl.
 
     Computes mean |comp_pmf_hw - market_hw| across all predictions where market
     odds exist, then flags a drift_alert if the mean exceeds 0.15.
+    Also computes RPS, log-loss, and rolling CLV metrics from the CLV store.
     """
     import datetime as _dt
+    import math as _math
 
     health_dir = data_dir / "calibration"
     health_dir.mkdir(parents=True, exist_ok=True)
@@ -704,6 +718,132 @@ def _write_calibration_health(
     mean_drift = round(float(np.mean(diffs)), 4) if diffs else None
     drift_alert = mean_drift is not None and mean_drift > 0.15
 
+    # ── New scoring-rule metrics and CLV rolling stats ────────────────────────
+    rps_1x2: "float | None" = None
+    log_loss_1x2: "float | None" = None
+    log_loss_draw_weighted: "float | None" = None
+    clv_rolling_10_by_market: "dict | None" = None
+    n_closing_odds_captured: "int | None" = None
+
+    clv_path = data_dir / "clv" / "2026" / "records.jsonl"
+
+    # ── RPS and log-loss from CLV records ─────────────────────────────────────
+    try:
+        if clv_path.exists():
+            from wc2026.markets.clv import CLVStore as _CLVStore
+            _store = _CLVStore(str(clv_path))
+            _all_recs = _store.load_all()
+
+            # Count unique match_ids with a closing_prob
+            n_closing_odds_captured = len(
+                {str(r.match_id) for r in _all_recs if r.closing_prob is not None}
+            )
+
+            # Group by match_id: collect home_win/draw/away_win records with outcome
+            _match_data: dict = {}
+            for r in _all_recs:
+                if r.outcome is None or r.market not in ("home_win", "draw", "away_win"):
+                    continue
+                mid = str(r.match_id)
+                if mid not in _match_data:
+                    _match_data[mid] = {}
+                _match_data[mid][r.market] = r
+
+            # Compute RPS and log-loss for matches with all three 1X2 markets
+            _rps_vals: list[float] = []
+            _ll_vals: list[float] = []
+            _ll_draw_vals: list[float] = []
+            _EPS_LL = 1e-9
+
+            for _mid, _mkts in _match_data.items():
+                if not all(k in _mkts for k in ("home_win", "draw", "away_win")):
+                    continue
+                _hw_rec = _mkts["home_win"]
+                _dr_rec = _mkts["draw"]
+                _aw_rec = _mkts["away_win"]
+
+                # Use frozen_model_prob if available, else model_prob
+                _p_hw = float(_hw_rec.frozen_model_prob or _hw_rec.model_prob)
+                _p_dr = float(_dr_rec.frozen_model_prob or _dr_rec.model_prob)
+                _p_aw = float(_aw_rec.frozen_model_prob or _aw_rec.model_prob)
+
+                # Determine actual outcome (only one of the three should be True)
+                _o_hw = 1.0 if _hw_rec.outcome else 0.0
+                _o_dr = 1.0 if _dr_rec.outcome else 0.0
+                # _o_aw = 1.0 if _aw_rec.outcome else 0.0  (implied)
+
+                # Validate: exactly one outcome must be True
+                if int(_hw_rec.outcome) + int(_dr_rec.outcome) + int(_aw_rec.outcome) != 1:
+                    continue
+
+                # RPS: 0.5 * ((p_hw - o_hw)^2 + (p_hw+p_dr - o_hw+o_dr)^2)
+                _rps = 0.5 * (
+                    (_p_hw - _o_hw) ** 2
+                    + ((_p_hw + _p_dr) - (_o_hw + _o_dr)) ** 2
+                )
+                _rps_vals.append(_rps)
+
+                # Log-loss (ignorance score) — use outcome-specific prob
+                if _hw_rec.outcome:
+                    _p_correct = max(_p_hw, _EPS_LL)
+                elif _dr_rec.outcome:
+                    _p_correct = max(_p_dr, _EPS_LL)
+                else:
+                    _p_correct = max(_p_aw, _EPS_LL)
+                _ll_vals.append(-_math.log(_p_correct))
+
+                # Draw-weighted: draws count 2×
+                _draw_wt = 2.0 if _dr_rec.outcome else 1.0
+                _ll_draw_vals.append(-_math.log(_p_correct) * _draw_wt)
+
+            _n_matches_for_metrics = len(_rps_vals)
+            if _n_matches_for_metrics < 5:
+                log.warning(
+                    "Health metrics: only %d completed matches with valid 1X2 predictions "
+                    "(need ≥5 for reliable RPS/log-loss)", _n_matches_for_metrics
+                )
+
+            if _rps_vals:
+                rps_1x2 = round(float(np.mean(_rps_vals)), 6)
+            if _ll_vals:
+                log_loss_1x2 = round(float(np.mean(_ll_vals)), 6)
+            if _ll_draw_vals:
+                # Normalize draw-weighted sum by effective count
+                _dw_norm = sum(
+                    2.0 if _dr_rec.outcome else 1.0
+                    for _mid, _mkts in _match_data.items()
+                    if all(k in _mkts for k in ("home_win", "draw", "away_win"))
+                    and int(_mkts["home_win"].outcome) + int(_mkts["draw"].outcome) + int(_mkts["away_win"].outcome) == 1
+                    for _dr_rec in [_mkts["draw"]]
+                )
+                log_loss_draw_weighted = (
+                    round(float(sum(_ll_draw_vals) / max(_dw_norm, 1e-9)), 6)
+                    if _ll_draw_vals else None
+                )
+    except Exception as _health_exc:
+        log.warning("Health metrics (RPS/log-loss) failed: %s", _health_exc)
+
+    # ── Rolling CLV by market (last 10 records per market) ───────────────────
+    try:
+        if clv_path.exists() and "_all_recs" in dir():
+            _market_clv: dict[str, list[float]] = {}
+            for r in _all_recs:
+                if r.suppress_from_edge:
+                    continue
+                if r.clv_pct is None:
+                    continue
+                _market_clv.setdefault(r.market, []).append(r.clv_pct)
+
+            _rolling: dict[str, float] = {}
+            for _mkt, _vals in _market_clv.items():
+                if len(_vals) < 5:
+                    continue
+                _rolling[_mkt] = round(float(np.mean(_vals[-10:])), 4)
+
+            clv_rolling_10_by_market = _rolling if _rolling else None
+    except Exception as _clv_exc:
+        log.warning("Health metrics (CLV rolling) failed: %s", _clv_exc)
+
     record = {
         "date": _dt.date.today().isoformat(),
         "timestamp_utc": _dt.datetime.utcnow().isoformat(),
@@ -713,10 +853,16 @@ def _write_calibration_health(
         "market_weight": market_weight,
         "calib_temperature": round(calib_temperature, 4),
         "calib_rho": round(calib_rho, 4),
+        "calib_rho_source": calib_rho_source,
         "n_predictions": len(predictions),
         "n_with_market_comp": len(diffs),
         "mean_comp_market_hw_abs_diff": mean_drift,
         "drift_alert": drift_alert,
+        "rps_1x2": rps_1x2,
+        "log_loss_1x2": log_loss_1x2,
+        "log_loss_draw_weighted": log_loss_draw_weighted,
+        "clv_rolling_10_by_market": clv_rolling_10_by_market,
+        "n_closing_odds_captured": n_closing_odds_captured,
     }
 
     with open(health_path, "a") as _hf:
@@ -725,13 +871,14 @@ def _write_calibration_health(
     alert_tag = " ⚠ DRIFT ALERT" if drift_alert else ""
     log.info(
         "Calibration health: n_completed=%d  wc_avg=%.3f  mkt_wt=%.2f  T=%.3f  "
-        "mean_drift=%s  n_mkt=%d%s",
+        "mean_drift=%s  n_mkt=%d  rho_src=%s%s",
         n_completed,
         wc_avg_actual or 1.30,
         market_weight,
         calib_temperature,
         f"{mean_drift:.3f}" if mean_drift is not None else "N/A",
         len(diffs),
+        calib_rho_source,
         alert_tag,
     )
 
@@ -951,12 +1098,24 @@ def predict_all_2026(
             _bhgm.fit(n_samples=1000, n_chains=2)
             ladder._models["bayesian_hierarchical"] = _bhgm
             log.info("HierarchicalBayesianGoalModel fitted and added to ladder (n_completed=%d)", _n_completed_for_bayes)
+            # #region agent log — H-D: Bayesian model fitted
+            try:
+                import json as _j, time as _t
+                open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-D","location":"run_real_pipeline.py:bhgm","message":"HierarchicalBayesian fitted OK","data":{"n_completed":_n_completed_for_bayes},"timestamp":int(_t.time()*1000)})+"\n")
+            except Exception: pass
+            # #endregion
         except Exception as _bhgm_exc:
             log.warning(
                 "HierarchicalBayesianGoalModel unavailable (%s) — skipping. "
                 "NegativeBinomialGoalModel remains the best available fallback.",
                 _bhgm_exc,
             )
+            # #region agent log — H-D: Bayesian model failed
+            try:
+                import json as _j, time as _t
+                open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-D","location":"run_real_pipeline.py:bhgm","message":"HierarchicalBayesian FAILED","data":{"error":str(_bhgm_exc)[:200],"n_completed":_n_completed_for_bayes},"timestamp":int(_t.time()*1000)})+"\n")
+            except Exception: pass
+            # #endregion
 
     # ── Extract calibrated rho from fitted Dixon-Coles model ─────────────────
     # IMPORTANT: WC sample sizes (20-48 matches) are too small for reliable rho
@@ -970,6 +1129,14 @@ def predict_all_2026(
     _RHO_PRIOR = -0.05           # literature-backed prior for WC neutral venues
     calib_rho: float = _RHO_PRIOR
     _n_completed_for_rho = len(completed_2026)  # completed_2026 defined at line ~726
+    _calib_rho_source: str = "prior"  # tracks which path set calib_rho
+
+    # #region agent log — H-A: rho initialization
+    try:
+        import json as _j, time as _t
+        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-A","location":"run_real_pipeline.py:rho-init","message":"rho block entered","data":{"calib_rho_init":_RHO_PRIOR,"n_completed":_n_completed_for_rho},"timestamp":int(_t.time()*1000)})+"\n")
+    except Exception: pass
+    # #endregion
 
     # --- Source A: fitted DC rho (only accepted if meaningfully negative) ---
     _dc_raw_rho: float = _RHO_PRIOR
@@ -980,6 +1147,7 @@ def predict_all_2026(
             _dc_raw_rho = float(dc_params.get("rho", _RHO_PRIOR))
             if _dc_raw_rho < _RHO_MIN_EFFECTIVE:
                 calib_rho = float(np.clip(_dc_raw_rho, -0.5, 0.0))
+                _calib_rho_source = "fitted_dc"
                 log.info(
                     "DC rho accepted: raw=%.4f → calib_rho=%.4f (n_WC=%d)",
                     _dc_raw_rho, calib_rho, _n_completed_for_rho,
@@ -1019,8 +1187,15 @@ def predict_all_2026(
                 _hw, _dr, _aw = _nvr.home_win, _nvr.draw, _nvr.away_win
                 if min(_hw, _dr, _aw) < 0.02 or abs(_hw + _dr + _aw - 1.0) > 0.05:
                     continue
-                # goal_expectancy_extended() requires O/U probabilities; skip row
-                # if O/U odds are absent (goal_expectancy() alone doesn't expose rho)
+                # goal_expectancy_extended() is hardcoded for the 2.5-goal line
+                # (parameters named over25/under25). Only use rows where total_value==2.5;
+                # passing 1.5 or 3.5 line odds would corrupt the implied rho estimate.
+                _tot_val = _row.get("total_value")
+                try:
+                    if _tot_val is None or abs(float(_tot_val) - 2.5) > 0.01:
+                        continue
+                except (TypeError, ValueError):
+                    continue
                 _tot_ov = _row.get("total_over_odds")
                 _tot_un = _row.get("total_under_odds")
                 if _tot_ov is None or _tot_un is None:
@@ -1052,6 +1227,12 @@ def predict_all_2026(
                     _market_rho_estimates.append(_ir)
             except Exception:
                 pass
+        # #region agent log — H-A/H-B: market rho estimates
+        try:
+            import json as _j, time as _t
+            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-B","location":"run_real_pipeline.py:market-rho","message":"market rho loop done","data":{"n_estimates":len(_market_rho_estimates),"estimates":_market_rho_estimates[:5]},"timestamp":int(_t.time()*1000)})+"\n")
+        except Exception: pass
+        # #endregion
         if len(_market_rho_estimates) >= 3:
             _mkt_rho_mean = float(np.mean(_market_rho_estimates))
             log.info(
@@ -1062,6 +1243,7 @@ def predict_all_2026(
             # Blend: 60% fitted/prior + 40% market-implied rho
             calib_rho = round(0.60 * calib_rho + 0.40 * _mkt_rho_mean, 4)
             calib_rho = float(np.clip(calib_rho, -0.5, 0.0))
+            _calib_rho_source = "market_blend"
             log.info("Blended calib_rho (60%% prior/fitted + 40%% market): %.4f", calib_rho)
         else:
             log.info(
@@ -1073,6 +1255,21 @@ def predict_all_2026(
             "Market-implied rho estimation failed (%s). calib_rho=%.4f unchanged.",
             _mkt_rho_exc, calib_rho,
         )
+
+    # Soft assertion: calib_rho of exactly 0.0 means the guard failed silently.
+    if calib_rho == 0.0:
+        log.critical(
+            "ALERT: calib_rho is exactly 0.0 — the rho guard failed. "
+            "DC correction is DISABLED. Investigate immediately."
+        )
+    log.info("calib_rho=%.4f  source=%s", calib_rho, _calib_rho_source)
+
+    # #region agent log — H-A: final rho
+    try:
+        import json as _j, time as _t
+        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-A","location":"run_real_pipeline.py:rho-final","message":"final calib_rho","data":{"calib_rho":calib_rho,"source":_calib_rho_source},"timestamp":int(_t.time()*1000)})+"\n")
+    except Exception: pass
+    # #endregion
 
     # ── Extract calibrated lambda3 from fitted Bivariate Poisson model ──────────
     # lambda3 is the shared Poisson component in the Karlis-Ntzoufras decomposition.
@@ -1356,6 +1553,7 @@ def predict_all_2026(
         calib_temperature=calib_temperature,
         calib_rho=calib_rho,
         predictions=all_predictions,
+        calib_rho_source=_calib_rho_source,
     )
 
     return all_predictions, champions, composite_prior
@@ -1649,6 +1847,13 @@ def _predict_one_match(
             except Exception:
                 pass
 
+        # #region agent log — H-C: draw blend
+        try:
+            import json as _j, time as _t
+            _models_loaded = [n for n,_ in _DRAW_BLEND_MODELS if ladder._models.get(n) is not None]
+            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-C","location":"run_real_pipeline.py:draw-blend","message":"draw blend signals","data":{"models_loaded":_models_loaded,"n_signals":len(_extra_draw_signals),"signals":_extra_draw_signals,"match":"%s v %s"%(home,away)},"timestamp":int(_t.time()*1000)})+"\n")
+        except Exception: pass
+        # #endregion
         if _extra_draw_signals:
             # Compute total weight on the multi-model signals
             _total_extra_w = sum(w for _, w in _extra_draw_signals)
@@ -1769,6 +1974,24 @@ def _predict_one_match(
                 away_team=away,
                 prediction_mode=rec.publish_mode,
             )
+            # Suppress tail markets from published summary fields (keep in raw edges list
+            # for diagnostics, but exclude from n_value_markets / top_value_market /
+            # model_vs_market_summary so the UI never surfaces over_5.5 / over_6.5 as
+            # "value" picks — Poisson tail CLV on these is -20pp to -99pp every match).
+            _non_suppressed_value = [
+                e for e in er.value_markets()
+                if e.market.replace(".", "_") not in _SUPPRESSED_EDGE_MARKETS
+            ]
+            er.n_value_markets = len(_non_suppressed_value)
+            er.top_value_market = (
+                _non_suppressed_value[0].market if _non_suppressed_value else None
+            )
+            # Reformat the summary count to match the suppressed list
+            if "Value markets:" in er.model_vs_market_summary:
+                _pfx = er.model_vs_market_summary.rsplit("Value markets:", 1)[0]
+                er.model_vs_market_summary = (
+                    _pfx + f"Value markets: {er.n_value_markets}"
+                )
             edge_report = er.to_dict()
         except Exception as exc:
             log.debug("Edge report failed for %s v %s: %s", home, away, exc)

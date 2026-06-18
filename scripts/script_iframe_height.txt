@@ -1,0 +1,49 @@
+<script>
+(function() {
+    if (window.self === window.top) {
+        return;
+    }
+
+    let lastSentHeight = 0;
+
+    function sendHeightToParent() {
+        try {
+            const body = document.body;
+            const html = document.documentElement;
+            if (!body || !html) return;
+
+            const contentWrapper = document.getElementById('app-root') || body;
+            const currentHeight = Math.ceil(contentWrapper.getBoundingClientRect().height || html.scrollHeight);
+
+            if (currentHeight > 0 && Math.abs(currentHeight - lastSentHeight) > 2) {
+                lastSentHeight = currentHeight;
+                console.log("Iframe broadcast event! Height sent: " + currentHeight + "px");
+                window.parent.postMessage({ frameHeight: currentHeight }, 'https://wizardofodds.com');
+            }
+        } catch (error) {
+            console.warn("Skipped frame height calculation:", error.message);
+        }
+    }
+
+    window.addEventListener('load', sendHeightToParent);
+    document.addEventListener('DOMContentLoaded', sendHeightToParent);
+
+    document.addEventListener('click', function() {
+        // Wait 150ms to give the layout time to physically render the change after the click
+        setTimeout(sendHeightToParent, 150);
+    });
+
+    if (window.MutationObserver) {
+        const observer = new MutationObserver(sendHeightToParent);
+        observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+    }
+
+    if (window.ResizeObserver) {
+        const resizeObserver = new ResizeObserver(sendHeightToParent);
+        resizeObserver.observe(document.body);
+    }
+
+    setInterval(sendHeightToParent, 1000);
+
+})();
+</script>

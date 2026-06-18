@@ -154,6 +154,26 @@ def upload(date: str | None = None) -> None:
             pass
         print(f"  ✓ Mirrored: {REMOTE_DIR_SPACE}/{REMOTE_FILE}")
 
+        # Upload pipeline_health.json for monitoring endpoint
+        try:
+            health_path = REPO_ROOT / "data" / "live" / "pipeline_health.json"
+            if health_path.exists():
+                health_bytes = health_path.read_bytes()
+                _ensure_remote_dir(ftp, REMOTE_DIR_WC_ROOT)
+                ftp.cwd(REMOTE_DIR_WC_ROOT)
+                ftp.storbinary("STOR pipeline_health.json", io.BytesIO(health_bytes))
+                try:
+                    ftp.sendcmd(f"SITE CHMOD 644 {REMOTE_DIR_WC_ROOT}/pipeline_health.json")
+                except Exception:
+                    pass
+                print(f"  ✓ Uploaded: {REMOTE_DIR_WC_ROOT}/pipeline_health.json")
+            else:
+                print(f"  ⚠ pipeline_health.json not found at {health_path} — skipping")
+        except Exception as _he:
+            import warnings
+            warnings.warn(f"pipeline_health.json upload failed: {_he}")
+            print(f"  ⚠ pipeline_health.json upload failed: {_he}")
+
     print(f"Done. {len(doc.get('matches', []))} matches uploaded.")
 
 

@@ -243,8 +243,11 @@ def _parse_closing_probs(odds_rows: list[dict]) -> dict[str, float]:
 
 # ── CLV store update ─────────────────────────────────────────────────────────
 
+_SUPPRESS_EDGE_MARKETS = {"over_5_5", "over_6_5"}
+
+
 def _record_closing_odds(match_id: str, closing_probs: dict[str, float],
-                         timestamp: str) -> int:
+                         timestamp: str, source: str = "live_capture") -> int:
     """
     Load CLV store, call set_closing() on every matching record,
     rewrite the file. Returns number of records updated.
@@ -270,7 +273,10 @@ def _record_closing_odds(match_id: str, closing_probs: dict[str, float],
             continue
         # closing_odds_decimal = 1 / closing_prob (fair no-vig decimal)
         closing_dec = round(1.0 / closing_p, 4)
-        rec.set_closing(closing_dec, timestamp)
+        rec.set_closing(closing_dec, timestamp, source=source)
+        # Ensure suppression flag is set for tail markets
+        if mkt in _SUPPRESS_EDGE_MARKETS:
+            rec.suppress_from_edge = True
         updated += 1
 
     if updated > 0:
@@ -284,31 +290,31 @@ def _record_closing_odds(match_id: str, closing_probs: dict[str, float],
 # ── main helpers ─────────────────────────────────────────────────────────────
 
 def _fetch_and_record(provider, match_id: str, home_team: str, away_team: str,
-                      ts: str) -> bool:
+                      ts: str, closing_source: str = "live_capture") -> int:
     """Fetch BDL odds for one match and write closing lines into CLV store.
 
-    Returns True if at least one CLV record was updated.
+    Returns the number of CLV records updated (0 if fetch failed or no data).
     """
     try:
         odds_rows = provider.fetch_odds([int(match_id)])
     except Exception as exc:
         log.error("BDL odds fetch failed for match_id=%s: %s", match_id, exc)
-        return False
+        return 0
 
     if not odds_rows:
         log.warning("No odds returned for match_id=%s — skipping", match_id)
-        return False
+        return 0
 
     closing_probs = _parse_closing_probs(odds_rows)
     if not closing_probs:
         log.warning("Could not parse any closing probabilities — skipping match_id=%s",
                     match_id)
-        return False
+        return 0
 
-    n = _record_closing_odds(match_id, closing_probs, ts)
+    n = _record_closing_odds(match_id, closing_probs, ts, source=closing_source)
     log.info("Closing odds recorded for %s vs %s: %d CLV records updated",
              home_team, away_team, n)
-    return n > 0
+    return n
 
 
 def _mark_closing_missing(match_id: str, reason: str) -> int:
@@ -353,6 +359,12 @@ def main() -> None:
         help="Backfill mode: for all CLV records with outcome but no closing_prob, "
              "attempt historical BDL odds lookup.",
     )
+    parser.add_argument(
+        "--audit", action="store_true",
+        help="Audit mode: find all completed CLV records with outcome but no closing_prob "
+             "and outcome_timestamp within the last 72 hours, attempt BDL odds fetch, "
+             "and store results with closing_source='audit_backfill'.",
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("BDL_API_KEY", "")
@@ -362,6 +374,10 @@ def main() -> None:
 
     from wc2026.data.providers.bdl import BDLProvider
     provider = BDLProvider(snapshot=False)
+
+    if args.audit:
+        _run_audit(provider)
+        return
 
     if args.backfill:
         _run_backfill(provider)
@@ -383,7 +399,6 @@ def _run_normal(provider) -> None:
              now.strftime("%H:%M"), window_end.strftime("%H:%M"))
 
     matches = _load_scheduled_matches()
-    log.info("Found %d total scheduled matches", len(matches))
 
     lookback_start = now - timedelta(minutes=LOOKBACK_MIN)
     imminent = [
@@ -391,8 +406,19 @@ def _run_normal(provider) -> None:
         if lookback_start <= m["kickoff_utc"] <= window_end
     ]
 
+    log.info("SCAN: checking %d scheduled matches, lookahead=%d min", len(matches), LOOKAHEAD_MIN)
+
     if not imminent:
-        log.info("No matches kicking off in the next %d minutes — nothing to do", LOOKAHEAD_MIN)
+        minutes_to_next = None
+        future = sorted(
+            (m for m in matches if m["kickoff_utc"] > now),
+            key=lambda x: x["kickoff_utc"],
+        )
+        if future:
+            minutes_to_next = int((future[0]["kickoff_utc"] - now).total_seconds() / 60)
+            log.info("NO MATCH IMMINENT: next kickoff in %d min", minutes_to_next)
+        else:
+            log.info("NO MATCH IMMINENT: no future scheduled matches found")
         _write_sentinel(0, imminent)
         return
 
@@ -419,9 +445,32 @@ def _run_normal(provider) -> None:
         log.info("Fetching closing odds for match_id=%s (%s vs %s)...",
                  m["match_id"], m["home_team"], m["away_team"])
 
+        # Check if already captured (could have been done by a concurrent run)
+        if CLV_PATH.exists():
+            from wc2026.markets.clv import CLVStore as _CLVStore
+            _existing_recs = _CLVStore(str(CLV_PATH)).load_all()
+            _existing_source = next(
+                (r.closing_source for r in _existing_recs
+                 if str(r.match_id) == str(m["match_id"]) and r.closing_prob is not None),
+                None,
+            )
+            if _existing_source is not None:
+                log.info(
+                    "SKIP already captured: match_id=%s source=%s",
+                    m["match_id"], _existing_source,
+                )
+                captured += 1
+                continue
+
         try:
-            ok = _fetch_and_record(provider, m["match_id"], m["home_team"], m["away_team"], ts)
-            if ok:
+            n_updated = _fetch_and_record(
+                provider, m["match_id"], m["home_team"], m["away_team"], ts
+            )
+            if n_updated > 0:
+                log.info(
+                    "CAPTURE: match_id=%s %s vs %s — %d markets fetched",
+                    m["match_id"], m["home_team"], m["away_team"], n_updated,
+                )
                 captured += 1
         except Exception as exc:
             log.error("Unexpected error for match_id=%s: %s", m["match_id"], exc)
@@ -497,8 +546,8 @@ def _run_fallback(provider, window_minutes: int) -> None:
                  m["kickoff_utc"].strftime("%H:%M"))
         ts = datetime.now(tz=timezone.utc).isoformat()
         try:
-            ok = _fetch_and_record(provider, m["match_id"], m["home_team"], m["away_team"], ts)
-            if ok:
+            n_updated = _fetch_and_record(provider, m["match_id"], m["home_team"], m["away_team"], ts)
+            if n_updated > 0:
                 captured += 1
         except Exception as exc:
             log.error("Fallback error for match_id=%s: %s", m["match_id"], exc)
@@ -574,8 +623,8 @@ def _run_backfill(provider) -> None:
 
         ts = datetime.now(tz=timezone.utc).isoformat()
         try:
-            ok = _fetch_and_record(provider, mid, home, away, ts)
-            if ok:
+            n_updated = _fetch_and_record(provider, mid, home, away, ts)
+            if n_updated > 0:
                 n_backfilled += 1
                 log.info("Backfill: ✓ match_id=%s closing odds captured", mid)
             else:
@@ -595,6 +644,83 @@ def _run_backfill(provider) -> None:
         "Backfill complete — %d match(es) backfilled, %d marked as missing",
         n_backfilled, n_missing,
     )
+
+
+def _run_audit(provider) -> None:
+    """Audit mode: recover recent missing closing odds for completed matches.
+
+    Scans CLV records that have an outcome but no closing_prob, filters to those
+    whose outcome_timestamp is within the last 72 hours, then attempts a BDL
+    odds fetch for each.  Records recovered are marked closing_source='audit_backfill'.
+    """
+    if not CLV_PATH.exists():
+        log.warning("Audit: CLV store not found: %s", CLV_PATH)
+        return
+
+    from wc2026.markets.clv import CLVStore
+
+    store = CLVStore(str(CLV_PATH))
+    records = store.load_all()
+
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - timedelta(hours=72)
+
+    # Find unique match_ids: completed (outcome set), no closing_prob, recent outcome
+    candidates: dict[str, dict] = {}
+    for rec in records:
+        mid = str(rec.match_id)
+        if rec.outcome is None or rec.closing_prob is not None:
+            continue
+        # Check outcome_timestamp within 72 h
+        if rec.outcome_timestamp:
+            try:
+                ots_str = rec.outcome_timestamp
+                if ots_str.endswith("Z"):
+                    ots_str = ots_str[:-1] + "+00:00"
+                ots = datetime.fromisoformat(ots_str)
+                if ots.tzinfo is None:
+                    ots = ots.replace(tzinfo=timezone.utc)
+                if ots < cutoff:
+                    continue
+            except Exception:
+                continue
+        if mid not in candidates:
+            candidates[mid] = {
+                "home_team": rec.home_team,
+                "away_team": rec.away_team,
+            }
+
+    n_attempted = len(candidates)
+    log.info("Audit: found %d match(es) with completed outcome but no closing odds (within 72h)",
+             n_attempted)
+
+    if n_attempted == 0:
+        print("Audit summary: 0 matches attempted, 0 recovered")
+        return
+
+    n_recovered = 0
+    for mid, info in sorted(candidates.items()):
+        home, away = info["home_team"], info["away_team"]
+        log.info("Audit: fetching odds for match_id=%s (%s vs %s)...", mid, home, away)
+        ts = now.isoformat()
+        try:
+            n_updated = _fetch_and_record(
+                provider, mid, home, away, ts, closing_source="audit_backfill"
+            )
+            if n_updated > 0:
+                n_recovered += 1
+                log.info("Audit: ✓ match_id=%s — %d records updated", mid, n_updated)
+            else:
+                log.info("Audit: ✗ match_id=%s — no odds available", mid)
+        except Exception as exc:
+            log.error("Audit: error for match_id=%s: %s", mid, exc)
+
+    summary = (
+        f"Audit summary: {n_attempted} match(es) attempted, "
+        f"{n_recovered} successfully recovered"
+    )
+    log.info(summary)
+    print(summary)
 
 
 def _write_sentinel(captured: int, imminent: list[dict]) -> None:

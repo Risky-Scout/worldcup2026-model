@@ -56,6 +56,25 @@ jobs:
         run: |
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
 
+      - name: Show upcoming kickoffs (audit trail)
+        run: |
+          python3 -c "
+          import json, pathlib, datetime
+          pub = sorted(pathlib.Path('data/published').glob('*.json'))
+          if not pub: print('No published files'); exit()
+          d = json.load(open(pub[-1]))
+          now = datetime.datetime.utcnow()
+          for m in d.get('matches', []):
+              ko_str = m.get('match_datetime_utc','')
+              if not ko_str: continue
+              try:
+                  ko = datetime.datetime.fromisoformat(ko_str.replace('Z','+00:00')).replace(tzinfo=None)
+                  diff = (ko - now).total_seconds() / 60
+                  if -30 <= diff <= 60:
+                      print(f'  {diff:+.0f}min: {m[\"home_team\"]} vs {m[\"away_team\"]}')
+              except: pass
+          "
+
       - name: Capture closing odds (sleeps until T-3 min if match imminent)
         # continue-on-error so a single failed market capture doesn't abort the
         # whole workflow and lose the sentinel file needed by subsequent steps.

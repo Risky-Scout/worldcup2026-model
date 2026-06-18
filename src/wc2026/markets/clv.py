@@ -101,6 +101,10 @@ class CLVRecord:
     outcome: Optional[bool] = None           # True if the outcome occurred
     outcome_timestamp: Optional[str] = None
 
+    # Suppression flag — True for markets excluded from published edge signals
+    # (kept in raw records for diagnostics; never surfaced as value picks)
+    suppress_from_edge: bool = False
+
     def set_closing(self, closing_odds_decimal: float, timestamp: str,
                     source: str = "live_capture") -> None:
         """Record the closing line and compute CLV metrics.
@@ -482,6 +486,10 @@ def build_clv_records_from_prediction(
         "under_1_5", "under_2_5", "under_3_5",
     ]
 
+    # Markets suppressed from published edge signals (Poisson tail CLV is -20pp to -99pp).
+    # Records are kept for raw diagnostics but suppress_from_edge=True is set.
+    _SUPPRESS_SET = {"over_5_5", "over_6_5"}
+
     edge_report = prediction.get("edge_report", {}) or {}
     edge_map = {}
     if edge_report:
@@ -517,6 +525,8 @@ def build_clv_records_from_prediction(
             opening_odds_decimal=opening_odds_dec,
             prediction_timestamp=ts,
         )
+        if mkt in _SUPPRESS_SET:
+            r.suppress_from_edge = True
         records.append(r)
 
     return records
