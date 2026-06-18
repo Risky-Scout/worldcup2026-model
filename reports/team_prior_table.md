@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-06-18T05:07:05Z
+**Generated**: 2026-06-18T05:46:37Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -9,10 +9,10 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Team | 2018 | 2022 | Conf | WC Games | Elo | Pi | Market Att | Market Def | n Mkt | Final Att λ | Final Def λ | Uncertainty | Sources |
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
 | Germany | ✅ | ✅ | UEFA | 7 | 1499 | 0.042 | 2.787 | 0.847 | 3 | **3.670** | **1.164** | LOW | market_implied+fifa_ranking+qualifying |
-| England | ✅ | ✅ | UEFA | 13 | 1469 | 0.290 | 2.410 | 0.505 | 3 | **2.890** | **1.117** | LOW | market_implied+fifa_ranking+qualifying |
+| England | ✅ | ✅ | UEFA | 13 | 1469 | 0.290 | 2.415 | 0.503 | 3 | **2.892** | **1.115** | LOW | market_implied+fifa_ranking+qualifying |
 | France | ✅ | ✅ | UEFA | 15 | 1407 | 0.663 | 2.568 | 0.592 | 3 | **2.714** | **0.997** | LOW | market_implied+fifa_ranking+qualifying |
 | USA | ❌ | ✅ | CONCACAF | 5 | 1489 | 0.076 | 2.442 | 0.840 | 3 | **2.702** | **1.077** | LOW | market_implied+fifa_ranking+qualifying |
-| Norway | ❌ | ❌ | UEFA | 1 | 1490 | -0.071 | 2.181 | 1.126 | 3 | **2.670** | **1.353** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Norway | ❌ | ❌ | UEFA | 1 | 1490 | -0.071 | 2.183 | 1.124 | 3 | **2.671** | **1.351** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Sweden | ✅ | ❌ | UEFA | 6 | 1481 | 0.153 | 1.998 | 1.189 | 3 | **2.457** | **1.387** | LOW | market_implied+fifa_ranking+qualifying |
 | Argentina | ✅ | ✅ | CONMEBOL | 12 | 1466 | 0.399 | 2.259 | 0.530 | 3 | **2.422** | **0.646** | LOW | market_implied+fifa_ranking+qualifying |
 | Mexico | ✅ | ✅ | CONCACAF | 8 | 1491 | -0.204 | 2.203 | 0.689 | 3 | **2.349** | **0.691** | LOW | market_implied+fifa_ranking+qualifying |
@@ -39,13 +39,13 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Egypt | ✅ | ❌ | CAF | 4 | 1527 | -0.246 | 1.216 | 0.839 | 3 | **1.441** | **1.185** | LOW | market_implied+qualifying+penaltyblog_pi |
 | Uruguay | ✅ | ✅ | CONMEBOL | 9 | 1475 | 0.037 | 1.004 | 0.902 | 3 | **1.441** | **1.185** | LOW | market_implied+fifa_ranking+qualifying |
 | Japan | ✅ | ✅ | AFC | 9 | 1498 | -0.093 | 1.087 | 0.602 | 3 | **1.431** | **1.207** | LOW | market_implied+fifa_ranking+qualifying |
-| Senegal | ✅ | ✅ | CAF | 8 | 1507 | -0.467 | 1.174 | 1.621 | 3 | **1.323** | **2.247** | LOW | market_implied+fifa_ranking+qualifying |
+| Senegal | ✅ | ✅ | CAF | 8 | 1507 | -0.467 | 1.172 | 1.623 | 3 | **1.322** | **2.249** | LOW | market_implied+fifa_ranking+qualifying |
 | Bosnia & Herzegovina | ❌ | ❌ | UEFA | 1 | 1501 | -0.074 | 1.054 | 1.148 | 3 | **1.318** | **1.370** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Iran | ✅ | ✅ | AFC | 7 | 1509 | 0.043 | 0.564 | 1.117 | 3 | **1.268** | **1.622** | LOW | market_implied+fifa_ranking+qualifying |
-| Ghana | ❌ | ✅ | CAF | 4 | 1500 | -0.116 | 0.793 | 1.398 | 3 | **1.230** | **1.226** | LOW | market_implied+fifa_ranking+qualifying |
+| Ghana | ❌ | ✅ | CAF | 4 | 1500 | -0.116 | 0.791 | 1.403 | 3 | **1.228** | **1.228** | LOW | market_implied+fifa_ranking+qualifying |
 | Türkiye | ❌ | ❌ | UEFA | 1 | 1510 | -0.103 | 0.963 | 1.674 | 3 | **1.225** | **1.982** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | DR Congo | ❌ | ❌ | CAF | 1 | 1500 | -0.054 | 0.897 | 1.193 | 3 | **1.190** | **1.398** | MEDIUM | market_implied+fifa_ranking+qualifying |
-| Czechia | ❌ | ❌ | UEFA | 1 | 1510 | -0.093 | 0.837 | 1.694 | 3 | **1.184** | **1.994** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| Czechia | ❌ | ❌ | UEFA | 1 | 1510 | -0.093 | 0.838 | 1.694 | 3 | **1.184** | **1.993** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Paraguay | ❌ | ❌ | CONMEBOL | 1 | 1510 | -0.125 | 0.884 | 2.190 | 3 | **1.142** | **2.906** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | New Zealand | ❌ | ❌ | OFC | 1 | 1500 | -0.100 | 0.477 | 1.366 | 3 | **1.132** | **1.813** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Saudi Arabia | ✅ | ✅ | AFC | 7 | 1518 | -0.115 | 0.688 | 1.573 | 3 | **1.114** | **1.615** | LOW | market_implied+fifa_ranking+qualifying |
@@ -54,11 +54,11 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Iraq | ❌ | ❌ | AFC | 1 | 1510 | 0.071 | 0.554 | 3.138 | 3 | **0.981** | **3.459** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Curaçao | ❌ | ❌ | CONCACAF | 1 | 1510 | -0.140 | 0.636 | 3.572 | 3 | **0.948** | **4.475** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Tunisia | ✅ | ✅ | CAF | 7 | 1516 | -0.179 | 0.605 | 2.670 | 3 | **0.929** | **3.439** | LOW | market_implied+fifa_ranking+qualifying |
-| Qatar | ❌ | ✅ | AFC | 4 | 1528 | 0.014 | 0.482 | 1.601 | 3 | **0.915** | **1.642** | LOW | market_implied+fifa_ranking+qualifying |
+| Qatar | ❌ | ✅ | AFC | 4 | 1528 | 0.014 | 0.482 | 1.601 | 3 | **0.914** | **1.642** | LOW | market_implied+fifa_ranking+qualifying |
 | Jordan | ❌ | ❌ | AFC | 1 | 1510 | -0.115 | 0.502 | 2.466 | 3 | **0.899** | **2.763** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Haiti | ❌ | ❌ | CONCACAF | 1 | 1510 | 0.000 | 0.482 | 2.737 | 3 | **0.871** | **2.360** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Panama | ✅ | ❌ | CONCACAF | 4 | 1539 | -0.243 | 0.543 | 1.715 | 3 | **0.846** | **1.730** | LOW | market_implied+fifa_ranking+qualifying |
-| South Africa | ❌ | ❌ | CAF | 1 | 1510 | -0.104 | 0.662 | 2.325 | 3 | **0.798** | **2.388** | MEDIUM | market_implied+fifa_ranking+qualifying |
+| South Africa | ❌ | ❌ | CAF | 1 | 1510 | -0.104 | 0.662 | 2.326 | 3 | **0.798** | **2.389** | MEDIUM | market_implied+fifa_ranking+qualifying |
 | Cabo Verde | ❌ | ❌ | CAF | 1 | 1500 | 0.027 | 0.628 | 1.108 | 3 | **0.788** | **1.047** | MEDIUM | market_implied+fifa_ranking+qualifying |
 
 ## Summary
@@ -77,6 +77,6 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Team | Final Att λ | Final Def λ | Market Att (raw) | Sources |
 |------|------------|------------|-----------------|---------|
 | Mexico | 2.349 | 0.691 | 2.203 | market_implied+fifa_ranking+qualifying |
-| South Africa | 0.798 | 2.388 | 0.662 | market_implied+fifa_ranking+qualifying |
+| South Africa | 0.798 | 2.389 | 0.662 | market_implied+fifa_ranking+qualifying |
 | South Korea | 2.067 | 1.097 | 1.765 | market_implied+fifa_ranking+qualifying |
-| Czechia | 1.184 | 1.994 | 0.837 | market_implied+fifa_ranking+qualifying |
+| Czechia | 1.184 | 1.993 | 0.838 | market_implied+fifa_ranking+qualifying |
