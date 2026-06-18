@@ -26,11 +26,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from wc2026.config import DATA_VERSION, PROCESSED_DIR, RAW_DIR
+from wc2026.config import DATA_VERSION, PROCESSED_DIR, RAW_DIR, DATA_DIR
 
 log = logging.getLogger(__name__)
 
@@ -143,3 +144,40 @@ def write_table_append(table_name: str, df: pd.DataFrame, base_path: Path | None
     table = pa.Table.from_pandas(df, preserve_index=False)
     pq.write_to_dataset(table, root_path=str(path.parent), partition_cols=None)
     return path
+
+
+_PMF_LAYERS_DIR = DATA_DIR / "predictions" / "pmf_layers"
+
+
+def append_pmf_layer(layer_record: dict) -> None:
+    """Append a single PMF layer record to the append-only Parquet store."""
+    season = layer_record.get("season", 2026)
+    out_dir = _PMF_LAYERS_DIR / str(season)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "pmf_layers.parquet"
+
+    # Convert pmf array to bytes
+    record = dict(layer_record)
+    if isinstance(record.get("pmf_flat"), np.ndarray):
+        record["pmf_flat"] = record["pmf_flat"].astype(np.float64).tobytes()
+
+    df_new = pd.DataFrame([record])
+
+    if out_path.exists():
+        existing = pd.read_parquet(out_path)
+        df_combined = pd.concat([existing, df_new], ignore_index=True)
+    else:
+        df_combined = df_new
+
+    df_combined.to_parquet(out_path, index=False, compression="snappy")
+
+
+def load_pmf_layers(season: int = 2026, match_id: int | None = None) -> pd.DataFrame:
+    """Load PMF layers from store, optionally filtered by match_id."""
+    out_path = _PMF_LAYERS_DIR / str(season) / "pmf_layers.parquet"
+    if not out_path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(out_path)
+    if match_id is not None:
+        df = df[df["match_id"] == match_id]
+    return df

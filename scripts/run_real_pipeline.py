@@ -49,6 +49,9 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 from dotenv import load_dotenv
 load_dotenv()
 
+import uuid as _uuid
+_PREDICTION_RUN_ID = str(_uuid.uuid4())  # Unique ID for this pipeline run
+
 from wc2026.config import (
     DATA_DIR, PROCESSED_DIR, PREDICTIONS_DIR, PUBLISHED_DIR, REPORTS_DIR,
     DATA_VERSION, MODEL_VERSION, DC_WEIGHT_XI_2026 as _DC_WEIGHT_XI_2026_DEFAULT,
@@ -426,6 +429,42 @@ def _pmf_to_markets(pmf: np.ndarray, n: int = 15) -> dict:
         compat["asian_handicap_away_-0.5"] = markets["asian_handicap_away_neg0_5"]
 
     return compat
+
+
+def _persist_pmf_layer(match_id: int, layer_name: str, pmf: np.ndarray,
+                        home_lambda: float | None = None, away_lambda: float | None = None,
+                        rho: float | None = None, temperature: float | None = None,
+                        market_quality: float | None = None, **kwargs) -> None:
+    """Persist a PMF layer record to the append-only PMF layers store."""
+    try:
+        from wc2026.data.storage import append_pmf_layer
+        import hashlib, json as _json
+        from wc2026.config import MODEL_VERSION
+        record = {
+            "match_id": match_id,
+            "prediction_run_id": _PREDICTION_RUN_ID,
+            "prediction_timestamp": dt.datetime.utcnow().isoformat(),
+            "pmf_layer_name": layer_name,
+            "home_lambda": home_lambda,
+            "away_lambda": away_lambda,
+            "rho": rho,
+            "dispersion": kwargs.get("dispersion"),
+            "temperature": temperature,
+            "market_quality": market_quality,
+            "source_odds_updated_at": kwargs.get("source_odds_updated_at"),
+            "observed_at": kwargs.get("observed_at"),
+            "feature_asof_timestamp": kwargs.get("feature_asof_timestamp"),
+            "grid_shape": f"{pmf.shape[0]}x{pmf.shape[1]}",
+            "grid_mass": float(pmf.sum()),
+            "tail_mass_estimate": float(1.0 - pmf[:8, :8].sum()) if pmf.shape[0] >= 8 else 0.0,
+            "model_version": MODEL_VERSION,
+            "config_hash": hashlib.md5(_json.dumps(kwargs.get("config", {}), sort_keys=True).encode()).hexdigest()[:8],
+            "pmf_flat": pmf,
+            "season": 2026,
+        }
+        append_pmf_layer(record)
+    except Exception as e:
+        log.debug("PMF layer persistence failed for %s/%s: %s", match_id, layer_name, e)
 
 
 def _pmf_to_top_scores(pmf: np.ndarray, n: int = 15, top_k: int = 20) -> list:
@@ -2152,6 +2191,20 @@ def _predict_one_match(
     publish_pmf = rec.publish_pmf
     _validate_pmf(publish_pmf, f"{home} v {away}", model_warnings)
     publish_markets = _pmf_to_markets(publish_pmf)
+
+    # Persist PMF layers for CLV analysis
+    _persist_pmf_layer(match_id, "structural_composite", comp_pmf,
+                        home_lambda=comp_lh, away_lambda=comp_la, rho=calib_rho,
+                        temperature=calib_temperature)
+    if pure_pmf is not None:
+        _persist_pmf_layer(match_id, "parametric_champion", pure_pmf,
+                            home_lambda=pure_lh, away_lambda=pure_la, rho=calib_rho)
+    _persist_pmf_layer(match_id, "market_reconciled", publish_pmf,
+                        home_lambda=comp_lh, away_lambda=comp_la, rho=calib_rho,
+                        market_quality=mc.quality_score if hasattr(mc, "quality_score") else None)
+    _persist_pmf_layer(match_id, "published", publish_pmf,
+                        home_lambda=comp_lh, away_lambda=comp_la, rho=calib_rho,
+                        market_quality=mc.quality_score if hasattr(mc, "quality_score") else None)
 
     # ── 5a. Blend model AH probabilities with market-implied AH ──────────
     # Same alpha logic as 1X2 reconciliation, capped at 0.45.
