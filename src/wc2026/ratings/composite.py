@@ -506,18 +506,25 @@ class CompositeTeamPrior:
         # Requires team_stats_df (BDL team_stats, one row per team per match).
         xg_att_per_game: dict[str, float] = {}
         xg_def_per_game: dict[str, float] = {}
+        big_chances_per_game: dict[str, float] = {}    # big_chances per team per 90
+        sot_per_game: dict[str, float] = {}             # shots_on_target per team per 90
         if team_stats_df is not None and not team_stats_df.empty:
             comp_2026 = m2026[m2026["status"].isin(["completed", "final"])]
             wc26_ids = set(comp_2026["match_id"].astype(str).tolist())
 
             # {match_id: {team_name: xg_float}}
             match_xg: dict[str, dict[str, float]] = {}
+            # {match_id: {team_name: (big_chances, sot)}}
+            match_bc: dict[str, dict[str, float]] = {}
+            match_sot: dict[str, dict[str, float]] = {}
             for _, row in team_stats_df.iterrows():
                 mid = str(row.get("match_id", ""))
                 if mid not in wc26_ids:
                     continue
                 tn = str(row.get("team_name", ""))
                 xg = row.get("expected_goals")
+                bc = row.get("big_chances")
+                sot = row.get("shots_on_target")
                 if not tn or xg is None:
                     continue
                 try:
@@ -527,9 +534,21 @@ class CompositeTeamPrior:
                 if xg_f < 0:
                     continue
                 match_xg.setdefault(mid, {})[tn] = xg_f
+                if bc is not None:
+                    try:
+                        match_bc.setdefault(mid, {})[tn] = float(bc)
+                    except (TypeError, ValueError):
+                        pass
+                if sot is not None:
+                    try:
+                        match_sot.setdefault(mid, {})[tn] = float(sot)
+                    except (TypeError, ValueError):
+                        pass
 
             xg_att_acc: dict[str, list[float]] = {}
             xg_def_acc: dict[str, list[float]] = {}
+            bc_acc: dict[str, list[float]] = {}
+            sot_acc: dict[str, list[float]] = {}
             for _, match_row in comp_2026.iterrows():
                 mid = str(match_row["match_id"])
                 if mid not in match_xg:
@@ -547,6 +566,15 @@ class CompositeTeamPrior:
                     if hxg is not None:
                         xg_def_acc.setdefault(away_t, []).append(hxg)
 
+                # big_chances per match
+                for tn in [home_t, away_t]:
+                    bc = (match_bc.get(mid) or {}).get(tn)
+                    if bc is not None:
+                        bc_acc.setdefault(tn, []).append(bc)
+                    sot = (match_sot.get(mid) or {}).get(tn)
+                    if sot is not None:
+                        sot_acc.setdefault(tn, []).append(sot)
+
             _XG_MIN_GAMES = 2
             for tn, vals in xg_att_acc.items():
                 if len(vals) >= _XG_MIN_GAMES:
@@ -554,6 +582,31 @@ class CompositeTeamPrior:
             for tn, vals in xg_def_acc.items():
                 if len(vals) >= _XG_MIN_GAMES:
                     xg_def_per_game[tn] = float(sum(vals) / len(vals))
+
+            # big_chances per game (attack, ≥2 matches) — normalize across teams
+            for tn, vals in bc_acc.items():
+                if len(vals) >= _XG_MIN_GAMES:
+                    big_chances_per_game[tn] = float(sum(vals) / len(vals))
+            # Normalize to z-scores for blend
+            if big_chances_per_game:
+                bc_vals = list(big_chances_per_game.values())
+                bc_mu = float(np.mean(bc_vals))
+                bc_sigma = float(np.std(bc_vals)) if len(bc_vals) > 1 else 1.0
+                if bc_sigma < 1e-6:
+                    bc_sigma = 1.0
+                big_chances_per_game = {tn: (v - bc_mu) / bc_sigma for tn, v in big_chances_per_game.items()}
+
+            # shots_on_target per game (attack, ≥2 matches) — normalize
+            for tn, vals in sot_acc.items():
+                if len(vals) >= _XG_MIN_GAMES:
+                    sot_per_game[tn] = float(sum(vals) / len(vals))
+            if sot_per_game:
+                sot_vals = list(sot_per_game.values())
+                sot_mu = float(np.mean(sot_vals))
+                sot_sigma = float(np.std(sot_vals)) if len(sot_vals) > 1 else 1.0
+                if sot_sigma < 1e-6:
+                    sot_sigma = 1.0
+                sot_per_game = {tn: (v - sot_mu) / sot_sigma for tn, v in sot_per_game.items()}
 
             if xg_att_per_game:
                 log.debug(
@@ -717,6 +770,8 @@ class CompositeTeamPrior:
                 futures_win_prob=futures_win_prob,
                 roster_quality=roster_quality,
                 best_player_rating=best_player_rating,
+                big_chances_per_game=big_chances_per_game,
+                sot_per_game=sot_per_game,
             )
             self._priors[team] = tp
 
@@ -1132,6 +1187,8 @@ class CompositeTeamPrior:
         futures_win_prob: Optional[dict] = None,
         roster_quality: Optional[dict] = None,
         best_player_rating: Optional[dict] = None,
+        big_chances_per_game: Optional[dict] = None,
+        sot_per_game: Optional[dict] = None,
     ) -> TeamPrior:
         conf = _TEAM_CONFEDERATION.get(team, "GLOBAL")
         conf_att = _CONFEDERATION_ATTACK.get(conf, _WC_AVG_ATTACK)
@@ -1262,6 +1319,25 @@ class CompositeTeamPrior:
                 team, _xg_att,
                 f"{_xg_def:.3f}" if _xg_def is not None else "N/A",
             )
+
+        # ── Big chances + SOT per-90 (weights 0.05 each on attack λ) ──────
+        # These are normalized z-scores (mean=0, sigma=1 across teams).
+        # Blend as fractional adjustments to attack lambda.
+        _bc_z = (big_chances_per_game or {}).get(team)
+        _sot_z = (sot_per_game or {}).get(team)
+        if _bc_z is not None:
+            # Map z-score to lambda adjustment: clip to ±2 sigma
+            _bc_adj = float(np.clip(_bc_z * 0.05, -0.10, 0.10))
+            if "big_chances_wc2026" not in sources:
+                sources.append("big_chances_wc2026")
+        else:
+            _bc_adj = 0.0
+        if _sot_z is not None:
+            _sot_adj = float(np.clip(_sot_z * 0.05, -0.10, 0.10))
+            if "sot_wc2026" not in sources:
+                sources.append("sot_wc2026")
+        else:
+            _sot_adj = 0.0
 
         # ── Team form z-score adjustment (weight 0.10) ─────────────────
         # Applies ±5% to att/def λ based on recent avg_rating z-score.
@@ -1396,6 +1472,9 @@ class CompositeTeamPrior:
             _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
             _final_att *= (1.0 + _form_adj)
             _final_def *= (1.0 - _form_adj)  # good form → concede fewer goals
+
+        # Big chances + SOT z-score adjustments (attack only)
+        _final_att *= (1.0 + _bc_adj + _sot_adj)
 
         # Futures win probability: ±3% on attack
         _final_att *= (1.0 + fut_adj)
