@@ -728,15 +728,20 @@ def _write_calibration_health(
             _store = _CLVStore(str(clv_path))
             _all_recs = _store.load_all()
 
-            # Count unique match_ids with a closing_prob
+            # Count unique match_ids with a clean (non-backfill_invalid) closing_prob
             n_closing_odds_captured = len(
-                {str(r.match_id) for r in _all_recs if r.closing_prob is not None}
+                {str(r.match_id) for r in _all_recs
+                 if r.closing_prob is not None
+                 and getattr(r, "closing_source", None) != "backfill_invalid"}
             )
 
-            # Group by match_id: collect home_win/draw/away_win records with outcome
+            # Group by match_id for RPS/log-loss: only use outcome records from
+            # clean closing sources (backfill_invalid = post-match odds, corrupted).
             _match_data: dict = {}
             for r in _all_recs:
                 if r.outcome is None or r.market not in ("home_win", "draw", "away_win"):
+                    continue
+                if getattr(r, "closing_source", None) == "backfill_invalid":
                     continue
                 mid = str(r.match_id)
                 if mid not in _match_data:
@@ -819,6 +824,9 @@ def _write_calibration_health(
 
     # ── Rolling CLV by market (last 10 records per market) ───────────────────
     _HEALTH_SUPPRESS_MKTS = {"over_5_5", "over_6_5"}
+    # Only count records from clean closing-odds sources; backfill_invalid
+    # records were captured after match completion and carry corrupted CLV.
+    _CLEAN_SOURCES = {None, "", "live_capture", "fallback_capture", "audit_backfill"}
     try:
         if clv_path.exists() and "_all_recs" in dir():
             _market_clv: dict[str, list[float]] = {}
@@ -827,6 +835,9 @@ def _write_calibration_health(
                 if r.suppress_from_edge or r.market in _HEALTH_SUPPRESS_MKTS:
                     continue
                 if r.clv_pct is None:
+                    continue
+                # Exclude post-match backfill (closing_source=="backfill_invalid")
+                if getattr(r, "closing_source", None) == "backfill_invalid":
                     continue
                 _market_clv.setdefault(r.market, []).append(r.clv_pct)
 
