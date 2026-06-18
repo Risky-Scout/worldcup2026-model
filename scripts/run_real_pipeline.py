@@ -403,104 +403,29 @@ def _first_half_pmf(lh: float, la: float, max_goals: int = 10) -> dict:
 
 
 def _pmf_to_markets(pmf: np.ndarray, n: int = 15) -> dict:
-    """Derive key markets from a PMF grid.
+    """Derive key markets from a PMF grid using CanonicalGrid.
 
-    Extended markets computed directly from the PMF (no PenaltyBlog grid object needed):
-      - win_to_nil_home / win_to_nil_away
-      - draw_no_bet_home / draw_no_bet_away
-      - double_chance_1x / double_chance_x2 / double_chance_12
-      - expected_points_home / expected_points_away
-      - asian_handicap_home_minus_half / asian_handicap_away_minus_half
+    Delegates to CanonicalGrid for all market derivation.
+    Backward compatibility: also emits legacy dot-notation keys (over_2.5, AH -0.5).
     """
-    n = min(n, pmf.shape[0], pmf.shape[1])
-    p = pmf[:n, :n]
+    from wc2026.markets.canonical_grid import CanonicalGrid, _DEFAULT_TOTAL_LINES, _DEFAULT_AH_LINES
+    grid = CanonicalGrid(pmf)
+    markets = grid.all_markets(ah_lines=_DEFAULT_AH_LINES, total_lines=_DEFAULT_TOTAL_LINES)
+    compat = dict(markets)
 
-    # ── 1X2 ──────────────────────────────────────────────────────────────────
-    hw = float(sum(p[h, a] for h in range(n) for a in range(n) if h > a))
-    dr = float(sum(p[h, a] for h in range(n) for a in range(n) if h == a))
-    aw = float(sum(p[h, a] for h in range(n) for a in range(n) if h < a))
-    total = hw + dr + aw
-    hw /= total; dr /= total; aw /= total
+    # Legacy dot-notation keys for over/under that HTML uses
+    for line_str in ["0_5", "1_5", "2_5", "3_5", "4_5", "5_5", "6_5"]:
+        dot_key = line_str.replace("_", ".")
+        if f"over_{line_str}" in markets:
+            compat[f"over_{dot_key}"] = markets[f"over_{line_str}"]
+            compat[f"under_{dot_key}"] = markets[f"under_{line_str}"]
 
-    # ── BTTS ─────────────────────────────────────────────────────────────────
-    btts = float(sum(p[h, a] for h in range(n) for a in range(n) if h > 0 and a > 0))
+    # Legacy AH ±0.5 keys
+    if "asian_handicap_home_neg0_5" in markets:
+        compat["asian_handicap_home_-0.5"] = markets["asian_handicap_home_neg0_5"]
+        compat["asian_handicap_away_-0.5"] = markets["asian_handicap_away_neg0_5"]
 
-    # ── Over/Under ───────────────────────────────────────────────────────────
-    ou = {}
-    for line in [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]:
-        ov = float(sum(p[h, a] for h in range(n) for a in range(n) if h + a > line))
-        ou[f"over_{line}"] = round(ov, 5)
-        ou[f"under_{line}"] = round(1 - ov, 5)
-
-    # ── Win to nil ───────────────────────────────────────────────────────────
-    win_nil_h = float(sum(p[h, 0] for h in range(1, n)))   # home wins & away scores 0
-    win_nil_a = float(sum(p[0, a] for a in range(1, n)))   # away wins & home scores 0
-
-    # ── Double chance ────────────────────────────────────────────────────────
-    dc_1x = round(hw + dr, 5)    # home win or draw
-    dc_x2 = round(dr + aw, 5)    # draw or away win
-    dc_12 = round(hw + aw, 5)    # home win or away win (no draw)
-
-    # ── Draw no bet (DNB) ────────────────────────────────────────────────────
-    denom_dnb = hw + aw
-    dnb_h = round(hw / denom_dnb, 5) if denom_dnb > 1e-9 else 0.5
-    dnb_a = round(aw / denom_dnb, 5) if denom_dnb > 1e-9 else 0.5
-
-    # ── Expected points (league-style: W=3, D=1, L=0) ────────────────────────
-    exp_pts_h = round(3.0 * hw + 1.0 * dr, 4)
-    exp_pts_a = round(3.0 * aw + 1.0 * dr, 4)
-
-    # ── Asian handicap -0.5 (standard half-ball line) ────────────────────────
-    ah_h_minus_half = round(hw, 5)   # home -0.5: home must win by ≥1
-    ah_a_minus_half = round(aw, 5)   # away -0.5: away must win by ≥1
-
-    # ── Full Asian handicap grid: lines -2 to +2 ─────────────────────────────
-    # For half-ball lines (no push): straight win probability for the favoured side.
-    # For whole-ball lines (push on exact margin): win + 0.5 * draw-at-that-margin.
-    def _ah_home(line: float) -> float:
-        """P(home covers handicap line from home perspective).
-        Negative line means home gives up goals (handicap applied to home).
-        """
-        total = 0.0
-        for hi in range(n):
-            for ai in range(n):
-                adjusted = hi - ai - line  # positive = home covers
-                if abs(adjusted) < 1e-9:   # push (whole-ball line, margin == line)
-                    total += 0.5 * p[hi, ai]
-                elif adjusted > 0:
-                    total += p[hi, ai]
-        return round(float(total), 5)
-
-    ah_grid: dict[str, float] = {}
-    for _line in [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0]:
-        _key_h = f"asian_handicap_home_{_line:+.1f}".replace("+", "+").replace("-", "-")
-        _key_a = f"asian_handicap_away_{_line:+.1f}".replace("+", "+").replace("-", "-")
-        # Clean up key format: e.g. "asian_handicap_home_-1.0", "asian_handicap_home_+0.5"
-        _line_str = f"{_line:+.1f}" if _line != 0 else "0.0"
-        ah_grid[f"asian_handicap_home_{_line_str}"] = _ah_home(_line)
-        # Away side covers if away gives up line from their perspective (mirror)
-        ah_grid[f"asian_handicap_away_{_line_str}"] = _ah_home(-_line)
-
-    return {
-        "home_win": round(hw, 5),
-        "draw": round(dr, 5),
-        "away_win": round(aw, 5),
-        "btts_yes": round(btts, 5),
-        "btts_no": round(1 - btts, 5),
-        "win_to_nil_home": round(win_nil_h, 5),
-        "win_to_nil_away": round(win_nil_a, 5),
-        "double_chance_1x": dc_1x,
-        "double_chance_x2": dc_x2,
-        "double_chance_12": dc_12,
-        "draw_no_bet_home": dnb_h,
-        "draw_no_bet_away": dnb_a,
-        "expected_points_home": exp_pts_h,
-        "expected_points_away": exp_pts_a,
-        "asian_handicap_home_-0.5": ah_h_minus_half,
-        "asian_handicap_away_-0.5": ah_a_minus_half,
-        **ah_grid,
-        **ou,
-    }
+    return compat
 
 
 def _pmf_to_top_scores(pmf: np.ndarray, n: int = 15, top_k: int = 20) -> list:

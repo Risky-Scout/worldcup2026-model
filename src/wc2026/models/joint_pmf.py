@@ -882,3 +882,9 @@ def from_numpy_grid(
         normalize=True,
     )
     return FiniteGridPMF(fpg, model_name=model_name, published_max_goals=max_goals)
+
+
+def derive_markets_from_pmf(pmf: np.ndarray, **kwargs) -> dict:
+    """Derive all markets from a raw PMF array. Delegates to CanonicalGrid."""
+    from wc2026.markets.canonical_grid import CanonicalGrid
+    return CanonicalGrid(pmf).all_markets()
