@@ -41,3 +41,36 @@ class DataProvider(ABC):
 
     @abstractmethod
     def fetch_team_form(self, match_ids: list[int]) -> list[dict]: ...
+
+    def fetch_injuries(self, statuses: list[str] | None = None) -> list[dict]:
+        """Fetch player injuries. Optional — providers may override."""
+        return []
+
+    def fetch_futures(self) -> list[dict]:
+        """Fetch tournament futures odds. Optional — providers may override."""
+        return []
+
+    def fetch_rosters(self, seasons: list[int] | None = None) -> list[dict]:
+        """Fetch player rosters. Optional — providers may override."""
+        return []
+
+    def fetch_player_props(
+        self,
+        match_id: int,
+        prop_type: str | None = None,
+        vendors: list[str] | None = None,
+    ) -> list[dict]:
+        """Fetch player props for a match. Optional — providers may override."""
+        return []
+
+    def fetch_avg_positions(
+        self,
+        match_ids: list[int] | None = None,
+        team_ids: list[int] | None = None,
+    ) -> list[dict]:
+        """Fetch average player positions. Optional — providers may override."""
+        return []
+
+    def fetch_best_players(self, match_ids: list[int] | None = None) -> list[dict]:
+        """Fetch match best players. Optional — providers may override."""
+        return []

@@ -447,17 +447,32 @@ class CompositeTeamPrior:
         odds_df: pd.DataFrame,
         markets_df: Optional[pd.DataFrame] = None,
         team_stats_df: Optional[pd.DataFrame] = None,
+        team_form_df: Optional[pd.DataFrame] = None,
+        injuries_df: Optional[pd.DataFrame] = None,
+        futures_df: Optional[pd.DataFrame] = None,
+        rosters_df: Optional[pd.DataFrame] = None,
+        best_players_df: Optional[pd.DataFrame] = None,
     ) -> "CompositeTeamPrior":
         """
         Fit all rating systems and extract market-implied lambdas.
 
         Parameters
         ----------
-        matches_df     Full matches table (2018+2022+2026)
-        odds_df        BDL odds table (main odds, 6 vendors)
-        markets_df     Optional markets sub-array table
-        team_stats_df  Optional BDL team_stats table; used to blend actual goals
-                       with xG in the tournament adjustment (better attack signal)
+        matches_df      Full matches table (2018+2022+2026)
+        odds_df         BDL odds table (main odds, 6 vendors)
+        markets_df      Optional markets sub-array table
+        team_stats_df   Optional BDL team_stats table; used to blend actual goals
+                        with xG in the tournament adjustment (better attack signal)
+        team_form_df    Optional BDL match_team_form table; per-team avg_rating
+                        used to apply ±5% form adjustment (weight 0.10)
+        injuries_df     Optional player injuries table; applies lambda penalties
+                        for OUT/GTD players by position
+        futures_df      Optional futures odds table; tournament win probability
+                        used as additional prior weight (0.08)
+        rosters_df      Optional rosters table; 2026 roster quality score
+                        applied as weight multiplier (attack 0.08, defense 0.07)
+        best_players_df Optional match best players table; rolling top-3 rating
+                        applied as attack lambda multiplier (weight 0.06)
         """
         self._fit_timestamp = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         hist = matches_df[
@@ -545,6 +560,151 @@ class CompositeTeamPrior:
                     "xG WC2026 precomputed: %d teams with att xG, %d with def xG",
                     len(xg_att_per_game), len(xg_def_per_game),
                 )
+
+        # ── 4c. Pre-compute per-team form z-scores from team_form_df ─────────
+        # Use avg_rating from the most recent 3 WC2026 matches per team.
+        # Normalize to z-scores; apply ±5% adjustment to att/def λ (weight 0.10).
+        form_z_scores: dict[str, float] = {}
+        if team_form_df is not None and not team_form_df.empty:
+            wc26_ids = set(m2026["match_id"].astype(str).tolist())
+            team_ratings_acc: dict[str, list[tuple]] = {}  # team → [(datetime, rating)]
+            for _, row in team_form_df.iterrows():
+                mid = str(row.get("match_id", ""))
+                if mid not in wc26_ids:
+                    continue
+                team_name = str(row.get("team_name") or row.get("team", {}) or "")
+                if not team_name:
+                    # Try extracting from nested team dict
+                    t = row.get("team")
+                    if isinstance(t, dict):
+                        team_name = t.get("name") or t.get("full_name") or ""
+                if not team_name:
+                    continue
+                rating = row.get("avg_rating")
+                if rating is None:
+                    continue
+                try:
+                    r_f = float(rating)
+                except (TypeError, ValueError):
+                    continue
+                ts = row.get("updated_at") or row.get("match_datetime") or ""
+                team_ratings_acc.setdefault(team_name, []).append((str(ts), r_f))
+
+            # Keep most recent 3, compute mean rating per team
+            team_avg_rating: dict[str, float] = {}
+            for tn, entries in team_ratings_acc.items():
+                entries_sorted = sorted(entries, key=lambda x: x[0], reverse=True)
+                recent = [r for _, r in entries_sorted[:3]]
+                team_avg_rating[tn] = float(np.mean(recent))
+
+            if team_avg_rating:
+                vals = list(team_avg_rating.values())
+                mu = float(np.mean(vals))
+                sigma = float(np.std(vals)) if len(vals) > 1 else 1.0
+                if sigma < 1e-6:
+                    sigma = 1.0
+                form_z_scores = {tn: (v - mu) / sigma for tn, v in team_avg_rating.items()}
+                log.info(
+                    "team_form z-scores computed: %d teams  mu=%.3f  sigma=%.3f",
+                    len(form_z_scores), mu, sigma,
+                )
+
+        # ── 4d. Pre-compute futures-implied win probability per team ──────────
+        futures_win_prob: dict[str, float] = {}
+        if futures_df is not None and not futures_df.empty:
+            # Filter to tournament winner market
+            winner_rows = futures_df[
+                futures_df["market_type"].str.lower().str.contains("winner|champion", na=False)
+            ] if "market_type" in futures_df.columns else futures_df
+            if winner_rows.empty:
+                winner_rows = futures_df
+
+            # Build raw implied probs per team (average across vendors)
+            team_raw: dict[str, list[float]] = {}
+            for _, row in winner_rows.iterrows():
+                tn = str(row.get("team_name", ""))
+                dec = row.get("decimal_odds")
+                if not tn or dec is None:
+                    continue
+                try:
+                    p = 1.0 / float(dec)
+                    if p > 0:
+                        team_raw.setdefault(tn, []).append(p)
+                except (TypeError, ValueError, ZeroDivisionError):
+                    continue
+
+            # SHIN no-vig: normalize across all teams
+            if team_raw:
+                raw_mean: dict[str, float] = {tn: float(np.mean(ps)) for tn, ps in team_raw.items()}
+                total_raw = sum(raw_mean.values())
+                if total_raw > 1e-9:
+                    futures_win_prob = {tn: p / total_raw for tn, p in raw_mean.items()}
+                    log.info(
+                        "futures implied win prob: %d teams  total_raw=%.3f",
+                        len(futures_win_prob), total_raw,
+                    )
+
+        # ── 4e. Pre-compute roster quality scores per team ────────────────────
+        roster_quality: dict[str, float] = {}
+        if rosters_df is not None and not rosters_df.empty:
+            df_2026 = rosters_df[rosters_df["season_year"] == 2026] if "season_year" in rosters_df.columns else rosters_df
+            if not df_2026.empty:
+                team_quality_acc: dict[str, list[float]] = {}
+                for _, row in df_2026.iterrows():
+                    tn = str(row.get("team_name", ""))
+                    if not tn:
+                        continue
+                    avg_r = row.get("avg_rating")
+                    minutes = row.get("minutes_played")
+                    if avg_r is None or minutes is None:
+                        continue
+                    try:
+                        q = float(avg_r) * float(minutes) ** 0.5
+                        if q > 0:
+                            team_quality_acc.setdefault(tn, []).append(q)
+                    except (TypeError, ValueError):
+                        continue
+                if team_quality_acc:
+                    raw_q = {tn: float(np.mean(qs)) for tn, qs in team_quality_acc.items()}
+                    q_mean = float(np.mean(list(raw_q.values())))
+                    if q_mean > 1e-9:
+                        roster_quality = {tn: q / q_mean for tn, q in raw_q.items()}
+                    log.info("roster quality computed: %d teams", len(roster_quality))
+
+        # ── 4f. Pre-compute best-player rolling ratings per team ──────────────
+        best_player_rating: dict[str, float] = {}
+        if best_players_df is not None and not best_players_df.empty:
+            wc26_ids = set(m2026["match_id"].astype(str).tolist())
+            team_bp_acc: dict[str, list[tuple]] = {}  # team → [(match_id, top3_avg)]
+            for match_id, grp in best_players_df.groupby("match_id"):
+                if str(match_id) not in wc26_ids:
+                    continue
+                for team_id, tgrp in grp.groupby("team_id"):
+                    # Get team name from matches
+                    match_rows = m2026[m2026["match_id"] == match_id]
+                    if match_rows.empty:
+                        continue
+                    row = match_rows.iloc[0]
+                    is_home_vals = tgrp["is_home"].tolist() if "is_home" in tgrp.columns else []
+                    is_home = bool(is_home_vals[0]) if is_home_vals else True
+                    tn = str(row["home_team"] if is_home else row["away_team"])
+                    ratings = tgrp["rating"].dropna().tolist() if "rating" in tgrp.columns else []
+                    top3 = sorted(ratings, reverse=True)[:3]
+                    if top3:
+                        team_bp_acc.setdefault(tn, []).append((str(match_id), float(np.mean(top3))))
+
+            if team_bp_acc:
+                team_bp_mean: dict[str, float] = {}
+                for tn, entries in team_bp_acc.items():
+                    entries_sorted = sorted(entries, key=lambda x: x[0], reverse=True)
+                    recent = [r for _, r in entries_sorted[:3]]
+                    team_bp_mean[tn] = float(np.mean(recent))
+                if team_bp_mean:
+                    bp_mean = float(np.mean(list(team_bp_mean.values())))
+                    if bp_mean > 1e-9:
+                        best_player_rating = {tn: v / bp_mean for tn, v in team_bp_mean.items()}
+                log.info("best_player ratings computed: %d teams", len(best_player_rating))
+
         # ── 5. Compute composite prior for each team ─────────────────────
         for team in sorted(all_2026_teams):
             tp = self._build_team_prior(
@@ -553,6 +713,10 @@ class CompositeTeamPrior:
                 market_lambdas, odds_df,
                 xg_att_per_game=xg_att_per_game,
                 xg_def_per_game=xg_def_per_game,
+                form_z_scores=form_z_scores,
+                futures_win_prob=futures_win_prob,
+                roster_quality=roster_quality,
+                best_player_rating=best_player_rating,
             )
             self._priors[team] = tp
 
@@ -563,14 +727,20 @@ class CompositeTeamPrior:
         # lower variance and better reflects underlying quality.
         self._apply_tournament_adjustment(matches_df, team_stats_df)
 
+        # ── 7. Apply injury penalties ─────────────────────────────────────────
+        if injuries_df is not None and not injuries_df.empty:
+            self._apply_injury_penalties(injuries_df)
+
         self._fitted = True
         n_market = sum(1 for tp in self._priors.values() if "market_implied" in tp.sources_used)
         n_elo = sum(1 for tp in self._priors.values() if "penaltyblog_elo" in tp.sources_used)
         n_fallback = sum(1 for tp in self._priors.values() if tp.fallback_reason)
         n_adj = sum(1 for tp in self._priors.values() if tp.tournament_n_matches > 0)
         log.info(
-            "CompositeTeamPrior fitted: %d teams  market_implied=%d  elo=%d  fallback=%d  tournament_adj=%d",
+            "CompositeTeamPrior fitted: %d teams  market_implied=%d  elo=%d  fallback=%d  tournament_adj=%d"
+            "  form_teams=%d  futures_teams=%d  roster_teams=%d  bp_teams=%d",
             len(self._priors), n_market, n_elo, n_fallback, n_adj,
+            len(form_z_scores), len(futures_win_prob), len(roster_quality), len(best_player_rating),
         )
         return self
 
@@ -789,6 +959,76 @@ class CompositeTeamPrior:
             log.warning("Colley fitting failed: %s", exc)
         return massey_df, colley_df
 
+    def _apply_injury_penalties(self, injuries_df: pd.DataFrame) -> None:
+        """
+        Apply lambda penalties for OUT/GTD players by position.
+
+        Penalties per player:
+          OUT GK:    multiply defense λ by 0.92
+          OUT FW/MF: multiply attack λ by 0.94 per player
+          GTD GK:    multiply defense λ by 0.96 (half penalty)
+          GTD FW/MF: multiply attack λ by 0.97 per player
+        Total attack penalty capped at 0.75; defense penalty capped at 0.75.
+        """
+        _GK_OUT_DEF = 0.92
+        _FW_MF_OUT_ATT = 0.94
+        _GK_GTD_DEF = 0.96
+        _FW_MF_GTD_ATT = 0.97
+        _CAP_FLOOR = 0.75
+
+        for team, tp in self._priors.items():
+            team_injuries = injuries_df[
+                injuries_df["team_name"].str.lower() == team.lower()
+            ] if "team_name" in injuries_df.columns else pd.DataFrame()
+            if team_injuries.empty:
+                continue
+
+            att_mult = 1.0
+            def_mult = 1.0
+            n_applied = 0
+
+            for _, row in team_injuries.iterrows():
+                status = str(row.get("status", "")).upper()
+                pos = str(row.get("player_position", row.get("position", ""))).upper()
+                name = str(row.get("player_name", "unknown"))
+
+                if status == "OUT":
+                    if "GK" in pos:
+                        def_mult *= _GK_OUT_DEF
+                        n_applied += 1
+                    elif any(p in pos for p in ("FW", "MF", "ST", "CF", "CAM", "AM", "RW", "LW", "SS", "OM", "CM", "RM", "LM", "DM", "CDM")):
+                        att_mult *= _FW_MF_OUT_ATT
+                        n_applied += 1
+                elif status == "GTD":
+                    if "GK" in pos:
+                        def_mult *= _GK_GTD_DEF
+                        n_applied += 1
+                    elif any(p in pos for p in ("FW", "MF", "ST", "CF", "CAM", "AM", "RW", "LW", "SS", "OM", "CM", "RM", "LM", "DM", "CDM")):
+                        att_mult *= _FW_MF_GTD_ATT
+                        n_applied += 1
+
+            if n_applied == 0:
+                continue
+
+            # Apply caps
+            att_mult = max(att_mult, _CAP_FLOOR)
+            def_mult = max(def_mult, _CAP_FLOOR)
+
+            old_att = tp.final_attack_lambda
+            old_def = tp.final_defense_lambda
+            tp.final_attack_lambda = round(float(tp.final_attack_lambda * att_mult), 4)
+            tp.final_defense_lambda = round(float(tp.final_defense_lambda * def_mult), 4)
+
+            if "injuries" not in tp.sources_used:
+                tp.sources_used.append("injuries")
+
+            log.warning(
+                "Injuries applied: %s  n=%d  att_mult=%.3f  def_mult=%.3f"
+                "  att: %.3f→%.3f  def: %.3f→%.3f",
+                team, n_applied, att_mult, def_mult,
+                old_att, tp.final_attack_lambda, old_def, tp.final_defense_lambda,
+            )
+
     def _extract_market_lambdas(
         self, m2026: pd.DataFrame, odds_df: pd.DataFrame
     ) -> dict[str, dict]:
@@ -888,6 +1128,10 @@ class CompositeTeamPrior:
         market_lambdas: dict, odds_df: pd.DataFrame,
         xg_att_per_game: Optional[dict] = None,
         xg_def_per_game: Optional[dict] = None,
+        form_z_scores: Optional[dict] = None,
+        futures_win_prob: Optional[dict] = None,
+        roster_quality: Optional[dict] = None,
+        best_player_rating: Optional[dict] = None,
     ) -> TeamPrior:
         conf = _TEAM_CONFEDERATION.get(team, "GLOBAL")
         conf_att = _CONFEDERATION_ATTACK.get(conf, _WC_AVG_ATTACK)
@@ -1019,6 +1263,54 @@ class CompositeTeamPrior:
                 f"{_xg_def:.3f}" if _xg_def is not None else "N/A",
             )
 
+        # ── Team form z-score adjustment (weight 0.10) ─────────────────
+        # Applies ±5% to att/def λ based on recent avg_rating z-score.
+        _form_z = (form_z_scores or {}).get(team)
+        if _form_z is not None:
+            _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
+            _form_att = composite_att * (1.0 + _form_adj) if False else None  # computed post-blend
+            # Store z-score for post-blend application (see below)
+            if "form_wc2026" not in sources:
+                sources.append("form_wc2026")
+            log.debug("form_wc2026: %s  z=%.3f  adj=%.4f", team, _form_z, _form_adj)
+
+        # ── Futures-implied win probability (weight 0.08) ──────────────
+        _fut_prob = (futures_win_prob or {}).get(team)
+        if _fut_prob is not None and _fut_prob > 0:
+            # Map win probability to lambda boost: teams with higher tournament
+            # win probability get +3% attack λ, very low get -3%.
+            # Reference: median team win prob ≈ 1/32 ≈ 0.031 for 32-team tournament
+            n_teams = max(len(futures_win_prob), 16)
+            median_prob = 1.0 / n_teams
+            fut_rel = (_fut_prob - median_prob) / max(median_prob, 1e-9)
+            fut_adj = float(np.clip(fut_rel * 0.03, -0.03, 0.03))
+            if "futures_implied" not in sources:
+                sources.append("futures_implied")
+            log.debug("futures_implied: %s  prob=%.4f  adj=%.4f", team, _fut_prob, fut_adj)
+        else:
+            fut_adj = 0.0
+
+        # ── Roster quality multiplier (weight 0.08 attack, 0.07 defense) ─
+        _roster_q = (roster_quality or {}).get(team)
+        if _roster_q is not None and _roster_q > 0:
+            # roster_quality is normalized to mean=1.0; apply as fractional boost
+            roster_att_mult = 1.0 + float(np.clip((_roster_q - 1.0) * 0.08, -0.08, 0.08))
+            roster_def_mult = 1.0 + float(np.clip((_roster_q - 1.0) * 0.07, -0.07, 0.07))
+            if "roster_quality" not in sources:
+                sources.append("roster_quality")
+        else:
+            roster_att_mult = 1.0
+            roster_def_mult = 1.0
+
+        # ── Best-player rolling rating multiplier (weight 0.06 attack) ──
+        _bp_rating = (best_player_rating or {}).get(team)
+        if _bp_rating is not None and _bp_rating > 0:
+            bp_att_mult = 1.0 + float(np.clip((_bp_rating - 1.0) * 0.06, -0.06, 0.06))
+            if "best_player_form" not in sources:
+                sources.append("best_player_form")
+        else:
+            bp_att_mult = 1.0
+
         # When market is used, tighten FIFA/qualifying; when absent (or weight=0), expand them.
         using_market_in_blend = effective_market_w > 0.0
 
@@ -1093,6 +1385,31 @@ class CompositeTeamPrior:
         tp.sources_used = sources
         tp.source_weights = {name: round(w / att_total_w, 3) for name, _, w in att_inputs}
 
+        # ── Post-blend: apply form / futures / roster / best-player adjustments ─
+        # These are multiplicative and applied after the weighted average blend
+        # so they don't distort the blend weights. Each is capped conservatively.
+        _final_att = tp.final_attack_lambda
+        _final_def = tp.final_defense_lambda
+
+        # Team form z-score: ±5% on both att and def
+        if _form_z is not None:
+            _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
+            _final_att *= (1.0 + _form_adj)
+            _final_def *= (1.0 - _form_adj)  # good form → concede fewer goals
+
+        # Futures win probability: ±3% on attack
+        _final_att *= (1.0 + fut_adj)
+
+        # Roster quality: ±8% attack, ±7% defense
+        _final_att *= roster_att_mult
+        _final_def *= roster_def_mult
+
+        # Best-player rolling rating: ±6% on attack
+        _final_att *= bp_att_mult
+
+        tp.final_attack_lambda = round(float(np.clip(_final_att, 0.3, 5.0)), 4)
+        tp.final_defense_lambda = round(float(np.clip(_final_def, 0.3, 5.0)), 4)
+
         # ── Uncertainty assessment ───────────────────────────────────────
         if tp.n_market_matches >= 3 and tp.n_wc_matches >= 4:
             tp.uncertainty = "LOW"
@@ -1113,6 +1430,11 @@ def build_composite_prior(
     market_weight: Optional[float] = None,
     team_stats_df: Optional[pd.DataFrame] = None,
     host_att_bonus: Optional[float] = None,
+    team_form_df: Optional[pd.DataFrame] = None,
+    injuries_df: Optional[pd.DataFrame] = None,
+    futures_df: Optional[pd.DataFrame] = None,
+    rosters_df: Optional[pd.DataFrame] = None,
+    best_players_df: Optional[pd.DataFrame] = None,
 ) -> CompositeTeamPrior:
     """Convenience function: fit and return a CompositeTeamPrior.
 
@@ -1127,11 +1449,29 @@ def build_composite_prior(
     host_att_bonus : float or None
         Override for the host nation attack bonus (default: _HOST_ATT_BONUS=0.10).
         Pass a dynamically recalibrated value to adjust for actual 2026 WC host performance.
+    team_form_df : pd.DataFrame or None
+        BDL match_team_form table; per-team avg_rating form adjustment (weight 0.10).
+    injuries_df : pd.DataFrame or None
+        Player injuries table; lambda penalties for OUT/GTD players by position.
+    futures_df : pd.DataFrame or None
+        Tournament futures odds; win probability prior (weight 0.08).
+    rosters_df : pd.DataFrame or None
+        Player rosters table; 2026 roster quality score (weight 0.08 att, 0.07 def).
+    best_players_df : pd.DataFrame or None
+        Match best players table; rolling top-3 rating multiplier (weight 0.06 att).
     """
     prior = CompositeTeamPrior(market_weight=market_weight)
     if host_att_bonus is not None:
         prior._host_att_bonus_override = float(host_att_bonus)
-    prior.fit(matches_df, odds_df, markets_df, team_stats_df=team_stats_df)
+    prior.fit(
+        matches_df, odds_df, markets_df,
+        team_stats_df=team_stats_df,
+        team_form_df=team_form_df,
+        injuries_df=injuries_df,
+        futures_df=futures_df,
+        rosters_df=rosters_df,
+        best_players_df=best_players_df,
+    )
     return prior
 
 

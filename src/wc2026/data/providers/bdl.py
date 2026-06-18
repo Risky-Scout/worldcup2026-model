@@ -125,6 +125,83 @@ class BDLProvider:
             snapshot_raw("match_team_form", "multi", records)
         return records
 
+    def fetch_injuries(self, statuses: list[str] | None = None) -> list[dict]:
+        """Fetch player injuries for 2026 season.
+
+        Parameters
+        ----------
+        statuses : list[str], optional
+            Filter by status (e.g. ['OUT', 'GTD']).  None fetches all.
+        """
+        params: dict[str, Any] = {"per_page": BDL_PER_PAGE, "seasons[]": [2026]}
+        if statuses:
+            params["statuses[]"] = statuses
+
+        records = list(self._paginate_with_extra_params("player_injuries", params))
+        if self._snapshot:
+            snapshot_raw("player_injuries", "2026", records)
+        return records
+
+    def fetch_futures(self) -> list[dict]:
+        """Fetch tournament futures odds (no pagination — returns all at once)."""
+        data = self._get("odds/futures", {})
+        records = data.get("data", [])
+        if self._snapshot:
+            snapshot_raw("odds_futures", "2026", records)
+        return records
+
+    def fetch_rosters(self, seasons: list[int] | None = None) -> list[dict]:
+        """Fetch player rosters.  Paginated.
+
+        Parameters
+        ----------
+        seasons : list[int], optional
+            Season years to fetch (e.g. [2018, 2022, 2026]).
+        """
+        params: dict[str, Any] = {"per_page": BDL_PER_PAGE}
+        if seasons:
+            params["seasons[]"] = seasons
+        records = list(self._paginate_with_extra_params("rosters", params))
+        if self._snapshot:
+            snapshot_raw("rosters", "multi", records)
+        return records
+
+    def fetch_player_props(
+        self,
+        match_id: int,
+        prop_type: str | None = None,
+        vendors: list[str] | None = None,
+    ) -> list[dict]:
+        """Fetch player props for a specific match.  No cursor pagination."""
+        params: dict[str, Any] = {"match_id": match_id}
+        if prop_type:
+            params["prop_type"] = prop_type
+        if vendors:
+            params["vendors[]"] = vendors
+        data = self._get("odds/player_props", params)
+        records = data.get("data", [])
+        if self._snapshot:
+            snapshot_raw("player_props", str(match_id), records)
+        return records
+
+    def fetch_avg_positions(
+        self,
+        match_ids: list[int] | None = None,
+        team_ids: list[int] | None = None,
+    ) -> list[dict]:
+        """Fetch average player positions.  Paginated."""
+        records = list(self._paginate("match_avg_positions", match_ids=match_ids, team_ids=team_ids))
+        if self._snapshot:
+            snapshot_raw("match_avg_positions", "multi", records)
+        return records
+
+    def fetch_best_players(self, match_ids: list[int] | None = None) -> list[dict]:
+        """Fetch match best players / ratings.  Paginated."""
+        records = list(self._paginate("match_best_players", match_ids=match_ids))
+        if self._snapshot:
+            snapshot_raw("match_best_players", "multi", records)
+        return records
+
     # ------------------------------------------------------------------
     # Pagination
     # ------------------------------------------------------------------
@@ -151,6 +228,30 @@ class BDLProvider:
                 params["cursor"] = cursor
 
             data = self._get(endpoint, params)
+            records = data.get("data", [])
+            yield from records
+            page += 1
+            log.debug("%s page %d: %d records", endpoint, page, len(records))
+
+            meta = data.get("meta", {})
+            cursor = meta.get("next_cursor")
+            if cursor is None:
+                break
+
+    def _paginate_with_extra_params(
+        self,
+        endpoint: str,
+        params: dict[str, Any],
+    ) -> Generator[dict, None, None]:
+        """Paginate with a fully pre-built params dict (cursor added automatically)."""
+        cursor: int | None = None
+        page = 0
+        p = dict(params)
+        while True:
+            if cursor is not None:
+                p["cursor"] = cursor
+
+            data = self._get(endpoint, p)
             records = data.get("data", [])
             yield from records
             page += 1

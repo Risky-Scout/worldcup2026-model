@@ -124,6 +124,31 @@ class DatasetBuilder:
         form_df = pd.DataFrame(raw_form) if raw_form else pd.DataFrame()
         write_table("team_form", form_df, self._data_version)
 
+        # ── 9. Player injuries ───────────────────────────────────────────
+        injuries_df = self._fetch_injuries()
+        write_table("injuries", injuries_df, self._data_version)
+        log.info("Injuries table: %d rows.", len(injuries_df))
+
+        # ── 10. Tournament futures odds ───────────────────────────────────
+        futures_df = self._fetch_futures()
+        write_table("futures", futures_df, self._data_version)
+        log.info("Futures table: %d rows.", len(futures_df))
+
+        # ── 11. Rosters ───────────────────────────────────────────────────
+        rosters_df = self._fetch_rosters()
+        write_table("rosters", rosters_df, self._data_version)
+        log.info("Rosters table: %d rows.", len(rosters_df))
+
+        # ── 12. Match best players ────────────────────────────────────────
+        best_players_df = self._fetch_best_players(match_ids)
+        write_table("best_players", best_players_df, self._data_version)
+        log.info("Best players table: %d rows.", len(best_players_df))
+
+        # ── 13. First-half markets ────────────────────────────────────────
+        first_half_markets_df = self._flatten_first_half_markets(raw_odds)
+        write_table("first_half_markets", first_half_markets_df, self._data_version)
+        log.info("First-half markets table: %d rows.", len(first_half_markets_df))
+
         log.info("Dataset build complete. Version=%s", self._data_version)
         return {
             "matches": matches_df,
@@ -136,6 +161,11 @@ class DatasetBuilder:
             "correct_score_odds": correct_score_df,
             "group_standings": gs_df,
             "team_form": form_df,
+            "injuries": injuries_df,
+            "futures": futures_df,
+            "rosters": rosters_df,
+            "best_players": best_players_df,
+            "first_half_markets": first_half_markets_df,
         }
 
     # -----------------------------------------------------------------------
@@ -289,6 +319,23 @@ class DatasetBuilder:
         Captures: correct_score (type=correct_score), btts, spread, double_chance,
         draw_no_bet, and per-line totals.
         """
+        return self._flatten_markets_for_period(raw_odds, period_filter="match")
+
+    def _flatten_first_half_markets(self, raw_odds: list[dict]) -> pd.DataFrame:
+        """
+        Parse the nested markets[] sub-array for first_half period.
+
+        Produces one row per (match_id, vendor, market_type, period, outcome).
+        """
+        return self._flatten_markets_for_period(raw_odds, period_filter="first_half")
+
+    def _flatten_markets_for_period(self, raw_odds: list[dict], period_filter: str) -> pd.DataFrame:
+        """
+        Parse markets[] sub-array from BDL odds for a specific period.
+
+        Produces one row per (match_id, vendor, market_type, period, outcome).
+        Captures: correct_score, btts, spread, double_chance, draw_no_bet, totals.
+        """
         rows = []
         for raw in raw_odds:
             match_id = raw.get("match_id")
@@ -301,8 +348,8 @@ class DatasetBuilder:
                 mkt_scope = mkt.get("scope", "match")
                 line_value = mkt.get("line_value")
 
-                if mkt_period != "match":
-                    continue  # Skip first-half, second-half markets for now
+                if mkt_period != period_filter:
+                    continue
 
                 for oc in mkt.get("outcomes", []):
                     oc_name = oc.get("name", "")
@@ -344,6 +391,101 @@ class DatasetBuilder:
         df = pd.DataFrame(rows)
         df["match_id"] = pd.to_numeric(df["match_id"], errors="coerce").astype("Int64")
         return df
+
+    def _fetch_injuries(self) -> pd.DataFrame:
+        """Fetch player injuries for 2026, flatten to parquet schema."""
+        try:
+            raw = self._provider.fetch_injuries(statuses=["OUT", "GTD"])
+        except Exception as exc:
+            log.warning("fetch_injuries failed: %s", exc)
+            return pd.DataFrame()
+        rows = []
+        for r in raw:
+            player = r.get("player") or {}
+            team = r.get("team") or {}
+            rows.append({
+                "player_id": player.get("id"),
+                "player_name": player.get("name") or player.get("short_name"),
+                "player_position": player.get("position") or r.get("position"),
+                "team_id": team.get("id"),
+                "team_name": team.get("name") or team.get("full_name"),
+                "status": r.get("status"),
+                "injury_type": r.get("injury_type"),
+                "updated_at": r.get("updated_at"),
+            })
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+    def _fetch_futures(self) -> pd.DataFrame:
+        """Fetch tournament futures odds, flatten to parquet schema."""
+        try:
+            raw = self._provider.fetch_futures()
+        except Exception as exc:
+            log.warning("fetch_futures failed: %s", exc)
+            return pd.DataFrame()
+        rows = []
+        for r in raw:
+            subject = r.get("subject") or {}
+            rows.append({
+                "team_id": subject.get("id"),
+                "team_name": subject.get("name") or subject.get("full_name"),
+                "vendor": r.get("vendor"),
+                "market_type": r.get("market_type"),
+                "market_name": r.get("market_name"),
+                "american_odds": r.get("american_odds"),
+                "decimal_odds": r.get("decimal_odds"),
+                "updated_at": r.get("updated_at"),
+            })
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+    def _fetch_rosters(self) -> pd.DataFrame:
+        """Fetch rosters for seasons 2018, 2022, 2026, flatten to parquet schema."""
+        try:
+            raw = self._provider.fetch_rosters(seasons=[2018, 2022, 2026])
+        except Exception as exc:
+            log.warning("fetch_rosters failed: %s", exc)
+            return pd.DataFrame()
+        rows = []
+        for r in raw:
+            season = r.get("season") or {}
+            player = r.get("player") or {}
+            rows.append({
+                "season_year": season.get("year") if isinstance(season, dict) else r.get("season"),
+                "team_id": r.get("team_id"),
+                "team_name": r.get("team_name") or (r.get("team") or {}).get("name"),
+                "player_id": player.get("id"),
+                "player_name": player.get("name") or player.get("short_name"),
+                "player_position": player.get("position"),
+                "appearances": r.get("appearances"),
+                "starts": r.get("starts"),
+                "minutes_played": r.get("minutes_played"),
+                "goals": r.get("goals"),
+                "assists": r.get("assists"),
+                "avg_rating": player.get("avg_rating") or r.get("avg_rating"),
+            })
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+    def _fetch_best_players(self, match_ids: list[int]) -> pd.DataFrame:
+        """Fetch match best players for completed 2026 matches."""
+        if not match_ids:
+            return pd.DataFrame()
+        try:
+            raw = self._provider.fetch_best_players(match_ids=match_ids)
+        except Exception as exc:
+            log.warning("fetch_best_players failed: %s", exc)
+            return pd.DataFrame()
+        rows = []
+        for r in raw:
+            rows.append({
+                "match_id": r.get("match_id"),
+                "player_id": r.get("player_id") or (r.get("player") or {}).get("id"),
+                "team_id": r.get("team_id") or (r.get("team") or {}).get("id"),
+                "is_home": r.get("is_home"),
+                "side_rank": r.get("side_rank"),
+                "is_man_of_match": r.get("is_man_of_match"),
+                "rating": r.get("rating"),
+                "reason": r.get("reason"),
+            })
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 
 # ---------------------------------------------------------------------------

@@ -173,7 +173,9 @@ def _load_cached_tables() -> dict[str, pd.DataFrame]:
     """Load pre-built processed parquet files from disk (committed to repo)."""
     tables: dict[str, pd.DataFrame] = {}
     for name in ["matches", "odds", "markets", "correct_score_odds", "team_stats",
-                 "shots", "events", "momentum", "group_standings", "team_form"]:
+                 "shots", "events", "momentum", "group_standings", "team_form",
+                 "injuries", "futures", "rosters", "best_players",
+                 "first_half_markets"]:
         p = PROCESSED_DIR / DATA_VERSION / f"{name}.parquet"
         if p.exists():
             tables[name] = pd.read_parquet(p)
@@ -1179,6 +1181,11 @@ def predict_all_2026(
     hist_df: pd.DataFrame,
     results: list,
     team_stats_df: "pd.DataFrame | None" = None,
+    team_form_df: "pd.DataFrame | None" = None,
+    injuries_df: "pd.DataFrame | None" = None,
+    futures_df: "pd.DataFrame | None" = None,
+    rosters_df: "pd.DataFrame | None" = None,
+    best_players_df: "pd.DataFrame | None" = None,
 ) -> tuple[list, dict]:
     """Fit models on all 2018+2022 history, predict all 2026 scheduled matches."""
     log.info("── STEP 3: Predicting all 2026 matches ──")
@@ -1544,6 +1551,11 @@ def predict_all_2026(
         market_weight=_adaptive_market_weight,
         team_stats_df=team_stats_df if team_stats_df is not None else pd.DataFrame(),
         host_att_bonus=_host_bonus,
+        team_form_df=team_form_df,
+        injuries_df=injuries_df,
+        futures_df=futures_df,
+        rosters_df=rosters_df,
+        best_players_df=best_players_df,
     )
 
     # Apply dynamic WC_AVG scaling to all team lambdas when 2026 goal rate
@@ -3979,6 +3991,11 @@ def main():
     all_preds, champions, composite_prior, _adaptive_market_weight = predict_all_2026(
         matches_df, odds_df, markets_df, hist_df, results,
         team_stats_df=tables.get("team_stats"),
+        team_form_df=tables.get("team_form"),
+        injuries_df=tables.get("injuries"),
+        futures_df=tables.get("futures"),
+        rosters_df=tables.get("rosters"),
+        best_players_df=tables.get("best_players"),
     )
     write_published_json(all_preds, generated_at)
     annotate_published_with_results(matches_df)
