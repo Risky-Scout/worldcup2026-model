@@ -82,6 +82,10 @@ class MarketConstraints:
     n_cs_vendors: int = 0
     n_cs_outcomes: int = 0
 
+    # ── Asian handicap market-implied probabilities ───────────────────────
+    # Key: float line (e.g. -1.0), value: no-vig home-side cover probability
+    ah_market: dict = field(default_factory=dict)
+
     # ── Odds freshness ────────────────────────────────────────────────────
     odds_timestamp: Optional[str] = None
     stale: bool = False
@@ -244,6 +248,29 @@ def extract_constraints(
     for line, attr in line_map.items():
         if line in totals_map:
             setattr(mc, attr, float(np.mean(totals_map[line])))
+
+    # ── Spread/AH from main odds table ────────────────────────────────────
+    ah_map: dict[float, list[float]] = {}  # line → [no-vig home cover prob, ...]
+    for _, row in mrows.iterrows():
+        try:
+            sv = row.get("spread_home_value")
+            so = row.get("spread_home_odds")
+            if sv is None or so is None:
+                continue
+            line = float(sv)
+            # Convert American spread odds to implied home cover prob
+            p_home = _decimal_to_prob(_american_to_decimal(float(so)))
+            # Away side: no direct away odds in main table; approximate as 1 - p_home
+            # (whole-ball lines would have push but we treat as two-way for simplicity)
+            p_away = 1.0 - p_home
+            stripped = _strip_vig_multiplicative([p_home, p_away])
+            if line not in ah_map:
+                ah_map[line] = []
+            ah_map[line].append(stripped[0])
+        except Exception:
+            continue
+    if ah_map:
+        mc.ah_market = {line: float(np.mean(probs)) for line, probs in ah_map.items()}
 
     # ── Parse markets sub-array ──────────────────────────────────────────
     if markets_df is not None and not markets_df.empty:

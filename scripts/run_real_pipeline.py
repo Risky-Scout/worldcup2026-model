@@ -405,6 +405,33 @@ def _pmf_to_markets(pmf: np.ndarray, n: int = 15) -> dict:
     ah_h_minus_half = round(hw, 5)   # home -0.5: home must win by ≥1
     ah_a_minus_half = round(aw, 5)   # away -0.5: away must win by ≥1
 
+    # ── Full Asian handicap grid: lines -2 to +2 ─────────────────────────────
+    # For half-ball lines (no push): straight win probability for the favoured side.
+    # For whole-ball lines (push on exact margin): win + 0.5 * draw-at-that-margin.
+    def _ah_home(line: float) -> float:
+        """P(home covers handicap line from home perspective).
+        Negative line means home gives up goals (handicap applied to home).
+        """
+        total = 0.0
+        for hi in range(n):
+            for ai in range(n):
+                adjusted = hi - ai - line  # positive = home covers
+                if abs(adjusted) < 1e-9:   # push (whole-ball line, margin == line)
+                    total += 0.5 * p[hi, ai]
+                elif adjusted > 0:
+                    total += p[hi, ai]
+        return round(float(total), 5)
+
+    ah_grid: dict[str, float] = {}
+    for _line in [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0]:
+        _key_h = f"asian_handicap_home_{_line:+.1f}".replace("+", "+").replace("-", "-")
+        _key_a = f"asian_handicap_away_{_line:+.1f}".replace("+", "+").replace("-", "-")
+        # Clean up key format: e.g. "asian_handicap_home_-1.0", "asian_handicap_home_+0.5"
+        _line_str = f"{_line:+.1f}" if _line != 0 else "0.0"
+        ah_grid[f"asian_handicap_home_{_line_str}"] = _ah_home(_line)
+        # Away side covers if away gives up line from their perspective (mirror)
+        ah_grid[f"asian_handicap_away_{_line_str}"] = _ah_home(-_line)
+
     return {
         "home_win": round(hw, 5),
         "draw": round(dr, 5),
@@ -422,6 +449,7 @@ def _pmf_to_markets(pmf: np.ndarray, n: int = 15) -> dict:
         "expected_points_away": exp_pts_a,
         "asian_handicap_home_-0.5": ah_h_minus_half,
         "asian_handicap_away_-0.5": ah_a_minus_half,
+        **ah_grid,
         **ou,
     }
 
@@ -2122,6 +2150,22 @@ def _predict_one_match(
     publish_pmf = rec.publish_pmf
     _validate_pmf(publish_pmf, f"{home} v {away}", model_warnings)
     publish_markets = _pmf_to_markets(publish_pmf)
+
+    # ── 5a. Blend model AH probabilities with market-implied AH ──────────
+    # Same alpha logic as 1X2 reconciliation, capped at 0.45.
+    # mc.ah_market: {line: no-vig home cover prob} from spread odds in BDL.
+    if mc.ah_market:
+        _ah_alpha = min(mc.quality_score * 0.70, 0.45)
+        for _ah_line, _mkt_ah_prob in mc.ah_market.items():
+            _line_str = f"{_ah_line:+.1f}" if _ah_line != 0 else "0.0"
+            _key_h = f"asian_handicap_home_{_line_str}"
+            _key_a = f"asian_handicap_away_{_line_str}"
+            if _key_h in publish_markets:
+                _model_ah = publish_markets[_key_h]
+                _blended_h = round(_ah_alpha * _mkt_ah_prob + (1.0 - _ah_alpha) * _model_ah, 5)
+                _blended_a = round(1.0 - _blended_h, 5)
+                publish_markets[_key_h] = _blended_h
+                publish_markets[_key_a] = _blended_a
     composite_markets = _pmf_to_markets(comp_pmf)
     pure_markets = _pmf_to_markets(pure_pmf)
     pl_lh, pl_la = _pmf_lambda(publish_pmf)
