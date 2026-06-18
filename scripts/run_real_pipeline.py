@@ -1769,7 +1769,7 @@ def predict_all_2026(
         calib_rho_source=_calib_rho_source,
     )
 
-    return all_predictions, champions, composite_prior
+    return all_predictions, champions, composite_prior, _adaptive_market_weight
 
 
 # ── Altitude venue multipliers ────────────────────────────────────────────────
@@ -3984,7 +3984,7 @@ def main():
     ].copy()
 
     results = run_walkforward(matches_df)
-    all_preds, champions, composite_prior = predict_all_2026(
+    all_preds, champions, composite_prior, _adaptive_market_weight = predict_all_2026(
         matches_df, odds_df, markets_df, hist_df, results,
         team_stats_df=tables.get("team_stats"),
     )
