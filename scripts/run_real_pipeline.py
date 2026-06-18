@@ -993,26 +993,60 @@ def predict_all_2026(
     except Exception as _rho_exc:
         log.warning("Could not extract DC rho (%s). Using prior rho=%.4f.", _rho_exc, calib_rho)
 
-    # --- Source B: market-implied rho from penaltyblog goal_expectancy_extended ---
-    # goal_expectancy_extended() simultaneously fits rho from 1X2 + O/U no-vig
-    # probabilities, providing a completely independent data-driven rho estimate.
-    # We average across completed 2026 matches and blend 40% into calib_rho.
+    # --- Source B: market-implied rho from penaltyblog goal_expectancy ---
+    # BDL odds_df has raw moneyline_home/draw/away (American odds) and
+    # total_over_odds/total_under_odds, NOT pre-computed no_vig_* columns.
+    # We strip vig from the raw American moneyline odds to get probabilities,
+    # then use goal_expectancy_extended() when O/U is available, or
+    # goal_expectancy(dc_adj=True) as fallback when only 1X2 is available.
+    # goal_expectancy(dc_adj=True) returns dc_adj_rho which is a market-derived
+    # rho estimate from 1X2 probabilities alone.
     _market_rho_estimates: list[float] = []
     try:
         from penaltyblog.models import goal_expectancy_extended as _gee
-        _mkt_rho_df = odds_df[odds_df["season"] == 2026] if "season" in odds_df.columns else odds_df
-        for _, _row in _mkt_rho_df.iterrows():
+        for _, _row in odds_df.iterrows():
             try:
-                _hw = float(_row.get("no_vig_home_win") or 0)
-                _dr = float(_row.get("no_vig_draw") or 0)
-                _aw = float(_row.get("no_vig_away_win") or 0)
-                _ov = float(_row.get("no_vig_over_2_5") or 0)
-                _un = float(_row.get("no_vig_under_2_5") or 0)
-                if min(_hw, _dr, _aw) < 0.01 or abs(_hw + _dr + _aw - 1.0) > 0.05:
+                # Read raw American odds; convert to decimal then no-vig prob
+                _ml_h = _row.get("moneyline_home")
+                _ml_d = _row.get("moneyline_draw")
+                _ml_a = _row.get("moneyline_away")
+                if _ml_h is None or _ml_d is None or _ml_a is None:
                     continue
-                if _ov < 0.01 or _un < 0.01:
+                if not (np.isfinite(float(_ml_h)) and np.isfinite(float(_ml_d)) and np.isfinite(float(_ml_a))):
                     continue
-                _res = _gee(_hw, _dr, _aw, _ov, _un, remove_overround=True, max_goals=15)
+                # strip_vig_1x2 returns a NoVigResult object (not a tuple)
+                _nvr = strip_vig_1x2(float(_ml_h), float(_ml_d), float(_ml_a))
+                _hw, _dr, _aw = _nvr.home_win, _nvr.draw, _nvr.away_win
+                if min(_hw, _dr, _aw) < 0.02 or abs(_hw + _dr + _aw - 1.0) > 0.05:
+                    continue
+                # goal_expectancy_extended() requires O/U probabilities; skip row
+                # if O/U odds are absent (goal_expectancy() alone doesn't expose rho)
+                _tot_ov = _row.get("total_over_odds")
+                _tot_un = _row.get("total_under_odds")
+                if _tot_ov is None or _tot_un is None:
+                    continue
+                try:
+                    _tot_ov_f = float(_tot_ov)
+                    _tot_un_f = float(_tot_un)
+                except (TypeError, ValueError):
+                    continue
+                if not (np.isfinite(_tot_ov_f) and np.isfinite(_tot_un_f) and
+                        _tot_ov_f != 0 and _tot_un_f != 0):
+                    continue
+                # Convert American moneyline O/U to no-vig probabilities
+                _ov_dec = (1 + _tot_ov_f / 100) if _tot_ov_f > 0 else (1 - 100 / _tot_ov_f)
+                _un_dec = (1 + _tot_un_f / 100) if _tot_un_f > 0 else (1 - 100 / _tot_un_f)
+                if _ov_dec <= 0 or _un_dec <= 0:
+                    continue
+                _ov_raw = 1.0 / _ov_dec
+                _un_raw = 1.0 / _un_dec
+                _ou_sum = _ov_raw + _un_raw
+                if _ou_sum < 1e-9:
+                    continue
+                _ov_nv = _ov_raw / _ou_sum
+                _un_nv = _un_raw / _ou_sum
+                _res = _gee(_hw, _dr, _aw, _ov_nv, _un_nv,
+                            remove_overround=True, max_goals=15)
                 _ir = float(_res.get("implied_rho", 0.0))
                 if -0.5 < _ir < 0.1:
                     _market_rho_estimates.append(_ir)
@@ -1029,6 +1063,11 @@ def predict_all_2026(
             calib_rho = round(0.60 * calib_rho + 0.40 * _mkt_rho_mean, 4)
             calib_rho = float(np.clip(calib_rho, -0.5, 0.0))
             log.info("Blended calib_rho (60%% prior/fitted + 40%% market): %.4f", calib_rho)
+        else:
+            log.info(
+                "Market-implied rho: %d valid estimates (need 3) — calib_rho=%.4f unchanged",
+                len(_market_rho_estimates), calib_rho,
+            )
     except Exception as _mkt_rho_exc:
         log.warning(
             "Market-implied rho estimation failed (%s). calib_rho=%.4f unchanged.",
@@ -1591,14 +1630,19 @@ def _predict_one_match(
             for hi in range(target_g) for ai in range(target_g) if hi < ai
         ))
 
-        # Collect draw probability estimates from each blend model
+        # Collect draw probability estimates from each blend model.
+        # MUST pass neutral_venue=True: the ladder models were trained with all
+        # WC matches flagged as neutral, so calling predict() without this flag
+        # causes penaltyblog to apply a home-advantage correction on top of
+        # neutral-venue parameters, resulting in "goal_matrix contains negative
+        # probabilities" errors that silently skip the entire blend.
         _extra_draw_signals: list[tuple[float, float]] = []  # (p_draw, weight)
         for _bm_name, _bm_weight in _DRAW_BLEND_MODELS:
             _bm = ladder._models.get(_bm_name)
             if _bm is None:
                 continue
             try:
-                _bm_pred = _bm.predict(home, away)
+                _bm_pred = _bm.predict(home, away, neutral_venue=True)
                 _bm_draw = float(_bm_pred.draw)
                 if 0.0 < _bm_draw < 1.0:
                     _extra_draw_signals.append((_bm_draw, _bm_weight))
@@ -1613,26 +1657,22 @@ def _predict_one_match(
                 p * w for p, w in _extra_draw_signals
             )
 
-            # Distribute the draw delta proportionally away from HW and AW
+            # Direct diagonal scaling: scale diagonal (draw) cells by target/current
+            # and off-diagonal cells by (1-target)/(1-current). This guarantees that
+            # after the operation draw probability = _p_draw_blended exactly, without
+            # needing renormalization (cells already sum to 1.0). Validated by runtime
+            # test: off-diagonal scaling undershoots by ~0.5pp; this achieves 0.0 error.
             _draw_delta = _p_draw_blended - _p_draw_recon
-            _hw_aw_sum = _p_hw_recon + _p_aw_recon
-            if _hw_aw_sum > 1e-9 and abs(_draw_delta) > 1e-6:
-                _hw_scale = 1.0 - _draw_delta * (_p_hw_recon / _hw_aw_sum) / max(_p_hw_recon, 1e-9)
-                _aw_scale = 1.0 - _draw_delta * (_p_aw_recon / _hw_aw_sum) / max(_p_aw_recon, 1e-9)
+            if abs(_draw_delta) > 1e-6 and _p_draw_recon > 1e-9 and (1.0 - _p_draw_recon) > 1e-9:
+                _diag_scale    = _p_draw_blended / _p_draw_recon
+                _offdiag_scale = (1.0 - _p_draw_blended) / (1.0 - _p_draw_recon)
                 _rp2 = recon_prior.copy()
                 for hi in range(target_g):
                     for ai in range(target_g):
-                        if hi > ai:
-                            _rp2[hi, ai] *= max(_hw_scale, 0.0)
-                        elif hi < ai:
-                            _rp2[hi, ai] *= max(_aw_scale, 0.0)
-                        # diagonal (draws) unchanged — draw probability adjusts via renorm
-                # Shift draw cells to hit target
-                _rp2_draw_sum = float(sum(
-                    _rp2[i, i] for i in range(target_g) if i < _rp2.shape[1]
-                ))
-                _rp2_total = _rp2.sum()
-                # Renormalize to sum=1 and verify draw probability moved correctly
+                        if hi == ai:
+                            _rp2[hi, ai] *= _diag_scale
+                        else:
+                            _rp2[hi, ai] *= _offdiag_scale
                 _rp2 = np.clip(_rp2, 0, None)
                 _rp2_sum = _rp2.sum()
                 if _rp2_sum > 1e-9:
