@@ -106,6 +106,14 @@ class DatasetBuilder:
         odds_df = self._flatten_odds(odds)
         write_table("odds", odds_df, self._data_version)
 
+        # ── 6a. Append raw odds to immutable OddsSnapshotStore ───────────
+        try:
+            from wc2026.data.odds_snapshot_store import OddsSnapshotStore
+            _store = OddsSnapshotStore()
+            _store.append_snapshot(raw_odds, observed_at=datetime.utcnow())
+        except Exception as e:
+            log.warning("OddsSnapshotStore append failed: %s", e)
+
         # ── 6b. Markets sub-array (correct_score, BTTS, spread, DC, DNB, totals) ──
         markets_df = self._flatten_markets(raw_odds)
         write_table("markets", markets_df, self._data_version)

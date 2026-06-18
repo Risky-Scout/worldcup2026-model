@@ -135,3 +135,11 @@ def list_versions() -> list[str]:
     if not PROCESSED_DIR.exists():
         return []
     return sorted(d.name for d in PROCESSED_DIR.iterdir() if d.is_dir())
+
+
+def write_table_append(table_name: str, df: pd.DataFrame, base_path: Path | None = None) -> Path:
+    """Append rows to a partitioned Parquet dataset without overwriting."""
+    path = base_path or (DATA_DIR / "processed" / "v1" / f"{table_name}.parquet")
+    table = pa.Table.from_pandas(df, preserve_index=False)
+    pq.write_to_dataset(table, root_path=str(path.parent), partition_cols=None)
+    return path

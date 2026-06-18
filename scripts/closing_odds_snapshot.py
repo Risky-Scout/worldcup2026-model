@@ -357,6 +357,19 @@ def _fetch_and_record(provider, match_id: str, home_team: str, away_team: str,
     n = _record_closing_odds(match_id, closing_probs, ts, source=closing_source)
     log.info("Closing odds recorded for %s vs %s: %d CLV records updated",
              home_team, away_team, n)
+
+    # Also persist to immutable OddsSnapshotStore for CLV analysis
+    try:
+        from wc2026.data.odds_snapshot_store import OddsSnapshotStore
+        _snap_store = OddsSnapshotStore()
+        _snap_store.append_snapshot(
+            odds_rows,
+            observed_at=datetime.now(tz=timezone.utc),
+            ingestion_run_id="closing",
+        )
+    except Exception as _snap_exc:
+        log.debug("OddsSnapshotStore append failed in closing_odds_snapshot: %s", _snap_exc)
+
     return n
 
 

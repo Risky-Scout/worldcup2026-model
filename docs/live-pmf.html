@@ -504,6 +504,11 @@ function buildLiveCard(m){
 function buildFtCard(m){
   const hg=m.current_home_goals??0,ag=m.current_away_goals??0;
   const hc=m.home_color||'#1a56db',ac=m.away_color||'#e63946';
+  let ftLabel='FULL TIME';
+  if(m.has_penalty_shootout&&m.home_score_penalties!=null)
+    ftLabel=`FULL TIME (AET) &nbsp;·&nbsp; Pens ${m.home_score_penalties}–${m.away_score_penalties}`;
+  else if(m.has_extra_time)
+    ftLabel='FULL TIME (AET)';
   return `<div class="upcoming-card" style="border-left:3px solid #888;opacity:.85;">
     <div>
       <div style="font-size:15px;font-weight:500;">
@@ -511,7 +516,7 @@ function buildFtCard(m){
         <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;margin:0 8px;">${hg}–${ag}</span>
         <span style="color:${esc(ac)}">${esc(m.away_team)}</span>
       </div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">FULL TIME</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">${ftLabel}</div>
     </div>
   </div>`;
 }

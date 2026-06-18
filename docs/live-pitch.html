@@ -1059,9 +1059,14 @@ function render(data) {
     const nextMatch = upcoming[0];
     const noLive = document.getElementById('no-live-state');
     const ftPart = recentFt.length
-        ? recentFt.map(ft=>`<div style="font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:4px;">
-            FT &nbsp;${esc(ft.home_team)} <b>${ft.current_home_goals??0}–${ft.current_away_goals??0}</b> ${esc(ft.away_team)}
-          </div>`).join('')
+        ? recentFt.map(ft=>{
+            const psoNote = ft.has_penalty_shootout && ft.home_score_penalties != null
+              ? ` <span style="font-size:9px">(pens ${ft.home_score_penalties}–${ft.away_score_penalties})</span>`
+              : ft.has_extra_time ? ' <span style="font-size:9px">(AET)</span>' : '';
+            return `<div style="font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:4px;">
+              FT &nbsp;${esc(ft.home_team)} <b>${ft.current_home_goals??0}–${ft.current_away_goals??0}</b> ${esc(ft.away_team)}${psoNote}
+            </div>`;
+          }).join('')
         : '';
     noLive.innerHTML = nextMatch
       ? `<div id="no-live-message">
