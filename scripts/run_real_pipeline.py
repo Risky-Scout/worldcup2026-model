@@ -353,6 +353,55 @@ def _poisson_tail_mass(lh: float, la: float, max_goals: int = 15) -> float:
     return max(0.0, 1.0 - p_h_under * p_a_under)
 
 
+def _first_half_pmf(lh: float, la: float, max_goals: int = 10) -> dict:
+    """
+    Compute first-half market probabilities from match lambdas.
+
+    Uses ~45% of match lambda per team as the first-half expected goals,
+    adjusted for the lower scoring rate in halves (typically fewer goals
+    than second half due to tactical caution and lower fatigue pressure).
+
+    Returns dict with fh_home_win, fh_draw, fh_away_win, fh_over_0.5,
+    fh_over_1.5, fh_btts keys.
+    """
+    try:
+        from scipy.stats import poisson
+        # First-half lambda ≈ 45% of match lambda (slightly below half due to
+        # historically lower first-half scoring rate in WC matches)
+        fh_lh = max(lh * 0.45, 0.10)
+        fh_la = max(la * 0.45, 0.10)
+
+        # Build joint Poisson PMF for first-half
+        pmf_fh = np.outer(
+            poisson.pmf(range(max_goals), fh_lh),
+            poisson.pmf(range(max_goals), fh_la),
+        )
+        pmf_fh = np.clip(pmf_fh, 0, None)
+        pmf_fh /= pmf_fh.sum()
+
+        n = max_goals
+        fh_hw = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h > a))
+        fh_dr = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h == a))
+        fh_aw = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h < a))
+        fh_btts = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h > 0 and a > 0))
+        fh_over05 = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h + a >= 1))
+        fh_over15 = float(sum(pmf_fh[h, a] for h in range(n) for a in range(n) if h + a >= 2))
+
+        return {
+            "fh_home_win": round(fh_hw, 5),
+            "fh_draw": round(fh_dr, 5),
+            "fh_away_win": round(fh_aw, 5),
+            "fh_over_0.5": round(fh_over05, 5),
+            "fh_over_1.5": round(fh_over15, 5),
+            "fh_btts": round(fh_btts, 5),
+            "fh_expected_home_goals": round(fh_lh, 4),
+            "fh_expected_away_goals": round(fh_la, 4),
+        }
+    except Exception as exc:
+        log.warning("_first_half_pmf failed: %s", exc)
+        return {}
+
+
 def _pmf_to_markets(pmf: np.ndarray, n: int = 15) -> dict:
     """Derive key markets from a PMF grid.
 
@@ -2166,10 +2215,15 @@ def _predict_one_match(
                 _blended_a = round(1.0 - _blended_h, 5)
                 publish_markets[_key_h] = _blended_h
                 publish_markets[_key_a] = _blended_a
+
+    # ── 5b. Compute first-half markets ────────────────────────────────────
+    first_half_markets_out = _first_half_pmf(pl_lh, pl_la)
     composite_markets = _pmf_to_markets(comp_pmf)
     pure_markets = _pmf_to_markets(pure_pmf)
     pl_lh, pl_la = _pmf_lambda(publish_pmf)
 
+    # ── 5b. Compute first-half markets ────────────────────────────────────
+    first_half_markets_out = _first_half_pmf(pl_lh, pl_la)
     comp_vs_market = None
     model_vs_market = None
     if mc.has_1x2:
@@ -2316,6 +2370,7 @@ def _predict_one_match(
             "expected_home_goals": pl_lh,
             "expected_away_goals": pl_la,
             "derived_markets": publish_markets,
+            "first_half_markets": first_half_markets_out if first_half_markets_out else None,
             "top_scorelines": _pmf_to_top_scores(publish_pmf),
             "composite_rating_markets": composite_markets,
             "composite_expected_home_goals": round(comp_lh, 4),
