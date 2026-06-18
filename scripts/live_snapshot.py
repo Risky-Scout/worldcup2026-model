@@ -36,26 +36,6 @@ logging.basicConfig(level=logging.INFO,
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s")
 log = logging.getLogger("live_snapshot")
 
-# NDJSON debug log — append-mode structured log for live score debugging.
-_DEBUG_LOG = REPO_ROOT / ".cursor" / "debug-3f8dcc.log"
-_DEBUG_SESSION = "3f8dcc"
-
-
-def _dbg(event: str, **kwargs) -> None:
-    """Append one NDJSON line to the session debug log."""
-    try:
-        _DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
-        entry = {
-            "ts": datetime.now(tz=timezone.utc).isoformat(),
-            "session": _DEBUG_SESSION,
-            "event": event,
-            **kwargs,
-        }
-        with _DEBUG_LOG.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry, default=str) + "\n")
-    except Exception:
-        pass
-
 # BDL live status codes the API may return → how we treat them
 # BDL WC API uses "scheduled"/"completed" (full words) in historical data.
 # During live matches the exact code is unknown until a match is live;
@@ -597,9 +577,6 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
 
     log.info("BDL fetch complete: %d total matches, sample_status=%s",
              len(all_matches), all_matches[0].get("status") if all_matches else None)
-    _dbg("bdl_fetch_complete",
-         total=len(all_matches),
-         sample_status=all_matches[0].get("status") if all_matches else None)
 
     now_utc = datetime.now(tz=timezone.utc)
     live, upcoming, finished = [], [], []
@@ -647,16 +624,6 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
     unique_statuses = list({str(m.get("status", "")).lower() for m in all_matches})
     log.info("Status distribution: live=%d upcoming=%d finished=%d unique=%s",
              len(live), len(upcoming), len(finished), unique_statuses)
-    _dbg("status_distribution",
-         n_live=len(live), n_upcoming=len(upcoming), n_finished=len(finished),
-         unique_statuses=unique_statuses,
-         live_matches=[
-             {"id": m.get("id"), "home": (m.get("home_team") or {}).get("name"),
-              "away": (m.get("away_team") or {}).get("name"),
-              "status": m.get("status"),
-              "home_score": m.get("home_score"), "away_score": m.get("away_score")}
-             for m in live
-         ])
 
     # Collect recently-finished matches (completed within last 3 hours) so the live
     # page can show "FT <score>" instead of disappearing to a quiet screen immediately.
@@ -892,12 +859,6 @@ def run_live_snapshot() -> dict:
                 log.info("Score injected from events: %s vs %s  %d-%d (event id=%s, min=%s)",
                          home, away, bdl_m["home_score"], bdl_m["away_score"],
                          _last_goal.get("id"), _last_goal.get("time_minute"))
-                _dbg("score_from_events",
-                     match=f"{home} vs {away}", match_id=mid,
-                     bdl_raw_home_score=None, bdl_raw_away_score=None,
-                     injected_home=bdl_m["home_score"], injected_away=bdl_m["away_score"],
-                     last_goal_event_id=_last_goal.get("id"),
-                     last_goal_minute=_last_goal.get("time_minute"))
             else:
                 _score_source = "events(no_goals_yet)"
 
@@ -1078,14 +1039,6 @@ def upload_snapshot(snapshot: dict) -> None:
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     log.info("Uploading wc-live.json (%d bytes, %d live matches)…",
              len(payload), snapshot.get("n_live", 0))
-    _dbg("ftp_upload_start",
-         bytes=len(payload), n_live=snapshot.get("n_live", 0),
-         status=snapshot.get("status"),
-         scores=[{"match": f"{m.get('home_team')} vs {m.get('away_team')}",
-                  "score": m.get("current_score"),
-                  "home_goals": m.get("current_home_goals"),
-                  "away_goals": m.get("current_away_goals")}
-                 for m in snapshot.get("live_matches", [])])
 
     with ftplib.FTP(host, timeout=30) as ftp:
         ftp.login(user, password)
@@ -1098,7 +1051,6 @@ def upload_snapshot(snapshot: dict) -> None:
             except Exception:
                 pass
         log.info("✓ Uploaded wc-live.json to both paths")
-        _dbg("ftp_upload_ok", n_live=snapshot.get("n_live", 0))
 
     log.info("FTP upload complete: %d bytes, %d live matches, status=%s",
              len(payload), snapshot.get("n_live", 0), snapshot.get("status"))
@@ -1250,14 +1202,6 @@ def main() -> None:
     live_dir = REPO_ROOT / "data" / "live"
     live_dir.mkdir(parents=True, exist_ok=True)
     (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
-    _dbg("local_file_written",
-         path=str(live_dir / "latest.json"),
-         status=snapshot["status"], n_live=snapshot["n_live"],
-         live_matches=[{"id": m.get("match_id"), "score": m.get("current_score"),
-                        "home_goals": m.get("current_home_goals"),
-                        "away_goals": m.get("current_away_goals"),
-                        "bdl_status": m.get("bdl_status")}
-                       for m in snapshot.get("live_matches", [])])
 
     # FTP upload — log and continue on failure; the chain must not die due to FTP issues.
     try:
