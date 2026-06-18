@@ -2174,6 +2174,25 @@ def _predict_one_match(
     except Exception as _db_exc:
         log.warning("draw_blend failed (%s); using recon_prior unchanged.", _db_exc)
 
+    # ── 3d. Group stage incentive adjustment (PMF-level) ─────────────────
+    from wc2026.config import GROUP_INCENTIVE_PMF_LEVEL
+    if GROUP_INCENTIVE_PMF_LEVEL and stage and "group" in stage.lower():
+        try:
+            from wc2026.tournament.group_incentives import (
+                compute_group_incentives, adjust_pmf_for_group_incentives
+            )
+            home_incentive = compute_group_incentives(home, pd.DataFrame(), remaining_fixtures=[])
+            away_incentive = compute_group_incentives(away, pd.DataFrame(), remaining_fixtures=[])
+            _gi_pmf, _gi_lh, _gi_la, _gi_rho = adjust_pmf_for_group_incentives(
+                recon_prior, home_incentive, away_incentive,
+                rho=calib_rho, lh=comp_lh, la=comp_la,
+            )
+            if not np.allclose(_gi_pmf, recon_prior):
+                recon_prior = _gi_pmf
+                log.debug("Group incentive PMF adjustment applied for %s v %s", home, away)
+        except Exception as _gi_exc:
+            log.debug("Group incentive adjustment failed: %s", _gi_exc)
+
     # ── 4. Reconcile: use blended prior for market_reconciled ─────────────
     rec = reconcile(
         match_id=match_id,

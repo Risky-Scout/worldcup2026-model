@@ -62,3 +62,10 @@ LIVE_MAX_REMAINING_GOALS: int = 8
 LIVE_XG_BLEND_HALFLIFE_MINUTES: float = 45.0
 LIVE_MOMENTUM_WEIGHT: float = 0.02
 LIVE_MOMENTUM_CAP: float = 0.20
+
+# --------------------------------------------------------------------------
+# Group incentive adjustment
+# --------------------------------------------------------------------------
+GROUP_INCENTIVE_PMF_LEVEL: bool = True  # When True, use PMF-level group incentive adjustment
+DEFAULT_AH_LINES: list = [round(x * 0.25, 2) for x in range(-12, 13)]
+TOTAL_LINES: list = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]
