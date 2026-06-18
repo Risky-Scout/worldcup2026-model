@@ -36,6 +36,26 @@ logging.basicConfig(level=logging.INFO,
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s")
 log = logging.getLogger("live_snapshot")
 
+# NDJSON debug log — append-mode structured log for live score debugging.
+_DEBUG_LOG = REPO_ROOT / ".cursor" / "debug-3f8dcc.log"
+_DEBUG_SESSION = "3f8dcc"
+
+
+def _dbg(event: str, **kwargs) -> None:
+    """Append one NDJSON line to the session debug log."""
+    try:
+        _DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "ts": datetime.now(tz=timezone.utc).isoformat(),
+            "session": _DEBUG_SESSION,
+            "event": event,
+            **kwargs,
+        }
+        with _DEBUG_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, default=str) + "\n")
+    except Exception:
+        pass
+
 # BDL live status codes the API may return → how we treat them
 # BDL WC API uses "scheduled"/"completed" (full words) in historical data.
 # During live matches the exact code is unknown until a match is live;
@@ -564,7 +584,7 @@ def _load_pregame_lambdas(date: str) -> dict[str, tuple[float, float]]:
     return lambdas
 
 
-def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
+def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
     """Fetch all 2026 WC matches from BDL and return live ones."""
     from wc2026.data.providers.bdl import BDLProvider
     provider = BDLProvider(snapshot=False)
@@ -577,6 +597,9 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
 
     log.info("BDL fetch complete: %d total matches, sample_status=%s",
              len(all_matches), all_matches[0].get("status") if all_matches else None)
+    _dbg("bdl_fetch_complete",
+         total=len(all_matches),
+         sample_status=all_matches[0].get("status") if all_matches else None)
 
     now_utc = datetime.now(tz=timezone.utc)
     live, upcoming, finished = [], [], []
@@ -624,10 +647,35 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict]]:
     unique_statuses = list({str(m.get("status", "")).lower() for m in all_matches})
     log.info("Status distribution: live=%d upcoming=%d finished=%d unique=%s",
              len(live), len(upcoming), len(finished), unique_statuses)
+    _dbg("status_distribution",
+         n_live=len(live), n_upcoming=len(upcoming), n_finished=len(finished),
+         unique_statuses=unique_statuses,
+         live_matches=[
+             {"id": m.get("id"), "home": (m.get("home_team") or {}).get("name"),
+              "away": (m.get("away_team") or {}).get("name"),
+              "status": m.get("status"),
+              "home_score": m.get("home_score"), "away_score": m.get("away_score")}
+             for m in live
+         ])
 
-    log.info("BDL: %d total, %d live, %d upcoming, %d finished",
-             len(all_matches), len(live), len(upcoming), len(finished))
-    return live, upcoming
+    # Collect recently-finished matches (completed within last 3 hours) so the live
+    # page can show "FT <score>" instead of disappearing to a quiet screen immediately.
+    recently_finished = []
+    for m in finished:
+        ko_str = m.get("datetime") or m.get("date_time_utc", "")
+        try:
+            ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+            # A standard 90-min match + stoppage ends ~105 min after kickoff.
+            # We show FT cards for up to 3 hours post-kickoff (generous buffer).
+            mins_since_ko = (now_utc - ko_dt).total_seconds() / 60.0
+            if 0 <= mins_since_ko <= 180:
+                recently_finished.append(m)
+        except Exception:
+            pass
+
+    log.info("BDL: %d total, %d live, %d upcoming, %d finished (%d recent)",
+             len(all_matches), len(live), len(upcoming), len(finished), len(recently_finished))
+    return live, upcoming, recently_finished
 
 
 def _compute_live_edge(
@@ -742,10 +790,10 @@ def run_live_snapshot() -> dict:
     pregame_lambdas, pregame_probs = _load_pregame_data(today_et)
 
     try:
-        live_matches, upcoming = _fetch_live_matches()
+        live_matches, upcoming, recently_finished = _fetch_live_matches()
     except Exception as exc:
         log.error("Failed to fetch matches: %s", exc)
-        live_matches, upcoming = [], []
+        live_matches, upcoming, recently_finished = [], [], []
 
     # Fetch live team stats + shots + events + player stats for all live matches in one batch each
     live_ids = [m.get("id") for m in live_matches if m.get("id")]
@@ -820,9 +868,44 @@ def run_live_snapshot() -> dict:
                 _live_aw_odds = round(_margin / _pg_aw, 3)
                 _pregame_fallback = True
 
-        log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s lambda_src=%s stats=%s",
+        # Score enrichment: BDL keeps home_score/away_score null during live matches
+        # (they are only populated at full-time).  Use the running score embedded in
+        # each goal event (events carry cumulative home_score/away_score after the goal)
+        # so we can display the correct live score instead of always showing 0-0.
+        _score_source = "bdl_match"
+        if bdl_m.get("home_score") is None and bdl_match_events:
+            goal_events_with_score = [
+                e for e in bdl_match_events
+                if str(e.get("incident_type", "")).lower() in ("goal", "penalty", "owngoal")
+                and e.get("home_score") is not None
+                and not e.get("rescinded")
+            ]
+            if goal_events_with_score:
+                goal_events_with_score.sort(
+                    key=lambda e: (int(e.get("time_minute") or 0), int(e.get("added_time") or 0))
+                )
+                _last_goal = goal_events_with_score[-1]
+                bdl_m = dict(bdl_m)  # shallow copy — do not mutate the original
+                bdl_m["home_score"] = _last_goal["home_score"]
+                bdl_m["away_score"] = _last_goal["away_score"]
+                _score_source = f"events(last_goal_min={_last_goal.get('time_minute')})"
+                log.info("Score injected from events: %s vs %s  %d-%d (event id=%s, min=%s)",
+                         home, away, bdl_m["home_score"], bdl_m["away_score"],
+                         _last_goal.get("id"), _last_goal.get("time_minute"))
+                _dbg("score_from_events",
+                     match=f"{home} vs {away}", match_id=mid,
+                     bdl_raw_home_score=None, bdl_raw_away_score=None,
+                     injected_home=bdl_m["home_score"], injected_away=bdl_m["away_score"],
+                     last_goal_event_id=_last_goal.get("id"),
+                     last_goal_minute=_last_goal.get("time_minute"))
+            else:
+                _score_source = "events(no_goals_yet)"
+
+        log.info("Processing live match: %s vs %s  status=%s clock=%s score=%s-%s "
+                 "score_src=%s lambda_src=%s stats=%s",
                  home, away, bdl_m.get("status"), bdl_m.get("clock_display"),
                  bdl_m.get("home_score"), bdl_m.get("away_score"),
+                 _score_source,
                  "published" if mid in pregame_lambdas else "fallback",
                  "yes" if bdl_stats else "none")
 
@@ -922,12 +1005,43 @@ def run_live_snapshot() -> dict:
             "away_win_prob": round(p["away_win_prob"], 5),
         })
 
+    # Build recently-completed section — matches finished within the last 3 hours.
+    # Displayed on the live page with an "FT" badge so users see the final score
+    # instead of the page going blank after the final whistle.
+    recently_completed_out = []
+    for m in recently_finished:
+        ft_home = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "")
+        ft_away = (m.get("away_team") or {}).get("name") or (m.get("away_team") or {}).get("full_name", "")
+        h_score = int(m.get("home_score") or 0)
+        a_score = int(m.get("away_score") or 0)
+        mid_str = str(m.get("id", ""))
+        pg = (pregame_probs.get(mid_str)
+              or pregame_probs.get(f"{ft_home}|{ft_away}")
+              or {})
+        recently_completed_out.append({
+            "match_id": mid_str,
+            "home_team": ft_home,
+            "away_team": ft_away,
+            "current_home_goals": h_score,
+            "current_away_goals": a_score,
+            "current_score": f"{h_score}-{a_score}",
+            "is_ft": True,
+            "bdl_status": "completed",
+            "home_color": TEAM_COLORS.get(ft_home, "#1a56db"),
+            "away_color": TEAM_COLORS.get(ft_away, "#e63946"),
+            "home_win_prob": round(float(pg.get("home_win_prob") or 0), 5),
+            "draw_prob": round(float(pg.get("draw_prob") or 0), 5),
+            "away_win_prob": round(float(pg.get("away_win_prob") or 0), 5),
+        })
+        log.info("FT match added to snapshot: %s %d-%d %s", ft_home, h_score, a_score, ft_away)
+
     snapshot = {
         "generated_at": now_utc.isoformat(),
         "date": today_et,
         "status": "live" if results else ("quiet" if not live_matches else "error"),
         "n_live": len(results),
         "live_matches": results,
+        "recently_completed": recently_completed_out,
         "upcoming_today": upcoming_today,
     }
     return snapshot
@@ -964,6 +1078,14 @@ def upload_snapshot(snapshot: dict) -> None:
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     log.info("Uploading wc-live.json (%d bytes, %d live matches)…",
              len(payload), snapshot.get("n_live", 0))
+    _dbg("ftp_upload_start",
+         bytes=len(payload), n_live=snapshot.get("n_live", 0),
+         status=snapshot.get("status"),
+         scores=[{"match": f"{m.get('home_team')} vs {m.get('away_team')}",
+                  "score": m.get("current_score"),
+                  "home_goals": m.get("current_home_goals"),
+                  "away_goals": m.get("current_away_goals")}
+                 for m in snapshot.get("live_matches", [])])
 
     with ftplib.FTP(host, timeout=30) as ftp:
         ftp.login(user, password)
@@ -976,6 +1098,7 @@ def upload_snapshot(snapshot: dict) -> None:
             except Exception:
                 pass
         log.info("✓ Uploaded wc-live.json to both paths")
+        _dbg("ftp_upload_ok", n_live=snapshot.get("n_live", 0))
 
     log.info("FTP upload complete: %d bytes, %d live matches, status=%s",
              len(payload), snapshot.get("n_live", 0), snapshot.get("status"))
@@ -1127,6 +1250,14 @@ def main() -> None:
     live_dir = REPO_ROOT / "data" / "live"
     live_dir.mkdir(parents=True, exist_ok=True)
     (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
+    _dbg("local_file_written",
+         path=str(live_dir / "latest.json"),
+         status=snapshot["status"], n_live=snapshot["n_live"],
+         live_matches=[{"id": m.get("match_id"), "score": m.get("current_score"),
+                        "home_goals": m.get("current_home_goals"),
+                        "away_goals": m.get("current_away_goals"),
+                        "bdl_status": m.get("bdl_status")}
+                       for m in snapshot.get("live_matches", [])])
 
     # FTP upload — log and continue on failure; the chain must not die due to FTP issues.
     try:

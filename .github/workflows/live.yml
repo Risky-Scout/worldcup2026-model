@@ -116,9 +116,14 @@ jobs:
           fi
 
           if [ "$SHOULD_CHAIN" = "yes" ]; then
-            sleep 90
+            # Trigger immediately so the next run is queued before this one releases
+            # the concurrency slot. A 90s sleep here would cause the cron (every 2 min)
+            # to cancel this step before gh workflow run fires. Triggering first, then
+            # sleeping briefly, ensures overlap with the new run and prevents cron from
+            # becoming the sole trigger (which GitHub can delay 30-60+ min under load).
             gh workflow run live.yml --repo ${{ github.repository }}
             echo "Re-triggered (live or match imminent)"
+            sleep 55
           else
             echo "No live matches and none within 90 min — chain stops"
           fi

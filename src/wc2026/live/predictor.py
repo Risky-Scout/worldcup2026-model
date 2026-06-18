@@ -528,9 +528,24 @@ class LivePMFPredictor:
                     clock_min = min(int(mins_elapsed), 44)
                 match_seconds = clock_min * 60
 
-            # Score
-            h_goals = int(bdl_match.get("home_score", 0) or 0)
-            a_goals = int(bdl_match.get("away_score", 0) or 0)
+            # Score — BDL keeps home_score/away_score null during live matches
+            # (they are only set at full-time).  Fall back to summing available
+            # half-period scores so in-game scores are never shown as 0-0.
+            _raw_h = bdl_match.get("home_score")
+            _raw_a = bdl_match.get("away_score")
+            h_goals = int(_raw_h or 0)
+            a_goals = int(_raw_a or 0)
+            if _raw_h is None:
+                h_goals = (int(bdl_match.get("first_half_home_score") or 0) +
+                           int(bdl_match.get("second_half_home_score") or 0) +
+                           int(bdl_match.get("extra_time_home_score") or 0))
+            if _raw_a is None:
+                a_goals = (int(bdl_match.get("first_half_away_score") or 0) +
+                           int(bdl_match.get("second_half_away_score") or 0) +
+                           int(bdl_match.get("extra_time_away_score") or 0))
+            if _raw_h is None or _raw_a is None:
+                log.debug("Score from half-period fields (home_score was null): %s-%s %d-%d",
+                          home, away, h_goals, a_goals)
 
             # ── Fix 1: Count red cards from events_df ─────────────────────
             home_rc = 0

@@ -501,6 +501,21 @@ function buildLiveCard(m){
 }
 
 // ── Upcoming match card ────────────────────────────────────────────────────
+function buildFtCard(m){
+  const hg=m.current_home_goals??0,ag=m.current_away_goals??0;
+  const hc=m.home_color||'#1a56db',ac=m.away_color||'#e63946';
+  return `<div class="upcoming-card" style="border-left:3px solid #888;opacity:.85;">
+    <div>
+      <div style="font-size:15px;font-weight:500;">
+        <span style="color:${esc(hc)}">${esc(m.home_team)}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;margin:0 8px;">${hg}–${ag}</span>
+        <span style="color:${esc(ac)}">${esc(m.away_team)}</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">FULL TIME</div>
+    </div>
+  </div>`;
+}
+
 function buildUpcomingCard(m){
   return `<div class="upcoming-card">
     <div>
@@ -533,21 +548,25 @@ function updateKPIs(data){
 function render(data){
   const wrap=document.getElementById('match-cards');
   const live=data.live_matches||[];
+  const recentFt=data.recently_completed||[];
   const upcoming=data.upcoming_today||[];
   updateKPIs(data);
 
   if(live.length===0){
+    let ftHtml='';
+    if(recentFt.length){
+      ftHtml='<div class="ft-list">'+recentFt.map(buildFtCard).join('')+'</div>';
+    }
     let upHtml='';
     if(upcoming.length){
       upHtml='<div class="upcoming-list">'+upcoming.map(buildUpcomingCard).join('')+'</div>';
     }
-    wrap.innerHTML=`<div class="quiet-state">
-      ${upHtml}
-    </div>`;
+    wrap.innerHTML=`<div class="quiet-state">${ftHtml}${upHtml}</div>`;
     return;
   }
 
-  wrap.innerHTML=live.map(buildLiveCard).join('');
+  const ftSuffix=recentFt.length?'<div class="ft-list" style="margin-top:20px">'+recentFt.map(buildFtCard).join('')+'</div>':'';
+  wrap.innerHTML=live.map(buildLiveCard).join('')+ftSuffix;
   if(upcoming.length){
     wrap.innerHTML+=`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin:20px 0 10px;">Up Next Today</div>`+upcoming.map(buildUpcomingCard).join('');
   }

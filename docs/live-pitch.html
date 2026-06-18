@@ -1046,6 +1046,7 @@ function render(data) {
   document.getElementById('content-wrap').style.display = '';
 
   const live = data.live_matches || [];
+  const recentFt = data.recently_completed || [];
   const upcoming = data.upcoming_today || [];
 
   renderUpcoming(upcoming);
@@ -1057,9 +1058,15 @@ function render(data) {
     // Show next-match countdown inside the pitch overlay
     const nextMatch = upcoming[0];
     const noLive = document.getElementById('no-live-state');
+    const ftPart = recentFt.length
+        ? recentFt.map(ft=>`<div style="font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:4px;">
+            FT &nbsp;${esc(ft.home_team)} <b>${ft.current_home_goals??0}–${ft.current_away_goals??0}</b> ${esc(ft.away_team)}
+          </div>`).join('')
+        : '';
     noLive.innerHTML = nextMatch
       ? `<div id="no-live-message">
-           <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Next Match</div>
+           ${ftPart}
+           <div style="font-family:'Courier New',monospace;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;margin-top:${recentFt.length?'10px':'0'}">Next Match</div>
            <div style="font-size:15px;color:var(--text);margin-bottom:6px;">${esc(nextMatch.home_team)} <span style="color:var(--text-muted)">vs</span> ${esc(nextMatch.away_team)}</div>
            <div style="font-family:'Courier New',monospace;font-size:11px;color:var(--text-dim);" id="no-live-countdown">—</div>
          </div>`
