@@ -104,6 +104,7 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/run_real_pipeline.py
+        continue-on-error: true
 
       - name: Closing odds forward scan (catch imminent matches missed by pre-match.yml)
         if: steps.freshness.outputs.skip != 'true'
