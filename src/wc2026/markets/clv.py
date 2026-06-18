@@ -105,6 +105,22 @@ class CLVRecord:
     # (kept in raw records for diagnostics; never surfaced as value picks)
     suppress_from_edge: bool = False
 
+    # First-ever model probability for this market — frozen on initial insertion
+    # and preserved across all subsequent upserts.  Used as primary CLV anchor
+    # because it represents the most independent assessment, before any market
+    # feedback has influenced subsequent predictions.
+    first_model_prob: Optional[float] = None
+    first_prediction_timestamp: Optional[str] = None
+
+    # Pure model probability (before market reconciliation) — for tracking
+    # independent signal quality separately from blended predictions.
+    pure_model_prob: Optional[float] = None
+    clv_pct_pure: Optional[float] = None   # pure_model_prob vs closing line %
+
+    # Old-style frozen_model_prob CLV — kept for comparison with first_model_prob CLV
+    clv_from_last: Optional[float] = None
+    clv_pct_from_last: Optional[float] = None
+
     def set_closing(self, closing_odds_decimal: float, timestamp: str,
                     source: str = "live_capture") -> None:
         """Record the closing line and compute CLV metrics.
@@ -143,13 +159,28 @@ class CLVRecord:
     def _compute_clv(self) -> None:
         if self.closing_prob is None or self.closing_prob < _EPS:
             return
-        # Prefer frozen_model_prob (set at closing time) over live model_prob
-        mp = max(self.frozen_model_prob if self.frozen_model_prob is not None else self.model_prob, _EPS)
+        # Use first_model_prob (earliest independent assessment) as primary CLV anchor.
+        # Falls back to frozen_model_prob (set at closing time), then live model_prob.
+        if self.first_model_prob is not None:
+            mp = max(self.first_model_prob, _EPS)
+        elif self.frozen_model_prob is not None:
+            mp = max(self.frozen_model_prob, _EPS)
+        else:
+            mp = max(self.model_prob, _EPS)
         cp = max(self.closing_prob, _EPS)
         self.clv_raw = round(mp - cp, 6)
         self.clv_pct = round((mp - cp) / cp * 100, 4)
         self.clv_bits = round(math.log2(mp / cp), 6)
         self.beat_close = mp > cp
+        # Also track old-style CLV (frozen_model_prob vs closing) for comparison
+        if self.frozen_model_prob is not None:
+            _mp_last = max(self.frozen_model_prob, _EPS)
+            self.clv_from_last = round(_mp_last - cp, 6)
+            self.clv_pct_from_last = round((_mp_last - cp) / cp * 100, 4)
+        # Pure model CLV (before market reconciliation)
+        if self.pure_model_prob is not None:
+            _pm = max(self.pure_model_prob, _EPS)
+            self.clv_pct_pure = round((_pm - cp) / cp * 100, 4)
         if self.opening_prob is not None:
             self.opening_drift = round(cp - self.opening_prob, 6)
             self.model_vs_opening = round(mp - self.opening_prob, 6)
@@ -334,6 +365,10 @@ class CLVStore:
           set_outcome calls.
         """
         if not self._path.exists():
+            # First insertion ever — initialize first_model_prob from model_prob
+            if record.first_model_prob is None:
+                record.first_model_prob = record.model_prob
+                record.first_prediction_timestamp = record.prediction_timestamp
             with open(self._path, "w") as f:
                 f.write(json.dumps(record.to_dict()) + "\n")
             return
@@ -365,6 +400,9 @@ class CLVStore:
                     record.model_vs_opening = existing.model_vs_opening
                     record.frozen_model_prob = existing.frozen_model_prob
                     record.frozen_at = existing.frozen_at
+                    record.clv_from_last = existing.clv_from_last
+                    record.clv_pct_from_last = existing.clv_pct_from_last
+                    record.clv_pct_pure = existing.clv_pct_pure
                     # Don't overwrite model_prob with a stale live value once
                     # the closing line is locked in — preserve the frozen state.
                     log.debug(
@@ -375,6 +413,21 @@ class CLVStore:
                     )
                     record.model_prob = existing.model_prob
                     record.model_fair_odds = existing.model_fair_odds
+                    # Preserve first_model_prob from existing (closing already set)
+                    if existing.first_model_prob is not None:
+                        record.first_model_prob = existing.first_model_prob
+                        record.first_prediction_timestamp = existing.first_prediction_timestamp
+                    elif record.first_model_prob is None:
+                        record.first_model_prob = existing.model_prob
+                else:
+                    # Closing not yet set — preserve first_model_prob from existing
+                    if existing.first_model_prob is not None:
+                        record.first_model_prob = existing.first_model_prob
+                        record.first_prediction_timestamp = existing.first_prediction_timestamp
+                    elif record.first_model_prob is None:
+                        # Backfill: use existing model_prob as the earliest known value
+                        record.first_model_prob = existing.model_prob
+                        record.first_prediction_timestamp = existing.prediction_timestamp
                 if existing.outcome is not None and record.outcome is None:
                     record.outcome = existing.outcome
                     record.outcome_timestamp = existing.outcome_timestamp
@@ -384,6 +437,10 @@ class CLVStore:
                 break
 
         if not found:
+            # New record — initialize first_model_prob
+            if record.first_model_prob is None:
+                record.first_model_prob = record.model_prob
+                record.first_prediction_timestamp = record.prediction_timestamp
             records.append(record)
 
         with open(self._path, "w") as f:
@@ -487,6 +544,11 @@ def build_clv_records_from_prediction(
         "btts_yes", "btts_no",
         "over_0_5", "over_1_5", "over_2_5", "over_3_5", "over_4_5", "over_5_5", "over_6_5",
         "under_1_5", "under_2_5", "under_3_5",
+        # Enhancement 7: DNB and double-chance markets
+        "draw_no_bet_home", "draw_no_bet_away",
+        "double_chance_1x", "double_chance_x2", "double_chance_12",
+        # Enhancement 7: Asian handicap markets (closing_prob=None until BDL provides AH)
+        "asian_handicap_home_-0.5", "asian_handicap_away_-0.5",
     ]
 
     # Markets suppressed from published edge signals (Poisson tail CLV is -20pp to -99pp).
@@ -500,6 +562,7 @@ def build_clv_records_from_prediction(
             edge_map[e["market"]] = e["model_prob"]
 
     derived = prediction.get("derived_markets", {}) or {}
+    pure_markets = prediction.get("pure_model_markets", {}) or {}
     records: list[CLVRecord] = []
 
     for mkt in markets_to_track:
@@ -528,8 +591,46 @@ def build_clv_records_from_prediction(
             opening_odds_decimal=opening_odds_dec,
             prediction_timestamp=ts,
         )
+        # Set first_model_prob on creation — upsert will preserve it across updates
+        r.first_model_prob = r.model_prob
+        r.first_prediction_timestamp = r.prediction_timestamp
         if mkt in _SUPPRESS_SET:
             r.suppress_from_edge = True
+        # Enhancement 2: look up pure model probability (before market reconciliation)
+        pure_p = pure_markets.get(mkt) or pure_markets.get(derived_key)
+        if pure_p is not None:
+            try:
+                r.pure_model_prob = round(float(pure_p), 6)
+            except (TypeError, ValueError):
+                pass
         records.append(r)
+
+    # Enhancement 5: Track top-10 correct-score markets by model probability
+    # BDL does not currently provide correct-score closing odds from its standard
+    # endpoints, so these records will have closing_prob=None until that data
+    # becomes available.
+    for score_entry in prediction.get("top_scorelines", [])[:10]:
+        try:
+            hg = int(score_entry["home_goals"])
+            ag = int(score_entry["away_goals"])
+            prob = float(score_entry["probability"])
+            if prob < 0.01:
+                continue
+            mkt_key = f"{hg}-{ag}"
+            r = CLVRecord.from_prediction(
+                match_id=str(match_id),
+                home_team=home_team,
+                away_team=away_team,
+                market=mkt_key,
+                model_prob=prob,
+                prediction_mode=mode,
+                prediction_timestamp=ts,
+            )
+            r.suppress_from_edge = False
+            r.first_model_prob = r.model_prob
+            r.first_prediction_timestamp = r.prediction_timestamp
+            records.append(r)
+        except Exception:
+            continue
 
     return records

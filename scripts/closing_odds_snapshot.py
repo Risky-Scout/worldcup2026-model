@@ -410,14 +410,6 @@ def _run_normal(provider) -> None:
 
     log.info("SCAN: checking %d scheduled matches, lookahead=%d min", len(matches), LOOKAHEAD_MIN)
 
-    # #region agent log — H-A: closing odds scan result
-    try:
-        import json as _j
-        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a").write(_j.dumps({"sessionId": "3f8dcc", "hypothesisId": "H-A", "location": "closing_odds_snapshot.py:scan", "message": "scan result", "data": {"n_matches_total": len(matches), "n_imminent": len(imminent), "lookahead_min": LOOKAHEAD_MIN, "imminent_matches": [{"home": m["home_team"], "away": m["away_team"], "ko_utc": m["kickoff_utc"].isoformat(), "min_to_ko": round((m["kickoff_utc"] - now).total_seconds()/60, 1)} for m in imminent], "now_utc": now.isoformat()}, "timestamp": int(time.time() * 1000)}) + "\n")
-    except Exception:
-        pass
-    # #endregion
-
     if not imminent:
         minutes_to_next = None
         future = sorted(
@@ -486,14 +478,6 @@ def _run_normal(provider) -> None:
             log.error("Unexpected error for match_id=%s: %s", m["match_id"], exc)
 
     log.info("closing_odds_snapshot done — captured closing odds for %d match(es)", captured)
-
-    # #region agent log — H-A: capture result
-    try:
-        import json as _j
-        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a").write(_j.dumps({"sessionId": "3f8dcc", "hypothesisId": "H-A", "location": "closing_odds_snapshot.py:done", "message": "capture complete", "data": {"captured": captured, "n_imminent": len(imminent)}, "timestamp": int(time.time() * 1000)}) + "\n")
-    except Exception:
-        pass
-    # #endregion
 
     _write_sentinel(captured, imminent)
 

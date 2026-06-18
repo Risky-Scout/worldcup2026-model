@@ -493,6 +493,164 @@ def _pmf_lambda(pmf: np.ndarray) -> tuple[float, float]:
     return round(lh, 4), round(la, 4)
 
 
+def _recalibrate_host_bonus(completed_2026_df: pd.DataFrame) -> float:
+    """
+    Dynamically recalibrate the host nation attack bonus from actual 2026 WC results.
+    Compares USA/Canada/Mexico actual goal rates vs WC average.
+    Returns the recalibrated bonus (default 0.10 if insufficient data).
+    """
+    HOST_NATIONS = {"USA", "Canada", "Mexico"}
+    DEFAULT_BONUS = 0.10
+    MIN_GAMES = 2  # need at least 2 games per host to be meaningful
+
+    host_matches = completed_2026_df[
+        completed_2026_df["home_team"].isin(HOST_NATIONS) |
+        completed_2026_df["away_team"].isin(HOST_NATIONS)
+    ]
+    if len(host_matches) < MIN_GAMES:
+        return DEFAULT_BONUS
+
+    host_goals: list[float] = []
+    for _, row in host_matches.iterrows():
+        ht, at = str(row["home_team"]), str(row["away_team"])
+        hg, ag = float(row["home_goals"]), float(row["away_goals"])
+        if ht in HOST_NATIONS:
+            host_goals.append(hg)
+        if at in HOST_NATIONS:
+            host_goals.append(ag)
+
+    if not host_goals:
+        return DEFAULT_BONUS
+
+    host_avg = sum(host_goals) / len(host_goals)
+    total_goals = (
+        float(completed_2026_df["home_goals"].sum()) +
+        float(completed_2026_df["away_goals"].sum())
+    )
+    n_completed = len(completed_2026_df)
+    wc_avg = total_goals / (n_completed * 2) if n_completed > 0 else 1.30
+    gap = host_avg - wc_avg
+
+    if gap > 0.15:
+        bonus = 0.15
+        log.info(
+            "Host bonus recalibrated UP to %.2f: host_avg=%.3f wc_avg=%.3f gap=+%.3f",
+            bonus, host_avg, wc_avg, gap,
+        )
+    elif gap < -0.10:
+        bonus = 0.05
+        log.info(
+            "Host bonus recalibrated DOWN to %.2f: host_avg=%.3f wc_avg=%.3f gap=%.3f",
+            bonus, host_avg, wc_avg, gap,
+        )
+    else:
+        bonus = DEFAULT_BONUS
+        log.info(
+            "Host bonus retained at %.2f: host_avg=%.3f wc_avg=%.3f gap=%.3f",
+            bonus, host_avg, wc_avg, gap,
+        )
+    return bonus
+
+
+def _compute_group_standings(matches_df: pd.DataFrame) -> dict:
+    """
+    Compute current group standings from completed 2026 WC matches.
+    Returns dict: team_name -> {"pts": int, "gd": int, "gf": int, "group": str, "gp": int}
+    """
+    standings: dict[str, dict] = {}
+    completed = matches_df[
+        (matches_df["season"] == 2026) &
+        (matches_df["status"].isin(["completed", "final"])) &
+        matches_df["home_goals"].notna() &
+        matches_df["away_goals"].notna()
+    ]
+    for _, row in completed.iterrows():
+        ht, at = str(row["home_team"]), str(row["away_team"])
+        hg, ag = int(row["home_goals"]), int(row["away_goals"])
+        grp = str(row.get("group", "")) if "group" in row.index else ""
+        for team in [ht, at]:
+            if team not in standings:
+                standings[team] = {"pts": 0, "gd": 0, "gf": 0, "group": grp, "gp": 0}
+        standings[ht]["gp"] += 1
+        standings[at]["gp"] += 1
+        standings[ht]["gf"] += hg
+        standings[at]["gf"] += ag
+        standings[ht]["gd"] += hg - ag
+        standings[at]["gd"] += ag - hg
+        if hg > ag:
+            standings[ht]["pts"] += 3
+        elif hg == ag:
+            standings[ht]["pts"] += 1
+            standings[at]["pts"] += 1
+        else:
+            standings[at]["pts"] += 3
+    return standings
+
+
+def _group_stage_draw_adjustment(
+    home: str,
+    away: str,
+    hw: float,
+    dr: float,
+    aw: float,
+    standings: dict,
+    match_info: dict,
+) -> tuple[float, float, float, str]:
+    """
+    Apply a draw probability boost when group-stage table dynamics incentivize
+    both teams to accept a draw (both already qualified, or draw clinches for one
+    and other cannot improve by winning).
+
+    2026 WC: 4 teams per group, top 3 advance. This makes draw incentives MORE
+    common than traditional 32-team WC (where only top 2 advance).
+
+    Returns (home_win, draw, away_win, reason_or_empty_string).
+    Empty reason means no adjustment was applied.
+    """
+    DRAW_BOOST = 0.03
+    MAX_DRAW_PROB = 0.40
+
+    stage = str(match_info.get("stage", "") or "").lower()
+    if "group" not in stage:
+        return hw, dr, aw, ""
+
+    hs = standings.get(home, {})
+    as_ = standings.get(away, {})
+    if not hs or not as_:
+        return hw, dr, aw, ""
+
+    # In 2026 WC, 3 of 4 teams advance. After 2 games (gp=2), a team with ≥4 pts
+    # is virtually certain to advance. After 1 game (gp=1), ≥3 pts in a strong group.
+    h_pts, h_gp = hs.get("pts", 0), hs.get("gp", 0)
+    a_pts, a_gp = as_.get("pts", 0), as_.get("gp", 0)
+
+    # Check if both teams have effectively clinched (≥4 pts after 2 games)
+    both_clinched = (h_gp >= 2 and h_pts >= 4) and (a_gp >= 2 and a_pts >= 4)
+    # Check if draw clinches for one team while other is already through
+    one_clinched_other_safe = (
+        (h_gp >= 2 and h_pts >= 4 and a_gp >= 2 and a_pts >= 3) or
+        (a_gp >= 2 and a_pts >= 4 and h_gp >= 2 and h_pts >= 3)
+    )
+
+    if not (both_clinched or one_clinched_other_safe):
+        return hw, dr, aw, ""
+
+    reason = "both_clinched" if both_clinched else "one_clinched_other_safe"
+
+    # Apply boost
+    new_dr = min(dr + DRAW_BOOST, MAX_DRAW_PROB)
+    actual_boost = new_dr - dr
+    new_hw = hw - actual_boost / 2
+    new_aw = aw - actual_boost / 2
+
+    # Renormalize
+    total = new_hw + new_dr + new_aw
+    if total > 1e-9:
+        new_hw, new_dr, new_aw = new_hw / total, new_dr / total, new_aw / total
+
+    return round(new_hw, 6), round(new_dr, 6), round(new_aw, 6), reason
+
+
 def _auto_select_market_weight(
     matches_df: pd.DataFrame,
     odds_df: pd.DataFrame,
@@ -531,11 +689,12 @@ def _auto_select_market_weight(
 
     import penaltyblog as _pb_mw
 
-    # Extended upper bound: penaltyblog 2025 benchmark shows market odds are
-    # extremely well-calibrated in liquid international tournament markets.
-    # Capping at 0.50 prevented the search from selecting market-dominant weights
-    # even when data clearly supported them. Now allows up to 0.70.
-    candidates = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]
+    # Cap at 0.50: preserves ≥50% independent model signal for CLV generation.
+    # NLL/RPS optimisation at higher weights rewards market alignment but destroys
+    # independent CLV — the model collapses toward the closing line it should beat.
+    # At 0.50 the model retains equal weighting vs the market, ensuring predictions
+    # remain independently derived and CLV measurement stays meaningful.
+    candidates = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50]
     scores: dict[float, float] = {}
     scores_rps: dict[float, float] = {}
     best_w = default_w
@@ -851,6 +1010,26 @@ def _write_calibration_health(
     except Exception as _clv_exc:
         log.warning("Health metrics (CLV rolling) failed: %s", _clv_exc)
 
+    # ── Rolling pure-model CLV by market (Enhancement 2) ─────────────────────
+    clv_rolling_10_pure_by_market: "dict | None" = None
+    try:
+        if clv_path.exists() and "_all_recs" in dir():
+            _market_clv_pure: dict[str, list[float]] = {}
+            for r in _all_recs:
+                if getattr(r, "closing_source", None) == "backfill_invalid":
+                    continue
+                if r.clv_pct_pure is not None:
+                    _market_clv_pure.setdefault(r.market, []).append(r.clv_pct_pure)
+            _rolling_pure: dict[str, float] = {}
+            for _mkt, _vals in _market_clv_pure.items():
+                if len(_vals) < 3:  # lower threshold for pure model (fewer samples initially)
+                    continue
+                _rolling_pure[_mkt] = round(float(np.mean(_vals[-10:])), 4)
+            clv_rolling_10_pure_by_market = _rolling_pure if _rolling_pure else None
+            log.info("Pure-model CLV rolling: %s", clv_rolling_10_pure_by_market)
+    except Exception as _pure_clv_exc:
+        log.warning("Health metrics (pure-model CLV rolling) failed: %s", _pure_clv_exc)
+
     record = {
         "date": _dt.date.today().isoformat(),
         "timestamp_utc": _dt.datetime.utcnow().isoformat(),
@@ -869,6 +1048,7 @@ def _write_calibration_health(
         "log_loss_1x2": log_loss_1x2,
         "log_loss_draw_weighted": log_loss_draw_weighted,
         "clv_rolling_10_by_market": clv_rolling_10_by_market,
+        "clv_rolling_10_pure_by_market": clv_rolling_10_pure_by_market,
         "n_closing_odds_captured": n_closing_odds_captured,
     }
 
@@ -1313,6 +1493,13 @@ def predict_all_2026(
         matches_df, odds_df, markets_df, n_required=8,
     )
 
+    # Enhancement 6: Dynamically recalibrate host nation attack bonus
+    _host_bonus = _recalibrate_host_bonus(_completed_2026_df)
+
+    # Enhancement 4: compute group standings for draw probability adjustment
+    _group_standings = _compute_group_standings(matches_df)
+    log.info("Group standings computed for %d teams", len(_group_standings))
+
     # ── H1: Dynamic WC_AVG_ATTACK from 2026 goal rates ───────────────────────
     # When ≥10 completed matches are available, compute the actual WC2026 average
     # goals per team per match and blend it with the historical constant 1.30.
@@ -1348,6 +1535,7 @@ def predict_all_2026(
         matches_df, odds_df, markets_df,
         market_weight=_adaptive_market_weight,
         team_stats_df=team_stats_df if team_stats_df is not None else pd.DataFrame(),
+        host_att_bonus=_host_bonus,
     )
 
     # Apply dynamic WC_AVG scaling to all team lambdas when 2026 goal rate
@@ -1477,6 +1665,40 @@ def predict_all_2026(
             batch_pmf=_batch_pmfs.get((home, away)),
         )
         if pred:
+            # Enhancement 4: Apply group-stage draw probability boost
+            try:
+                _pred_inner = pred.get("prediction", {})
+                _dm = _pred_inner.get("derived_markets", {}) or {}
+                _match_info_for_draw = {"stage": stage}
+                _dm_hw = _dm.get("home_win")
+                _dm_dr = _dm.get("draw")
+                _dm_aw = _dm.get("away_win")
+                if _dm_hw is not None and _dm_dr is not None and _dm_aw is not None:
+                    _adj_hw, _adj_dr, _adj_aw, _adj_reason = _group_stage_draw_adjustment(
+                        home, away,
+                        float(_dm_hw), float(_dm_dr), float(_dm_aw),
+                        _group_standings, _match_info_for_draw,
+                    )
+                    if _adj_reason:
+                        log.info(
+                            "draw_boost applied: match_id=%s %s vs %s  reason=%s  "
+                            "draw %.4f→%.4f",
+                            mid, home, away, _adj_reason, float(_dm_dr), _adj_dr,
+                        )
+                        _pred_inner["derived_markets"]["home_win"] = _adj_hw
+                        _pred_inner["derived_markets"]["draw"] = _adj_dr
+                        _pred_inner["derived_markets"]["away_win"] = _adj_aw
+                        # Recompute draw_no_bet and double_chance from adjusted 1X2
+                        _s = _adj_hw + _adj_aw
+                        if _s > 1e-9:
+                            _pred_inner["derived_markets"]["draw_no_bet_home"] = round(_adj_hw / _s, 6)
+                            _pred_inner["derived_markets"]["draw_no_bet_away"] = round(_adj_aw / _s, 6)
+                        _pred_inner["derived_markets"]["double_chance_1x"] = round(_adj_hw + _adj_dr, 6)
+                        _pred_inner["derived_markets"]["double_chance_x2"] = round(_adj_dr + _adj_aw, 6)
+                        _pred_inner["derived_markets"]["double_chance_12"] = round(_adj_hw + _adj_aw, 6)
+            except Exception as _draw_exc:
+                log.debug("draw_boost skipped: %s", _draw_exc)
+
             all_predictions.append(pred)
             mode = pred["publish_mode"]
             if mode == "market_reconciled":
@@ -3771,10 +3993,36 @@ def main():
         import json as _json
         _health_path = Path("data/live/pipeline_health.json")
         _health_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read latest calibration health record for CLV metrics
+        _clv_avg = None
+        _clv_pos_count = None
+        _n_closing = None
+        try:
+            _cal_path = Path("data/calibration/health.jsonl")
+            if _cal_path.exists():
+                _cal_lines = [l.strip() for l in _cal_path.read_text().splitlines() if l.strip()]
+                if _cal_lines:
+                    _last_calib = _json.loads(_cal_lines[-1])
+                    _clv_mkt = _last_calib.get("clv_rolling_10_by_market") or {}
+                    if _clv_mkt:
+                        _clv_vals = [v for v in _clv_mkt.values() if v is not None]
+                        _clv_avg = round(sum(_clv_vals) / len(_clv_vals), 4) if _clv_vals else None
+                        _clv_pos_count = sum(1 for v in _clv_vals if v > 0)
+                    _n_closing = _last_calib.get("n_closing_odds_captured")
+        except Exception:
+            pass
+
         _health_path.write_text(_json.dumps({
             "last_pipeline_run": generated_at,
             "n_matches": len(all_preds),
             "status": "ok",
+            "market_weight": round(_adaptive_market_weight, 2),
+            "calib_rho": round(calib_rho, 4),
+            "calib_temperature": round(calib_temperature, 3),
+            "clv_rolling_avg_pct": _clv_avg,
+            "clv_positive_market_count": _clv_pos_count,
+            "n_closing_odds_captured": _n_closing,
         }))
     except Exception as _health_exc:
         log.warning("Failed to write pipeline_health.json: %s", _health_exc)

@@ -439,6 +439,7 @@ class CompositeTeamPrior:
         self._priors: dict[str, TeamPrior] = {}
         self._fitted = False
         self._fit_timestamp: Optional[str] = None
+        self._host_att_bonus_override: Optional[float] = None
 
     def fit(
         self,
@@ -993,9 +994,15 @@ class CompositeTeamPrior:
 
         # ── Host bonus ───────────────────────────────────────────────────
         if tp.is_host:
-            tp.host_att_bonus = _HOST_ATT_BONUS
+            # Use dynamically recalibrated bonus if provided, else module constant
+            _eff_host_bonus = (
+                self._host_att_bonus_override
+                if self._host_att_bonus_override is not None
+                else _HOST_ATT_BONUS
+            )
+            tp.host_att_bonus = _eff_host_bonus
             tp.host_def_bonus = _HOST_DEF_BONUS
-            composite_att += _HOST_ATT_BONUS
+            composite_att += _eff_host_bonus
             composite_def -= _HOST_DEF_BONUS
             composite_def = max(composite_def, 0.3)
             sources.append("host_bonus")
@@ -1024,6 +1031,7 @@ def build_composite_prior(
     markets_df: Optional[pd.DataFrame] = None,
     market_weight: Optional[float] = None,
     team_stats_df: Optional[pd.DataFrame] = None,
+    host_att_bonus: Optional[float] = None,
 ) -> CompositeTeamPrior:
     """Convenience function: fit and return a CompositeTeamPrior.
 
@@ -1035,8 +1043,13 @@ def build_composite_prior(
     team_stats_df : pd.DataFrame or None
         BDL team_stats table; when provided the tournament adjustment blends
         actual goals (40%) with xG (60%) for a lower-variance attack signal.
+    host_att_bonus : float or None
+        Override for the host nation attack bonus (default: _HOST_ATT_BONUS=0.10).
+        Pass a dynamically recalibrated value to adjust for actual 2026 WC host performance.
     """
     prior = CompositeTeamPrior(market_weight=market_weight)
+    if host_att_bonus is not None:
+        prior._host_att_bonus_override = float(host_att_bonus)
     prior.fit(matches_df, odds_df, markets_df, team_stats_df=team_stats_df)
     return prior
 
