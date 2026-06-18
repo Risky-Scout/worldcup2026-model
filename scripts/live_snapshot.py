@@ -803,6 +803,21 @@ def run_live_snapshot() -> dict:
         except Exception as exc:
             log.warning("Could not fetch live team stats/shots: %s", exc)
 
+    # Fetch avg positions for live matches (used for defensive block depth)
+    live_avg_positions: dict[str, list] = {}  # match_id → [avg_position rows]
+    if live_ids:
+        try:
+            from wc2026.data.providers.bdl import BDLProvider as _BDLProvider2
+            _pos_provider = _BDLProvider2(snapshot=False)
+            avg_pos_rows = _pos_provider.fetch_avg_positions(match_ids=live_ids)
+            for row in avg_pos_rows:
+                key = str(row.get("match_id", ""))
+                live_avg_positions.setdefault(key, []).append(row)
+            log.info("Avg positions fetched: %d rows for %d live matches",
+                     len(avg_pos_rows), len(live_ids))
+        except Exception as exc:
+            log.warning("Could not fetch avg positions: %s", exc)
+
     results = []
     for bdl_m in live_matches:
         mid = str(bdl_m.get("id", ""))
@@ -815,6 +830,7 @@ def run_live_snapshot() -> dict:
         bdl_shots = live_shots.get(mid) or None
         bdl_match_events = live_events.get(mid) or None
         bdl_pstats = live_player_stats.get(mid) or None
+        bdl_avg_pos = live_avg_positions.get(mid) or None
 
         # 3A — Populate live odds: try BDL match data first; fall back to pregame
         _live_hw_odds = bdl_m.get("home_odds") or bdl_m.get("odds_home") or None
@@ -835,10 +851,10 @@ def run_live_snapshot() -> dict:
                 _live_aw_odds = round(_margin / _pg_aw, 3)
                 _pregame_fallback = True
 
-        # Score enrichment: BDL keeps home_score/away_score null during live matches
-        # (they are only populated at full-time).  Use the running score embedded in
-        # each goal event (events carry cumulative home_score/away_score after the goal)
-        # so we can display the correct live score instead of always showing 0-0.
+        # Score enrichment: BDL docs say home_score/away_score are null only pre-kickoff;
+        # in practice they may also lag during live play.  When home_score IS populated,
+        # it is used directly (primary path).  When null, inject the running score from
+        # the last goal event (each event carries cumulative home_score/away_score).
         _score_source = "bdl_match"
         if bdl_m.get("home_score") is None and bdl_match_events:
             goal_events_with_score = [
@@ -872,12 +888,20 @@ def run_live_snapshot() -> dict:
 
         try:
             result = predictor.predict_from_bdl(bdl_m, pregame_lh=lh, pregame_la=la,
-                                                bdl_stats=bdl_stats, bdl_shots=bdl_shots)
+                                                bdl_stats=bdl_stats, bdl_shots=bdl_shots,
+                                                avg_positions=bdl_avg_pos)
             if result:
                 d = result.to_dict()
                 d["pregame_lh"] = lh
                 d["pregame_la"] = la
                 d["bdl_status"] = bdl_m.get("status")
+                # Forward BDL extra-time / penalty-shootout flags so the live page
+                # can annotate the scoreline when a WC knockout match goes to AET/PSO.
+                d["has_extra_time"] = bool(bdl_m.get("has_extra_time"))
+                d["has_penalty_shootout"] = bool(bdl_m.get("has_penalty_shootout"))
+                if bdl_m.get("has_penalty_shootout"):
+                    d["home_score_penalties"] = int(bdl_m.get("home_score_penalties") or 0)
+                    d["away_score_penalties"] = int(bdl_m.get("away_score_penalties") or 0)
 
                 # 3B–3E — Compute live betting edge with Shin devigging
                 live_edge = _compute_live_edge(
@@ -975,6 +999,10 @@ def run_live_snapshot() -> dict:
         ft_away = (m.get("away_team") or {}).get("name") or (m.get("away_team") or {}).get("full_name", "")
         h_score = int(m.get("home_score") or 0)
         a_score = int(m.get("away_score") or 0)
+        has_et = bool(m.get("has_extra_time"))
+        has_pso = bool(m.get("has_penalty_shootout"))
+        pen_h = int(m.get("home_score_penalties") or 0) if has_pso else None
+        pen_a = int(m.get("away_score_penalties") or 0) if has_pso else None
         mid_str = str(m.get("id", ""))
         pg = (pregame_probs.get(mid_str)
               or pregame_probs.get(f"{ft_home}|{ft_away}")
@@ -988,13 +1016,18 @@ def run_live_snapshot() -> dict:
             "current_score": f"{h_score}-{a_score}",
             "is_ft": True,
             "bdl_status": "completed",
+            "has_extra_time": has_et,
+            "has_penalty_shootout": has_pso,
+            "home_score_penalties": pen_h,
+            "away_score_penalties": pen_a,
             "home_color": TEAM_COLORS.get(ft_home, "#1a56db"),
             "away_color": TEAM_COLORS.get(ft_away, "#e63946"),
             "home_win_prob": round(float(pg.get("home_win_prob") or 0), 5),
             "draw_prob": round(float(pg.get("draw_prob") or 0), 5),
             "away_win_prob": round(float(pg.get("away_win_prob") or 0), 5),
         })
-        log.info("FT match added to snapshot: %s %d-%d %s", ft_home, h_score, a_score, ft_away)
+        pso_note = f" (pens {pen_h}-{pen_a})" if has_pso else (" (AET)" if has_et else "")
+        log.info("FT match added to snapshot: %s %d-%d %s%s", ft_home, h_score, a_score, ft_away, pso_note)
 
     snapshot = {
         "generated_at": now_utc.isoformat(),

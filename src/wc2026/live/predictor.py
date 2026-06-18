@@ -109,6 +109,8 @@ class LivePMFResult:
             "away_team": self.away_team,
             "regulation_minute": round(self.regulation_minute, 2),
             "clock_display": self.clock_display,
+            "current_home_goals": self.current_home_goals,
+            "current_away_goals": self.current_away_goals,
             "current_score": f"{self.current_home_goals}-{self.current_away_goals}",
             "expected_remaining_home": round(self.expected_remaining_home, 4),
             "expected_remaining_away": round(self.expected_remaining_away, 4),
@@ -167,6 +169,8 @@ class LivePMFPredictor:
         pregame_lh: Optional[float] = None,
         pregame_la: Optional[float] = None,
         momentum_df=None,
+        home_defensive_depth: Optional[float] = None,
+        away_defensive_depth: Optional[float] = None,
     ) -> "LivePMFResult":
         """
         Compute the live score PMF for a given match state.
@@ -178,6 +182,9 @@ class LivePMFPredictor:
         pregame_la  Pregame expected away goals per 90
         momentum_df Optional momentum DataFrame (match_id, minute, value) for
                     hazard scaling — loaded once outside the hot loop.
+        home_defensive_depth  Mean avg_x of home outfield players (0–100).
+                    < 35 = parking the bus; > 55 = high press.
+        away_defensive_depth  Same for away team.
         """
         lh = float(pregame_lh or state.pregame_lh or 1.35)
         la = float(pregame_la or state.pregame_la or 1.00)
@@ -236,6 +243,8 @@ class LivePMFPredictor:
             xg_blend=self.xg_blend,
             match_id=state.match_id,
             momentum_df=momentum_df,
+            home_defensive_depth=home_defensive_depth,
+            away_defensive_depth=away_defensive_depth,
         )
 
         # ── Fix 3 log: mandatory xG blend status on every live snapshot ──
@@ -429,6 +438,7 @@ class LivePMFPredictor:
         bdl_shots: Optional[list] = None,
         events_df=None,
         momentum_df=None,
+        avg_positions: Optional[list] = None,
     ) -> Optional["LivePMFResult"]:
         """
         Build a MatchState from a BDL match dict and call predict().
@@ -443,6 +453,8 @@ class LivePMFPredictor:
                     Columns: match_id, incident_type, incident_class,
                              time_minute, is_home
         momentum_df Optional momentum DataFrame (match_id, minute, value)
+        avg_positions  Optional list of BDL match_avg_positions records.
+                    Used to compute per-team defensive block depth.
         """
         from .state import MatchState, MatchStatus, TeamLiveStats
         try:
@@ -528,9 +540,9 @@ class LivePMFPredictor:
                     clock_min = min(int(mins_elapsed), 44)
                 match_seconds = clock_min * 60
 
-            # Score — BDL keeps home_score/away_score null during live matches
-            # (they are only set at full-time).  Fall back to summing available
-            # half-period scores so in-game scores are never shown as 0-0.
+            # Score — BDL docs say home_score/away_score are null only pre-kickoff.
+            # In practice they may also lag during live play.  Primary path: use
+            # home_score directly.  Fallback when null: sum available period scores.
             _raw_h = bdl_match.get("home_score")
             _raw_a = bdl_match.get("away_score")
             h_goals = int(_raw_h or 0)
@@ -644,11 +656,46 @@ class LivePMFPredictor:
                 pregame_lh=pregame_lh,
                 pregame_la=pregame_la,
             )
+
+            # ── Compute defensive block depth from avg_positions ──────────
+            home_defensive_depth: Optional[float] = None
+            away_defensive_depth: Optional[float] = None
+            if avg_positions:
+                h_xs = [
+                    float(r["avg_x"]) for r in avg_positions
+                    if r.get("is_home") is True
+                    and r.get("avg_x") is not None
+                    # Exclude GK: typically avg_x < 5 for home, > 100 for away
+                    and float(r.get("avg_x", 50)) > 5
+                ]
+                a_xs = [
+                    float(r["avg_x"]) for r in avg_positions
+                    if r.get("is_home") is False
+                    and r.get("avg_x") is not None
+                    and float(r.get("avg_x", 50)) < 100
+                ]
+                if h_xs:
+                    home_defensive_depth = float(sum(h_xs) / len(h_xs))
+                    log.debug(
+                        "home_defensive_depth=%.1f (n=%d outfield players)",
+                        home_defensive_depth, len(h_xs)
+                    )
+                if a_xs:
+                    # Away team's avg_x is measured from their own goal end;
+                    # invert to match the same 0=own_goal, 100=opp_goal scale
+                    away_defensive_depth = float(100.0 - sum(a_xs) / len(a_xs))
+                    log.debug(
+                        "away_defensive_depth=%.1f (n=%d outfield players, inverted)",
+                        away_defensive_depth, len(a_xs)
+                    )
+
             return self.predict(
                 state,
                 pregame_lh=pregame_lh,
                 pregame_la=pregame_la,
                 momentum_df=momentum_df,
+                home_defensive_depth=home_defensive_depth,
+                away_defensive_depth=away_defensive_depth,
             )
 
         except Exception as exc:

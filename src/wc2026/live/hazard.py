@@ -292,6 +292,8 @@ def compute_live_rates(
     xg_blend: float = 0.60,
     home_momentum_scale: float = 1.0,
     away_momentum_scale: float = 1.0,
+    home_defensive_depth: Optional[float] = None,
+    away_defensive_depth: Optional[float] = None,
 ) -> tuple[float, float]:
     """
     Compute the instantaneous goal rate (per-minute) for each team.
@@ -312,6 +314,9 @@ def compute_live_rates(
     home_momentum_scale  Pre-computed momentum scale for home team (from
                     momentum_scaling, evaluated once per snapshot)
     away_momentum_scale  Pre-computed momentum scale for away team
+    home_defensive_depth  Mean avg_x of home outfield players (0–100 scale).
+                    < 35 = parking the bus (-0.10 attack); > 55 = high press (+0.05 attack).
+    away_defensive_depth  Same for away team.
 
     Returns
     -------
@@ -326,6 +331,22 @@ def compute_live_rates(
     else:
         base_lh = pregame_lh
         base_la = pregame_la
+
+    # ── Defensive depth adjustment (avg position tactical signal) ────────────
+    # When a team sits deep (depth < 35), their expected attack goals decrease by 0.10.
+    # When pressing high (depth > 55), their attack goals increase by 0.05.
+    # Depth is the mean avg_x of outfield players (0=own goal, 100=opponent's goal).
+    # Home depth affects home attack; away depth affects away attack.
+    if home_defensive_depth is not None:
+        if home_defensive_depth < 35:
+            base_lh = max(base_lh * (1.0 - 0.10), 0.01)
+        elif home_defensive_depth > 55:
+            base_lh *= (1.0 + 0.05)
+    if away_defensive_depth is not None:
+        if away_defensive_depth < 35:
+            base_la = max(base_la * (1.0 - 0.10), 0.01)
+        elif away_defensive_depth > 55:
+            base_la *= (1.0 + 0.05)
 
     # Convert to per-minute
     base_h = base_lh / 90.0
@@ -369,6 +390,8 @@ def expected_goals_remaining(
     n_steps: int = 30,
     match_id=None,
     momentum_df=None,
+    home_defensive_depth: Optional[float] = None,
+    away_defensive_depth: Optional[float] = None,
 ) -> tuple[float, float]:
     """
     Integrate the hazard over remaining regulation time to get expected
@@ -405,6 +428,8 @@ def expected_goals_remaining(
             xg_blend=xg_blend,
             home_momentum_scale=h_mom,
             away_momentum_scale=a_mom,
+            home_defensive_depth=home_defensive_depth,
+            away_defensive_depth=away_defensive_depth,
         )
         total_h += h_rate * step_minutes
         total_a += a_rate * step_minutes
