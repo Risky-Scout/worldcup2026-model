@@ -1,20 +1,26 @@
 name: Hourly Refresh (Pre-Match)
 
-# Runs every 30 minutes during match hours (16:00–04:00 UTC) and once per hour
-# during off-hours to keep pre-match pages fresh.  Also acts as a closing-odds
-# safety net: scans for imminent kickoffs and sleeps up to ~12 min to capture T-3
-# odds when GitHub throttles the pre-match.yml cron.
+# Runs predictions every 45 minutes during match hours (16:00–04:00 UTC = noon–midnight EDT).
+# Uses TWO redundancy layers to guarantee 45-min coverage despite GitHub cron throttling:
 #
-# NOTE: GitHub Actions throttles wildcard crons on free-tier repos. Explicit minute
-# lists (0,30) are honored more reliably than */30, giving 2 runs/hour = 30-min
-# cadence during match windows (well under the 45-min coverage guarantee).
+# Layer 1 — Dense cron schedule: 0,15,30,45 per hour gives 4 chances/hour.
+#   Even if GitHub throttles to 1–2 fires/hour the gaps stay ≤45 min.
+#
+# Layer 2 — Self-chain dispatch: each run triggers the next via gh workflow run.
+#   Combined with a freshness gate (skip expensive pipeline if predictions < 35 min old),
+#   the chain provides bulletproof coverage even when all crons are throttled.
+#
+# Freshness gate logic:
+#   - Skip full pipeline if last published predictions are < 35 min old.
+#   - This makes "skip" runs cheap (~1 min) vs "full" runs (~12 min).
+#   - Result: 35-min refresh cadence regardless of cron reliability.
 
 on:
   schedule:
-    # Every 30 min during match hours (16:00–04:00 UTC)
-    - cron: "0,30 16-23 * * *"
-    - cron: "0,30 0-4 * * *"
-    # Once per hour during off-hours (covers daily model health)
+    # 4×/hour during match hours (16:00–04:00 UTC = noon–midnight EDT)
+    - cron: "0,15,30,45 16-23 * * *"
+    - cron: "0,15,30,45 0-4 * * *"
+    # Once per hour during off-hours (daily model health, covers 5:00–15:59 UTC)
     - cron: "0 5-15 * * *"
   workflow_dispatch: {}
 
@@ -32,20 +38,52 @@ jobs:
     timeout-minutes: 35
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check prediction freshness (skip pipeline if recent)
+        id: freshness
+        run: |
+          LAST=$(ls -t data/published/*.json 2>/dev/null | head -1)
+          if [ -z "$LAST" ]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "No published file found — will run pipeline"
+            exit 0
+          fi
+          # Extract generated_at from JSON (bash/grep only, no Python)
+          GEN=$(grep -o '"generated_at"[[:space:]]*:[[:space:]]*"[^"]*"' "$LAST" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+          if [ -z "$GEN" ]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "No generated_at found — will run pipeline"
+            exit 0
+          fi
+          NOW_EPOCH=$(date +%s)
+          GEN_EPOCH=$(date -d "$GEN" +%s 2>/dev/null || echo "0")
+          AGE=$(( (NOW_EPOCH - GEN_EPOCH) / 60 ))
+          echo "Predictions last generated: ${AGE} minutes ago (at $GEN)"
+          if [ "$AGE" -lt 35 ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "FRESH (${AGE}m < 35m) — skipping pipeline, will self-chain only"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "STALE (${AGE}m >= 35m) — running full pipeline"
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.freshness.outputs.skip != 'true'
         with:
           python-version: "3.10"
           cache: "pip"
 
       - name: Install dependencies
+        if: steps.freshness.outputs.skip != 'true'
         run: make install
 
       - name: Create .env
+        if: steps.freshness.outputs.skip != 'true'
         run: |
           echo "BDL_API_KEY=${{ secrets.BDL_API_KEY }}" > .env
           echo "FTP_HOST=${{ secrets.FTP_HOST }}" >> .env
@@ -54,9 +92,11 @@ jobs:
           echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}" >> .env
 
       - name: Get today's date (ET)
+        if: steps.freshness.outputs.skip != 'true'
         run: echo "DATE=$(TZ=America/New_York date +%Y-%m-%d)" >> $GITHUB_ENV
 
       - name: Run prediction pipeline
+        if: steps.freshness.outputs.skip != 'true'
         id: pipeline
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
@@ -66,28 +106,21 @@ jobs:
         run: python scripts/run_real_pipeline.py
 
       - name: Closing odds forward scan (catch imminent matches missed by pre-match.yml)
-        # Runs after the main pipeline (CLV store already populated with prediction records).
-        # Scans for any match kicking off in the next 15 minutes; if found, sleeps until
-        # T-3 minutes then fetches live closing odds.  This is the primary safety net when
-        # GitHub throttles the */15 cron in pre-match.yml (which fires only ~6-10×/day
-        # instead of the expected ~84×/day).  Max sleep ≤ 12 minutes (LOOKAHEAD=15 −
-        # CLOSING_BEFORE=3), so this step never adds more than ~12 min to the hourly run.
+        if: steps.freshness.outputs.skip != 'true'
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: python scripts/closing_odds_snapshot.py
         continue-on-error: true
 
       - name: Closing odds fallback (catch any match that just kicked off)
-        # Runs after the main pipeline so the CLV store already has prediction records.
-        # Captures closing odds for any match that kicked off within the last 15 minutes
-        # whose closing line wasn't captured by pre-match.yml (e.g. cron drift).
-        # Skips matches that already have a closing line recorded.
+        if: steps.freshness.outputs.skip != 'true'
         env:
           BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
         run: python scripts/closing_odds_snapshot.py --fallback-window 15
         continue-on-error: true
 
       - name: Upload predictions to server (FTP)
+        if: steps.freshness.outputs.skip != 'true'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -96,6 +129,7 @@ jobs:
         continue-on-error: true
 
       - name: Deploy HTML pages (FTP)
+        if: steps.freshness.outputs.skip != 'true'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -104,6 +138,7 @@ jobs:
         continue-on-error: true
 
       - name: Commit updated predictions and calibration
+        if: steps.freshness.outputs.skip != 'true'
         run: |
           git config user.name "wc2026-bot"
           git config user.email "wc2026-bot@users.noreply.github.com"
@@ -114,4 +149,33 @@ jobs:
           git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Self-chain next refresh (guarantee 45-min cadence during match hours)
+        # Dispatches the next hourly run immediately after this one completes.
+        # Combined with the freshness gate above, this creates a reliable self-sustaining
+        # chain that ensures predictions never go stale for more than 35 minutes.
+        # Guard: only chain during match hours (16:00–04:00 UTC = noon–midnight EDT).
+        # Queue check: skip dispatch if 2+ runs already pending to prevent pile-up.
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HOUR=$(date -u +%H | sed 's/^0*//' | awk '{if($1=="")print 0; else print $1}')
+          if [ "$HOUR" -ge 16 ] || [ "$HOUR" -le 4 ]; then
+            QUEUED=$(gh run list --workflow=hourly.yml --status=queued --json databaseId 2>/dev/null \
+              | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+            IN_PROG=$(gh run list --workflow=hourly.yml --status=in_progress --json databaseId 2>/dev/null \
+              | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+            TOTAL=$(( QUEUED + IN_PROG ))
+            echo "Pipeline queue state: queued=${QUEUED} in_progress=${IN_PROG} total_pending=${TOTAL}"
+            if [ "$TOTAL" -le 1 ]; then
+              gh workflow run hourly.yml --repo ${{ github.repository }}
+              echo "SUCCESS: dispatched next hourly refresh"
+            else
+              echo "SKIP: ${TOTAL} runs already pending — no additional dispatch needed"
+            fi
+          else
+            echo "Outside match hours (UTC ${HOUR}:xx) — self-chain stopped"
+          fi
         continue-on-error: true

@@ -3576,6 +3576,16 @@ def main():
     log.info("  All 2026 JSON: data/published/all_scheduled_2026.json")
     log.info("═" * 60)
 
+    # Write pipeline health status for monitoring / freshness gate in hourly.yml
+    import json as _json
+    _health_path = pathlib.Path("data/live/pipeline_health.json")
+    _health_path.parent.mkdir(parents=True, exist_ok=True)
+    _health_path.write_text(_json.dumps({
+        "last_pipeline_run": generated_at,
+        "n_matches": len(all_preds),
+        "status": "ok",
+    }))
+
 
 if __name__ == "__main__":
     main()

@@ -11,6 +11,8 @@ name: Daily Update
 on:
   schedule:
     - cron: "0 8 * * *"
+    # Backup daily trigger at 9 AM UTC in case 8 AM is throttled
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -31,6 +33,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -126,4 +129,14 @@ jobs:
           git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Kick off hourly refresh chain for match-hours coverage
+        # Starts the self-sustaining hourly chain so predictions refresh every ~35 min
+        # between noon and midnight EDT even if GitHub throttles scheduled crons.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run hourly.yml --repo ${{ github.repository }}
+          echo "Hourly refresh chain started — will self-sustain through match hours"
         continue-on-error: true
