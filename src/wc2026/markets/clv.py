@@ -402,7 +402,10 @@ class CLVStore:
                     continue
                 try:
                     d = json.loads(line)
-                    r = CLVRecord(**{k: d.get(k) for k in CLVRecord.__dataclass_fields__})
+                    kwargs = {k: d.get(k) for k in CLVRecord.__dataclass_fields__}
+                    # Coerce suppress_from_edge: old records lack the key → None → coerce to bool
+                    kwargs["suppress_from_edge"] = bool(kwargs.get("suppress_from_edge") or False)
+                    r = CLVRecord(**kwargs)
                     records.append(r)
                 except Exception as exc:
                     log.warning("CLV load error: %s | line: %s", exc, line[:80])

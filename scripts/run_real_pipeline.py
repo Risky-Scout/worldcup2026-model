@@ -824,11 +824,13 @@ def _write_calibration_health(
         log.warning("Health metrics (RPS/log-loss) failed: %s", _health_exc)
 
     # ── Rolling CLV by market (last 10 records per market) ───────────────────
+    _HEALTH_SUPPRESS_MKTS = {"over_5_5", "over_6_5"}
     try:
         if clv_path.exists() and "_all_recs" in dir():
             _market_clv: dict[str, list[float]] = {}
             for r in _all_recs:
-                if r.suppress_from_edge:
+                # Exclude tail markets via flag OR name (belt-and-suspenders for old records)
+                if r.suppress_from_edge or r.market in _HEALTH_SUPPRESS_MKTS:
                     continue
                 if r.clv_pct is None:
                     continue
