@@ -420,12 +420,23 @@ def extract_constraints(
 def build_market_implied_pmf(
     mc: MarketConstraints,
     max_goals: int = 15,
+    snapshot_df=None,
 ) -> tuple[np.ndarray, float, float, float]:
     """
     Build a joint PMF from market constraints using goal_expectancy_extended.
 
     Returns (pmf_grid, lambda_home, lambda_away, rho)
     """
+    if snapshot_df is not None:
+        try:
+            from wc2026.markets.current_market_pmf import build_market_pmf_full
+            result = build_market_pmf_full(snapshot_df)
+            if result is not None:
+                return result.pmf, result.home_lambda, result.away_lambda, result.rho
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("CurrentMarketPMF failed, using legacy: %s", e)
+
     if not mc.has_1x2:
         raise ValueError("Need 1X2 to build market-implied PMF")
 
