@@ -1,6 +1,6 @@
 # BDL Endpoint Coverage (Real Data)
 
-**Generated**: 2026-06-18T09:21:00Z
+**Generated**: 2026-06-18T11:45:51Z
 
 ## Match counts
 
@@ -15,23 +15,23 @@
 
 | Metric | Value |
 |--------|-------|
-| Odds rows | 380 |
+| Odds rows | 384 |
 | Vendors | 6: betmgm, betrivers, caesars, draftkings, fanatics, fanduel |
-| Correct-score rows | 4886 |
+| Correct-score rows | 4884 |
 | Market types parsed | 12 |
 
 ## Market type breakdown
 
 | Type | Rows |
 |------|------|
-| total | 11147 |
-| other | 7242 |
-| correct_score | 4886 |
-| team_total | 3347 |
+| total | 11145 |
+| other | 7241 |
+| correct_score | 4884 |
+| team_total | 3349 |
 | timing | 2271 |
-| spread | 2192 |
+| spread | 2190 |
 | double_chance | 2185 |
-| both_teams_to_score | 1488 |
+| both_teams_to_score | 1490 |
 | margin | 1399 |
 | result_combo | 887 |
 | moneyline | 774 |
