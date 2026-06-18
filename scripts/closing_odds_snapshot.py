@@ -198,6 +198,47 @@ def _parse_closing_probs(odds_rows: list[dict]) -> dict[str, float]:
         log.info("  Totals closing: %s", {k: round(v, 3) for k, v in result.items()
                                           if k.startswith("over_") or k.startswith("under_")})
 
+    # ── Correct score markets ─────────────────────────────────────────────────
+    # Captures closing no-vig probabilities for individual scorelines (e.g. "1-0").
+    # BDL correct_score markets have type="correct_score" and outcome_type="score".
+    # Store under key "{h_goals}-{a_goals}", matching the CLV record market key format.
+    cs_decimals: dict[str, list[float]] = {}
+    for row in odds_rows:
+        for mkt in row.get("markets", []):
+            if mkt.get("type") != "correct_score":
+                continue
+            if mkt.get("period") != "match":
+                continue
+            for oc in mkt.get("outcomes", []):
+                if oc.get("type") != "score":
+                    continue
+                name = (oc.get("name") or "").strip()
+                parts = name.split("-")
+                if len(parts) != 2:
+                    continue
+                try:
+                    h_g = int(parts[0])
+                    a_g = int(parts[1])
+                except (ValueError, TypeError):
+                    continue
+                dec = oc.get("decimal_odds")
+                if dec and float(dec) > 1.0:
+                    key = f"{h_g}-{a_g}"
+                    cs_decimals.setdefault(key, []).append(float(dec))
+
+    if cs_decimals:
+        import statistics
+        n_cs = 0
+        for score_key, decimals in cs_decimals.items():
+            avg_dec = statistics.mean(decimals)
+            # No vig needed for individual correct-score market (they sum to >1 across all
+            # scorelines); store as implied probability for CLV comparison only.
+            # CLV for correct-score is: model_prob vs this implied_prob.
+            result[score_key] = round(1.0 / avg_dec, 6)
+            n_cs += 1
+        log.info("  Correct-score closing: %d scorelines captured (%d vendors avg)",
+                 n_cs, round(sum(len(v) for v in cs_decimals.values()) / max(1, n_cs)))
+
     # ── BTTS (both teams to score) ────────────────────────────────────────────
     btts_yes_decimals: list[float] = []
     btts_no_decimals:  list[float] = []

@@ -1489,9 +1489,17 @@ def predict_all_2026(
     ]
     _n_completed = len(_completed_2026_df)
 
-    _adaptive_market_weight = _auto_select_market_weight(
-        matches_df, odds_df, markets_df, n_required=8,
+    # Fixed at 0.20 — the evidence-backed pre-tournament value for CLV independence.
+    # Auto-selection on ~24 completed matches fits noise, consistently returning
+    # 0.50-0.70 which destroys CLV by over-weighting market signal in the prior.
+    # Reassess (re-enable auto-select) when ≥60 completed WC2026 matches are available.
+    _adaptive_market_weight = 0.20
+    log.info(
+        "market_weight fixed at 0.20 (CLV-independence mode; auto-select disabled)"
     )
+    # _adaptive_market_weight = _auto_select_market_weight(
+    #     matches_df, odds_df, markets_df, n_required=8,
+    # )
 
     # Enhancement 6: Dynamically recalibrate host nation attack bonus
     _host_bonus = _recalibrate_host_bonus(_completed_2026_df)

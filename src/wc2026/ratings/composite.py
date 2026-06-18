@@ -486,12 +486,74 @@ class CompositeTeamPrior:
         teams_2018 = set(hist[hist["season"] == 2018]["home_team"]) | set(hist[hist["season"] == 2018]["away_team"])
         teams_2022 = set(hist[hist["season"] == 2022]["home_team"]) | set(hist[hist["season"] == 2022]["away_team"])
 
+        # ── 4b. Pre-compute per-team WC2026 xG rates for direct blend input ──────
+        # xG per game (attack) for teams with ≥2 completed WC2026 matches.
+        # Requires team_stats_df (BDL team_stats, one row per team per match).
+        xg_att_per_game: dict[str, float] = {}
+        xg_def_per_game: dict[str, float] = {}
+        if team_stats_df is not None and not team_stats_df.empty:
+            comp_2026 = m2026[m2026["status"].isin(["completed", "final"])]
+            wc26_ids = set(comp_2026["match_id"].astype(str).tolist())
+
+            # {match_id: {team_name: xg_float}}
+            match_xg: dict[str, dict[str, float]] = {}
+            for _, row in team_stats_df.iterrows():
+                mid = str(row.get("match_id", ""))
+                if mid not in wc26_ids:
+                    continue
+                tn = str(row.get("team_name", ""))
+                xg = row.get("expected_goals")
+                if not tn or xg is None:
+                    continue
+                try:
+                    xg_f = float(xg)
+                except (TypeError, ValueError):
+                    continue
+                if xg_f < 0:
+                    continue
+                match_xg.setdefault(mid, {})[tn] = xg_f
+
+            xg_att_acc: dict[str, list[float]] = {}
+            xg_def_acc: dict[str, list[float]] = {}
+            for _, match_row in comp_2026.iterrows():
+                mid = str(match_row["match_id"])
+                if mid not in match_xg:
+                    continue
+                home_t, away_t = str(match_row["home_team"]), str(match_row["away_team"])
+                hxg = match_xg[mid].get(home_t)
+                axg = match_xg[mid].get(away_t)
+                if hxg is not None:
+                    xg_att_acc.setdefault(home_t, []).append(hxg)
+                    if axg is not None:
+                        # Home team's defense exposure = away team's xG
+                        xg_def_acc.setdefault(home_t, []).append(axg)
+                if axg is not None:
+                    xg_att_acc.setdefault(away_t, []).append(axg)
+                    if hxg is not None:
+                        xg_def_acc.setdefault(away_t, []).append(hxg)
+
+            _XG_MIN_GAMES = 2
+            for tn, vals in xg_att_acc.items():
+                if len(vals) >= _XG_MIN_GAMES:
+                    xg_att_per_game[tn] = float(sum(vals) / len(vals))
+            for tn, vals in xg_def_acc.items():
+                if len(vals) >= _XG_MIN_GAMES:
+                    xg_def_per_game[tn] = float(sum(vals) / len(vals))
+
+            if xg_att_per_game:
+                log.debug(
+                    "xG WC2026 precomputed: %d teams with att xG, %d with def xG",
+                    len(xg_att_per_game), len(xg_def_per_game),
+                )
+
         # ── 5. Compute composite prior for each team ─────────────────────
         for team in sorted(all_2026_teams):
             tp = self._build_team_prior(
                 team, hist, teams_2018, teams_2022,
                 elo_ratings, pi_ratings, massey_df, colley_df,
                 market_lambdas, odds_df,
+                xg_att_per_game=xg_att_per_game,
+                xg_def_per_game=xg_def_per_game,
             )
             self._priors[team] = tp
 
@@ -825,6 +887,8 @@ class CompositeTeamPrior:
         elo_ratings: dict, pi_ratings: dict,
         massey_df: pd.DataFrame, colley_df: pd.DataFrame,
         market_lambdas: dict, odds_df: pd.DataFrame,
+        xg_att_per_game: Optional[dict] = None,
+        xg_def_per_game: Optional[dict] = None,
     ) -> TeamPrior:
         conf = _TEAM_CONFEDERATION.get(team, "GLOBAL")
         conf_att = _CONFEDERATION_ATTACK.get(conf, _WC_AVG_ATTACK)
@@ -937,6 +1001,24 @@ class CompositeTeamPrior:
             att_inputs.append(("market_implied", tp.market_implied_attack, effective_market_w))
             def_inputs.append(("market_implied", tp.market_implied_defense, effective_market_w))
             sources.append("market_implied")
+
+        # xG from WC2026 completed matches — direct blend input at 0.15 weight.
+        # Requires ≥2 completed matches; xG has lower variance than raw goals
+        # and directly measures shot quality, making it more predictive than
+        # qualifying or FIFA ranking for teams already active in the tournament.
+        _xg_att = (xg_att_per_game or {}).get(team)
+        _xg_def = (xg_def_per_game or {}).get(team)
+        if _xg_att is not None and _xg_att > 0:
+            att_inputs.append(("xg_wc2026", _xg_att, 0.15))
+            if _xg_def is not None and _xg_def > 0:
+                def_inputs.append(("xg_wc2026", _xg_def, 0.15))
+            if "xg_wc2026" not in sources:
+                sources.append("xg_wc2026")
+            log.debug(
+                "xG_wc2026 direct blend: %s  xg_att=%.3f  xg_def=%s",
+                team, _xg_att,
+                f"{_xg_def:.3f}" if _xg_def is not None else "N/A",
+            )
 
         # When market is used, tighten FIFA/qualifying; when absent (or weight=0), expand them.
         using_market_in_blend = effective_market_w > 0.0

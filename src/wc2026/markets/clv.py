@@ -563,6 +563,11 @@ def build_clv_records_from_prediction(
 
     derived = prediction.get("derived_markets", {}) or {}
     pure_markets = prediction.get("pure_model_markets", {}) or {}
+    # composite_rating_markets holds probabilities from the composite prior BEFORE
+    # market reconciliation — this is the model's genuine independent signal.
+    # Anchoring CLV to this pre-reconciliation probability ensures we measure
+    # the model's true edge against the closing line, not the blended/market-diluted value.
+    comp_rating = prediction.get("composite_rating_markets", {}) or {}
     records: list[CLVRecord] = []
 
     for mkt in markets_to_track:
@@ -573,7 +578,13 @@ def build_clv_records_from_prediction(
             derived_key = mkt[:mkt.rfind("_")] + "." + mkt[mkt.rfind("_") + 1:]
         else:
             derived_key = mkt
-        model_p = edge_map.get(mkt) or derived.get(mkt) or derived.get(derived_key)
+        # Prefer composite_rating_markets (independent, pre-reconciliation signal).
+        # Fall back to edge_map then derived_markets if composite value absent.
+        model_p = (
+            comp_rating.get(mkt) or comp_rating.get(derived_key)
+            or edge_map.get(mkt)
+            or derived.get(mkt) or derived.get(derived_key)
+        )
         if model_p is None or float(model_p) <= 0:
             continue
 

@@ -639,7 +639,8 @@ def reconcile(
     market_reconciled strategy (stable linear blend):
       1. Build market_implied PMF via goal_expectancy_extended (already satisfies 1X2/totals)
       2. Blend:  reconciled = α * market_implied + (1-α) * composite_model
-         where α = min(market_quality * 1.2, 0.85)
+         where α = min(market_quality * 0.70, 0.45)
+         (cap at 0.45 preserves ≥55% model signal for CLV generation)
       3. Apply gentle IPF for correct-score cells (alpha 0.3 for 1 vendor, 0.5 for 2+)
       4. Sanity-check: cap impossible-score cells (total goals >= 9) to 1e-6
 
@@ -686,7 +687,11 @@ def reconcile(
         return result
 
     # ── 2. Determine blend weight α ──────────────────────────────────────
-    alpha = min(market_quality * 1.2, 0.85)
+    # Cap at 0.45: preserves ≥55% independent model signal in the published PMF.
+    # Previous cap of 0.85 produced a PMF that was ~95% market, eliminating CLV.
+    # At 0.45 the published prediction retains meaningful independent signal.
+    # Formula: alpha scales with market quality up to 0.45 max.
+    alpha = min(market_quality * 0.70, 0.45)
     result.market_blend_alpha = alpha
 
     if market_quality < min_market_quality:
