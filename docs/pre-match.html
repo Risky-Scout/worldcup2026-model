@@ -555,9 +555,9 @@ function renderDetailRow(m, idx) {
 
   const extraMarkets = [
     ['btts_yes', 'BTTS Yes'], ['btts_no', 'BTTS No'],
-    ['home_clean_sheet', 'Home CS'], ['away_clean_sheet', 'Away CS'],
-    ['dnb_home', 'DNB Home'], ['dnb_away', 'DNB Away'],
-    ['dc_home_draw', 'DC Home/Draw'], ['dc_away_draw', 'DC Away/Draw'],
+    ['win_to_nil_home', 'Home Win-to-Nil'], ['win_to_nil_away', 'Away Win-to-Nil'],
+    ['draw_no_bet_home', 'DNB Home'], ['draw_no_bet_away', 'DNB Away'],
+    ['double_chance_1x', 'DC Home/Draw'], ['double_chance_x2', 'DC Away/Draw'],
   ].map(([k, label]) => {
     const v = dm[k];
     if (v == null) return '';
