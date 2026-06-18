@@ -42,7 +42,10 @@ BDL_REQ_DELAY = 0.15  # seconds between requests (400 req/min < 600 GOAT limit)
 # --------------------------------------------------------------------------
 # Model defaults
 # --------------------------------------------------------------------------
-DC_WEIGHT_XI: float = 0.0018  # penaltyblog default xi (≈ 1-year half-life for WC data)
+DC_WEIGHT_XI: float = float(os.environ.get("WC2026_DC_WEIGHT_XI", "0.0018"))
+# xi for the 2026 WC completed match recency weighting (higher = more recent-focused).
+# Overridable via env var for manual tuning without code changes.
+DC_WEIGHT_XI_2026: float = float(os.environ.get("WC2026_DC_WEIGHT_XI_2026", "0.018"))
 PMF_MAX_GOALS: int = 15       # penaltyblog default grid size; tail mass is tiny at 15
 TAIL_WARN_THRESHOLD: float = 0.005  # warn if tail mass exceeds 0.5% (at max_goals=15)
 
