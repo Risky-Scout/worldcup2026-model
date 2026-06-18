@@ -588,12 +588,6 @@ def _auto_select_market_weight(
         "nll=%s  rps=%s → selected=%.2f (combined=%.4f)",
         n, scores, scores_rps, best_w, best_score,
     )
-    # #region agent log — H-E: market weight selection
-    try:
-        import json as _j, time as _t
-        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-E","location":"run_real_pipeline.py:market-weight","message":"market weight selected","data":{"selected":best_w,"scores_nll":scores,"scores_rps":scores_rps,"n_completed":n},"timestamp":int(_t.time()*1000)})+"\n")
-    except Exception: pass
-    # #endregion
     return best_w
 
 
@@ -1100,24 +1094,12 @@ def predict_all_2026(
             _bhgm.fit(n_samples=1000, n_chains=2)
             ladder._models["bayesian_hierarchical"] = _bhgm
             log.info("HierarchicalBayesianGoalModel fitted and added to ladder (n_completed=%d)", _n_completed_for_bayes)
-            # #region agent log — H-D: Bayesian model fitted
-            try:
-                import json as _j, time as _t
-                open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-D","location":"run_real_pipeline.py:bhgm","message":"HierarchicalBayesian fitted OK","data":{"n_completed":_n_completed_for_bayes},"timestamp":int(_t.time()*1000)})+"\n")
-            except Exception: pass
-            # #endregion
         except Exception as _bhgm_exc:
             log.warning(
                 "HierarchicalBayesianGoalModel unavailable (%s) — skipping. "
                 "NegativeBinomialGoalModel remains the best available fallback.",
                 _bhgm_exc,
             )
-            # #region agent log — H-D: Bayesian model failed
-            try:
-                import json as _j, time as _t
-                open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-D","location":"run_real_pipeline.py:bhgm","message":"HierarchicalBayesian FAILED","data":{"error":str(_bhgm_exc)[:200],"n_completed":_n_completed_for_bayes},"timestamp":int(_t.time()*1000)})+"\n")
-            except Exception: pass
-            # #endregion
 
     # ── Extract calibrated rho from fitted Dixon-Coles model ─────────────────
     # IMPORTANT: WC sample sizes (20-48 matches) are too small for reliable rho
@@ -1132,13 +1114,6 @@ def predict_all_2026(
     calib_rho: float = _RHO_PRIOR
     _n_completed_for_rho = len(completed_2026)  # completed_2026 defined at line ~726
     _calib_rho_source: str = "prior"  # tracks which path set calib_rho
-
-    # #region agent log — H-A: rho initialization
-    try:
-        import json as _j, time as _t
-        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-A","location":"run_real_pipeline.py:rho-init","message":"rho block entered","data":{"calib_rho_init":_RHO_PRIOR,"n_completed":_n_completed_for_rho},"timestamp":int(_t.time()*1000)})+"\n")
-    except Exception: pass
-    # #endregion
 
     # --- Source A: fitted DC rho (only accepted if meaningfully negative) ---
     _dc_raw_rho: float = _RHO_PRIOR
@@ -1229,12 +1204,6 @@ def predict_all_2026(
                     _market_rho_estimates.append(_ir)
             except Exception:
                 pass
-        # #region agent log — H-A/H-B: market rho estimates
-        try:
-            import json as _j, time as _t
-            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-B","location":"run_real_pipeline.py:market-rho","message":"market rho loop done","data":{"n_estimates":len(_market_rho_estimates),"estimates":_market_rho_estimates[:5]},"timestamp":int(_t.time()*1000)})+"\n")
-        except Exception: pass
-        # #endregion
         if len(_market_rho_estimates) >= 3:
             _mkt_rho_mean = float(np.mean(_market_rho_estimates))
             log.info(
@@ -1265,13 +1234,6 @@ def predict_all_2026(
             "DC correction is DISABLED. Investigate immediately."
         )
     log.info("calib_rho=%.4f  source=%s", calib_rho, _calib_rho_source)
-
-    # #region agent log — H-A: final rho
-    try:
-        import json as _j, time as _t
-        open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-A","location":"run_real_pipeline.py:rho-final","message":"final calib_rho","data":{"calib_rho":calib_rho,"source":_calib_rho_source},"timestamp":int(_t.time()*1000)})+"\n")
-    except Exception: pass
-    # #endregion
 
     # ── Extract calibrated lambda3 from fitted Bivariate Poisson model ──────────
     # lambda3 is the shared Poisson component in the Karlis-Ntzoufras decomposition.
@@ -1848,14 +1810,6 @@ def _predict_one_match(
                     _extra_draw_signals.append((_bm_draw, _bm_weight))
             except Exception:
                 pass
-
-        # #region agent log — H-C: draw blend
-        try:
-            import json as _j, time as _t
-            _models_loaded = [n for n,_ in _DRAW_BLEND_MODELS if ladder._models.get(n) is not None]
-            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_j.dumps({"sessionId":"3f8dcc","runId":"pipeline","hypothesisId":"H-C","location":"run_real_pipeline.py:draw-blend","message":"draw blend signals","data":{"models_loaded":_models_loaded,"n_signals":len(_extra_draw_signals),"signals":_extra_draw_signals,"match":"%s v %s"%(home,away)},"timestamp":int(_t.time()*1000)})+"\n")
-        except Exception: pass
-        # #endregion
         if _extra_draw_signals:
             # Compute total weight on the multi-model signals
             _total_extra_w = sum(w for _, w in _extra_draw_signals)
