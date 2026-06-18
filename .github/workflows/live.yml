@@ -85,6 +85,8 @@ jobs:
                   continue
               try:
                   ko = datetime.datetime.fromisoformat(ko_str.replace('Z', '+00:00'))
+                  if ko.tzinfo is None:
+                      ko = ko.replace(tzinfo=datetime.timezone.utc)
                   mins_until = (ko - now).total_seconds() / 60
                   if -5 <= mins_until <= 90:
                       should_chain = True

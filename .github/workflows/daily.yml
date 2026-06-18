@@ -91,11 +91,13 @@ jobs:
         run: make validate-published
 
       - name: Upload today's predictions to WOO (FTP)
+        # Upload TODAY's file (not tomorrow's DATE) so wc-predictions.json shows
+        # the current day's matches during the 4am–5am ET window before hourly runs.
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
-        run: python scripts/upload_predictions.py --date $DATE
+        run: python scripts/upload_predictions.py --date $TODAY
         continue-on-error: true
 
       - name: Deploy HTML pages (FTP)

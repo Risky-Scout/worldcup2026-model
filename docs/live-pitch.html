@@ -369,6 +369,17 @@ footer{
   .sb-team{font-size:13px;}
 }
 
+/* ── Multi-match selector ── */
+#match-selector-bar{
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+}
+#match-tabs button:hover{
+  border-color:var(--gold) !important;
+  color:var(--gold) !important;
+  opacity:.85;
+}
+
 /* ── Loading ── */
 #loading-state{
   max-width:1400px;margin:60px auto;
@@ -400,6 +411,11 @@ footer{
     <a href="/tools/odds-scanner/predictions/world-cup/live/live-pitch.html" class="active">Live Pitch ⚽</a>
   </nav>
 </header>
+
+<!-- Multi-match selector (hidden when only one match is live) -->
+<div id="match-selector-bar" style="display:none;max-width:1400px;margin:0 auto;padding:8px 20px 0;box-sizing:border-box;">
+  <div id="match-tabs" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+</div>
 
 <!-- Scoreboard -->
 <div id="scoreboard-bar" style="display:none;">
@@ -608,6 +624,7 @@ let countdownTimer = null;
 let countdownSecs = REFRESH_MS / 1000;
 let currentMatch = null;
 let lastShotIds = new Set();
+let selectedMatchId = null;  // tracks which live match the user has selected
 
 // ── Utility ──────────────────────────────────────────────────────────────────
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1024,6 +1041,7 @@ function renderUpcoming(upcoming) {
 
 // ── Main render ───────────────────────────────────────────────────────────────
 function render(data) {
+  window._lastLiveData = data;  // cache for selectMatch() re-renders
   document.getElementById('loading-state').style.display = 'none';
   document.getElementById('content-wrap').style.display = '';
 
@@ -1069,7 +1087,34 @@ function render(data) {
   document.getElementById('stats-panel').style.display = '';
   document.getElementById('pitch-container').classList.remove('no-live');
 
-  const m = live[0];
+  // ── Multi-match selector ───────────────────────────────────────────────
+  const selectorBar = document.getElementById('match-selector-bar');
+  const tabsEl = document.getElementById('match-tabs');
+  if (live.length > 1) {
+    selectorBar.style.display = '';
+    // Preserve user selection; default to first match if none or stale
+    if (!selectedMatchId || !live.find(x => x.match_id === selectedMatchId)) {
+      selectedMatchId = live[0].match_id;
+    }
+    tabsEl.innerHTML = live.map((lm, i) => {
+      const active = lm.match_id === selectedMatchId;
+      const score = `${lm.current_home_goals ?? 0}–${lm.current_away_goals ?? 0}`;
+      const min = lm.regulation_minute != null ? `${Math.round(lm.regulation_minute)}'` : '';
+      return `<button onclick="selectMatch(${JSON.stringify(lm.match_id)})"
+        style="font-family:'Courier New',monospace;font-size:10px;padding:5px 10px;
+               border-radius:3px;cursor:pointer;border:1px solid ${active ? 'var(--gold)' : 'var(--border-2)'};
+               background:${active ? 'var(--gold-dim)' : 'transparent'};
+               color:${active ? 'var(--gold)' : 'var(--text-dim)'};white-space:nowrap;">
+        ${esc(lm.home_team)} ${score} ${esc(lm.away_team)}${min ? ' · ' + min : ''}
+      </button>`;
+    }).join('');
+  } else {
+    selectorBar.style.display = 'none';
+    selectedMatchId = live[0].match_id;
+  }
+
+  // Resolve the match to display (user-selected or first)
+  const m = live.find(x => x.match_id === selectedMatchId) || live[0];
 
   // Clear shot markers when a new match starts
   if (!currentMatch || currentMatch.match_id !== m.match_id) {
@@ -1092,6 +1137,13 @@ function render(data) {
   let events = m.events || [];
   if (events.length === 0) events = synthesizeEvents(m);
   buildEventFeed(events, m.home_team, m.away_team);
+}
+
+// ── Match selector ────────────────────────────────────────────────────────────
+function selectMatch(matchId) {
+  selectedMatchId = matchId;
+  // Re-render with the last known data (stored on window for quick re-render)
+  if (window._lastLiveData) render(window._lastLiveData);
 }
 
 // ── Polling ───────────────────────────────────────────────────────────────────

@@ -76,8 +76,9 @@ def upload(date: str | None = None) -> None:
     json_path = REPO_ROOT / "data" / "published" / f"{date}.json"
 
     if not json_path.exists():
-        print(f"ERROR: No published predictions found for {date}: {json_path}")
-        sys.exit(1)
+        print(f"WARNING: No published predictions found for {date} (rest day?): {json_path}")
+        print("Skipping upload — no file to upload.")
+        return
 
     # Load and enrich with metadata
     doc = json.loads(json_path.read_text())
