@@ -596,6 +596,26 @@ function renderDetailRow(m, idx) {
     </div>`;
   }).join('');
 
+  // Player props section (top 3 value props)
+  const topProps = (pred.player_props_top_value || []).slice(0, 3);
+  let playerPropsSection = '';
+  if (topProps.length > 0) {
+    const propRows = topProps.map(p => {
+      const edgeCls = p.edge_pct > 0 ? 'edge-pos' : 'edge-neg';
+      return `<div class="edge-row ${p.value ? 'value' : ''}">
+        <span class="edge-row-market">${esc(p.player_name)} · ${esc(p.prop_type.replace(/_/g,' '))}</span>
+        <span>
+          <span class="edge-row-pct" style="color:${p.edge_pct > 0 ? 'var(--green)' : 'var(--red)'}">${p.edge_pct > 0 ? '+' : ''}${(p.edge_pct||0).toFixed(1)}%</span>
+          <span class="edge-row-kelly"> · ${p.market_odds > 0 ? '+' : ''}${p.market_odds}</span>
+        </span>
+      </div>`;
+    }).join('');
+    playerPropsSection = `<div style="margin-top:16px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:0.18em;margin-bottom:10px;">Top Player Props</h4>
+      <div class="edge-rows">${propRows}</div>
+    </div>`;
+  }
+
   // Result section
   let resultSection = '';
   if (m.result) {
@@ -645,6 +665,7 @@ function renderDetailRow(m, idx) {
             <div class="edge-rows">${edgeRows || '<div style="color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:11px;">No market odds available</div>'}</div>
           </div>
         </div>
+        ${playerPropsSection}
       </div>
     </td>
   </tr>`;

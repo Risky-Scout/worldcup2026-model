@@ -1796,6 +1796,34 @@ def predict_all_2026(
             except Exception as _draw_exc:
                 log.debug("draw_boost skipped: %s", _draw_exc)
 
+            # ── Player props: fetch BDL props for matches within 24h of kickoff ──
+            try:
+                _now_utc = dt.datetime.now(tz=dt.timezone.utc)
+                _kickoff_dt = pd.to_datetime(match_dt, utc=True)
+                _hours_to_kickoff = (_kickoff_dt - _now_utc).total_seconds() / 3600.0
+                if -2 <= _hours_to_kickoff <= 24:
+                    _bdl_props = []
+                    try:
+                        _provider_obj = getattr(_fetch_provider, "_provider", None) or _fetch_provider
+                        if hasattr(_provider_obj, "fetch_player_props"):
+                            _bdl_props = _provider_obj.fetch_player_props(match_id=int(mid))
+                    except Exception as _pp_fetch_exc:
+                        log.debug("Player props fetch skipped for %s v %s: %s", home, away, _pp_fetch_exc)
+                    if _bdl_props is not None:
+                        from wc2026.markets.player_props import PlayerPropsMarket as _PPM
+                        _ppm = _PPM()
+                        _props_out = _ppm.build_props_from_prediction(
+                            match_prediction=pred,
+                            player_stats_df=tables.get("player_stats") if "tables" in dir() else None,
+                            lineup_df=None,
+                            bdl_props=_bdl_props,
+                        )
+                        _top_props = _ppm.top_value_props(_props_out, top_k=3)
+                        pred["prediction"]["player_props"] = _props_out
+                        pred["prediction"]["player_props_top_value"] = _top_props
+            except Exception as _pp_exc:
+                log.debug("Player props failed for %s v %s: %s", home, away, _pp_exc)
+
             all_predictions.append(pred)
             mode = pred["publish_mode"]
             if mode == "market_reconciled":
