@@ -966,19 +966,31 @@ class CompositeTeamPrior:
             log.warning("Elo fitting failed: %s", exc)
             return {}
 
-    def _fit_pi(self, hist: pd.DataFrame) -> dict[str, float]:
+    def _fit_pi(self, hist: pd.DataFrame) -> dict:
         try:
             from penaltyblog.ratings import PiRatingSystem
             pi = PiRatingSystem(alpha=0.15, beta=0.1, k=0.75)
             for _, row in hist.iterrows():
                 pi.update_ratings(
-                    str(row["home_team"]), str(row["away_team"]),
-                    int(row["home_goals"]), int(row["away_goals"]),
+                    str(row["home_team"]),
+                    str(row["away_team"]),
+                    int(row["home_goals"]) - int(row["away_goals"]),
                 )
-            # pi.team_ratings stores {team: {"home": float, "away": float}}
-            # pi.get_team_rating(team) returns the average as a float
-            teams = list(pi.team_ratings.keys())
-            return {t: float(pi.get_team_rating(t)) for t in teams}
+            # team_ratings: Dict[str, Dict[str, float]] — each value is {"home": float, "away": float}
+            result = {}
+            for team, ratings in pi.team_ratings.items():
+                home_r = float(ratings.get("home", 0.0))
+                away_r = float(ratings.get("away", 0.0))
+                composite = float(pi.get_team_rating(team))
+                result[team] = {
+                    "composite": composite,
+                    "home": home_r,
+                    "away": away_r,
+                    "attack": home_r,    # home Pi rating ≈ attacking strength
+                    "defense": -away_r,  # negated away Pi ≈ defensive quality (higher = harder to score against)
+                }
+            log.info("Pi ratings fitted for %d teams", len(result))
+            return result
         except Exception as exc:
             log.warning("Pi rating fitting failed: %s", exc)
             return {}
@@ -1222,13 +1234,26 @@ class CompositeTeamPrior:
 
         # ── Pi ──────────────────────────────────────────────────────────
         if pi_ratings:
-            pi_val = pi_ratings.get(team)
-            if pi_val is not None:
+            pi_data = pi_ratings.get(team)
+            if pi_data is not None:
+                if isinstance(pi_data, dict):
+                    pi_val = pi_data.get("composite", 0.0)
+                    pi_home = pi_data.get("home", pi_val)
+                    pi_away = pi_data.get("away", pi_val)
+                else:
+                    pi_val = float(pi_data)
+                    pi_home = pi_val
+                    pi_away = pi_val
+
                 tp.penaltyblog_pi = float(pi_val)
-                # Pi is a goal-difference-based rating on roughly [-2, 2] scale
-                lam_pi = _WC_AVG_ATTACK * np.exp(float(pi_val) * 0.25)
-                tp.pi_attack_lambda = round(float(lam_pi), 4)
-                tp.pi_defense_lambda = round(float(_WC_AVG_DEFENSE * np.exp(-float(pi_val) * 0.15)), 4)
+
+                # Attack λ: team's HOME Pi rating reflects attacking output when hosting
+                lam_pi_att = _WC_AVG_ATTACK * np.exp(float(pi_home) * 0.25)
+                # Defense λ: team's AWAY Pi rating reflects how hard opponents find scoring
+                lam_pi_def = _WC_AVG_DEFENSE * np.exp(-float(pi_away) * 0.15)
+
+                tp.pi_attack_lambda = round(float(np.clip(lam_pi_att, 0.3, 5.0)), 4)
+                tp.pi_defense_lambda = round(float(np.clip(lam_pi_def, 0.3, 5.0)), 4)
 
         # ── Massey ──────────────────────────────────────────────────────
         if not massey_df.empty and team in massey_df.index:

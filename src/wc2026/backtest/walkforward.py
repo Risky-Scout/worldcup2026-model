@@ -44,6 +44,7 @@ from wc2026.models.baselines import (
     EloBaseline,
     EqualProbabilityBaseline,
     HistoricalBaseRateBaseline,
+    PiRatingBaseline,
 )
 from wc2026.models.ladder import (
     ALL_MODELS,
@@ -170,7 +171,7 @@ class WalkForwardEngine:
         # Collect per-model per-match prediction rows
         model_rows: dict[str, list[dict]] = {m: [] for m in self._model_names}
         if self._include_baselines:
-            for b in ["equal_probability", "historical_base_rate", "elo"]:
+            for b in ["equal_probability", "historical_base_rate", "elo", "pi_rating"]:
                 model_rows[b] = []
 
         # We re-fit every `refit_every` steps. Track last refit index.
@@ -262,6 +263,18 @@ class WalkForwardEngine:
                 )
                 model_rows["elo"].append(
                     _prediction_to_row(elo_pred, actual_h, actual_a, train_df)
+                )
+
+                pi_bl = PiRatingBaseline(max_goals=self._max_goals)
+                pi_bl.fit(train_df)
+                pi_pred = pi_bl.predict(
+                    home_team, away_team,
+                    match_id=int(match_row.get("match_id", 0)),
+                    season=match_row.get("season"),
+                    stage=match_row.get("stage"),
+                )
+                model_rows["pi_rating"].append(
+                    _prediction_to_row(pi_pred, actual_h, actual_a, train_df)
                 )
 
         # ── Compute calibration metrics per model ────────────────────────

@@ -246,3 +246,75 @@ class EloBaseline:
             expected_home_goals=lh,
             expected_away_goals=la,
         )
+
+
+# ---------------------------------------------------------------------------
+# Baseline 4: Pi rating
+# ---------------------------------------------------------------------------
+
+class PiRatingBaseline:
+    """
+    penaltyblog Pi rating system baseline predictor.
+
+    Pi Ratings are goal-margin-based and opponent-adjusted, with separate home/away
+    ratings per team. Outperforms Elo for football score prediction because it uses
+    continuous goal-difference information rather than just win/draw/loss.
+    """
+
+    MODEL_NAME = "pi_rating"
+
+    def __init__(
+        self,
+        alpha: float = 0.15,
+        beta: float = 0.10,
+        k: float = 0.75,
+        max_goals: int = PMF_MAX_GOALS,
+    ):
+        self._pi = PiRatingSystem(alpha=alpha, beta=beta, k=k)
+        self._max_goals = max_goals
+        self.fitted = False
+
+    def fit(self, df: pd.DataFrame) -> "PiRatingBaseline":
+        """Update Pi ratings in chronological order using goal difference."""
+        df = df.sort_values("match_datetime").dropna(subset=["home_goals", "away_goals"])
+        for _, row in df.iterrows():
+            try:
+                gd = int(row["home_goals"]) - int(row["away_goals"])
+                self._pi.update_ratings(str(row["home_team"]), str(row["away_team"]), gd)
+            except Exception:
+                pass
+        self.fitted = True
+        return self
+
+    def predict(
+        self,
+        home_team: str,
+        away_team: str,
+        match_id: Optional[int] = None,
+        **kwargs,
+    ) -> ScorePMFPrediction:
+        try:
+            pi_h = float(self._pi.get_team_rating(home_team))
+            pi_a = float(self._pi.get_team_rating(away_team))
+        except Exception:
+            pi_h = pi_a = 0.0
+
+        avg = _WC_AVG_GOALS_PER_TEAM
+        lam_h = float(np.clip(avg * np.exp((pi_h - pi_a) * 0.25), 0.1, 8.0))
+        lam_a = float(np.clip(avg * np.exp((pi_a - pi_h) * 0.25), 0.1, 8.0))
+
+        pmf, tail, lh, la = _make_poisson_pmf(lam_h, lam_a, self._max_goals)
+        return ScorePMFPrediction(
+            match_id=match_id,
+            home_team=home_team,
+            away_team=away_team,
+            season=kwargs.get("season"),
+            stage=kwargs.get("stage"),
+            venue=kwargs.get("venue"),
+            model_name=self.MODEL_NAME,
+            max_goals=self._max_goals,
+            score_pmf=pmf,
+            tail_mass=tail,
+            expected_home_goals=lh,
+            expected_away_goals=la,
+        )
