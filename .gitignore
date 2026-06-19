@@ -32,3 +32,12 @@ htmlcov/
 *.pkl
 
 .DS_Store
+
+# Shadow/internal model artifacts (large, not versioned)
+data/predictions/shadow/*.jsonl
+data/predictions/pmf_layers/*.parquet
+data/predictions/team_margin_ratings/*.json
+data/snapshots/**/*.parquet
+reports/clv/*.csv
+reports/live_shadow/*.csv
+reports/team_strength/*.csv
