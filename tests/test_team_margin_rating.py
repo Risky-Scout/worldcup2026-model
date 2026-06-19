@@ -17,7 +17,8 @@ def test_stub_is_zero():
     r = TeamMarginRating.stub(99, "Unknown")
     assert r.neutral_egm == 0.0
     assert r.pure_strength_egm == 0.0
-    assert "stub" in r.sources_used
+    # No confederation supplied → global fallback (stub() now uses fallback hierarchy)
+    assert "global_fallback" in r.sources_used or "stub" in r.sources_used
 
 def test_egm_to_lambdas():
     from src.wc2026.models.egm_to_lambdas import egm_components_to_lambdas, MatchContextAdjustment

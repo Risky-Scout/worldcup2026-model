@@ -81,17 +81,25 @@ class TeamMarginRating:
         }
 
     @classmethod
-    def stub(cls, team_id: int, team_name: str) -> "TeamMarginRating":
-        """Return a zero-information stub for teams with no data."""
+    def stub(cls, team_id: int, team_name: str, confederation: str | None = None) -> "TeamMarginRating":
+        """
+        Return a fallback rating for teams with insufficient data.
+        Uses confederation prior if available, global fallback otherwise.
+        uncertainty_egm = 1.0 means maximum uncertainty.
+        """
+        from src.wc2026.ratings.fallback_prior import confederation_prior_egm
+        conf_egm = confederation_prior_egm(confederation)
+        sources = ["confederation"] if confederation else ["global_fallback"]
         return cls(
             team_id=team_id,
             team_name=team_name,
             abbreviation=None,
-            confederation=None,
-            neutral_egm=0.0,
-            attack_log=0.0,
-            defense_log=0.0,
-            pure_strength_egm=0.0,
-            market_strength_egm=0.0,
-            sources_used=["stub"],
+            confederation=confederation,
+            neutral_egm=conf_egm,
+            attack_log=conf_egm / 2,
+            defense_log=-conf_egm / 2,
+            pure_strength_egm=conf_egm,
+            market_strength_egm=conf_egm,
+            uncertainty_egm=1.0 if not confederation else 0.7,
+            sources_used=sources,
         )
