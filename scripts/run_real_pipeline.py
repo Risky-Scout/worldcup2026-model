@@ -1798,20 +1798,12 @@ def predict_all_2026(
                                 _pmf_np /= _pmf_np.sum()
                                 # Write rescaled PMF back
                                 _pred_inner["regulation_score_pmf_grid"] = _pmf_np.tolist()
-                                # Recompute derived_markets 1X2 from rescaled PMF
-                                _phw = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi > _ai))
-                                _pdr = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi == _ai))
-                                _paw = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi < _ai))
-                                _pred_inner["derived_markets"]["home_win"] = round(_phw, 6)
-                                _pred_inner["derived_markets"]["draw"] = round(_pdr, 6)
-                                _pred_inner["derived_markets"]["away_win"] = round(_paw, 6)
-                                _s = _phw + _paw
-                                if _s > 1e-9:
-                                    _pred_inner["derived_markets"]["draw_no_bet_home"] = round(_phw / _s, 6)
-                                    _pred_inner["derived_markets"]["draw_no_bet_away"] = round(_paw / _s, 6)
-                                _pred_inner["derived_markets"]["double_chance_1x"] = round(_phw + _pdr, 6)
-                                _pred_inner["derived_markets"]["double_chance_x2"] = round(_pdr + _paw, 6)
-                                _pred_inner["derived_markets"]["double_chance_12"] = round(_phw + _paw, 6)
+                                # Recompute ALL derived_markets from the rescaled PMF
+                                _new_dm = _pmf_to_markets(_pmf_np)
+                                # Preserve BDL-sourced fields not derived from PMF
+                                _bdl_keys = {k for k in _pred_inner.get("derived_markets", {})
+                                             if k not in _new_dm}
+                                _pred_inner["derived_markets"].update(_new_dm)
                                 # Recompute top_scorelines from rescaled PMF
                                 _cells = sorted(
                                     [{"home_goals": _hi, "away_goals": _ai,
