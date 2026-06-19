@@ -1,6 +1,6 @@
 # Score PMF Calibration Report
 
-**Generated**: 2026-06-19T20:52:41Z
+**Generated**: 2026-06-19T22:07:37Z
 
 ## Temperature calibration methodology
 
@@ -21,6 +21,7 @@ log-loss over out-of-fold predictions only (never training data).
 
 | Model | N OOF | NLL (T=1) | T (fitted) | Calibration direction |
 |-------|-------|-----------|-----------|----------------------|
+| pi_rating | 118 | 3.0046 | **1.057** | near-neutral (T close to 1.0) |
 | equal_probability | 118 | 3.0219 | **1.077** | near-neutral (T close to 1.0) |
 | elo | 118 | 3.1493 | **1.255** | overconfident — calibration spreads probability mass |
 | historical_base_rate | 118 | 4.0844 | **0.492** | underconfident — calibration sharpens probability mass |
@@ -29,7 +30,7 @@ log-loss over out-of-fold predictions only (never training data).
 | bivariate_poisson | 106 | 4.9404 | **3.000** | overconfident — calibration spreads probability mass |
 | poisson | 106 | 5.1621 | **3.000** | overconfident — calibration spreads probability mass |
 | zero_inflated_poisson | 106 | 5.1658 | **3.000** | overconfident — calibration spreads probability mass |
-| weibull_copula | 106 | 6.6438 | **3.000** | overconfident — calibration spreads probability mass |
+| weibull_copula | 106 | 6.8133 | **3.000** | overconfident — calibration spreads probability mass |
 
 ## Interpretation
 
@@ -51,6 +52,7 @@ As 2026 match results accumulate, T will be re-fitted with more OOF data.
 
 | Model | Slope | Intercept | Interpretation |
 |-------|-------|-----------|---------------|
+| pi_rating | 2.301 | -0.429 | underconfident |
 | equal_probability | nan | nan | slightly off |
 | elo | 2.277 | -0.114 | underconfident |
 | historical_base_rate | -1.596 | 1.151 | overconfident |
@@ -59,4 +61,4 @@ As 2026 match results accumulate, T will be re-fitted with more OOF data.
 | bivariate_poisson | 0.009 | 0.440 | overconfident |
 | poisson | 0.046 | 0.424 | overconfident |
 | zero_inflated_poisson | 0.085 | 0.408 | overconfident |
-| weibull_copula | 0.025 | 0.433 | overconfident |
+| weibull_copula | 0.060 | 0.416 | overconfident |

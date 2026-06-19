@@ -1,13 +1,13 @@
 # Champion Policy (Real BDL Data)
 
-**Generated**: 2026-06-19T20:52:41Z
+**Generated**: 2026-06-19T22:07:37Z
 
 ## Six champion tiers
 
 | Champion Type | Model | NLL | Use Case |
 |--------------|-------|-----|----------|
-| diagnostic_champion | equal_probability | 3.0219 | Audit only — NEVER published |
-| pure_model_champion | negative_binomial | 4.436939719630617 | Parametric model for matches without odds |
+| diagnostic_champion | pi_rating | 3.0046 | Audit only — NEVER published |
+| pure_model_champion | negative_binomial | 4.436939720954314 | Parametric model for matches without odds |
 | rating_champion | negative_binomial | composite_rating_pmf | Market-implied priors for all 48 teams |
 | parametric_champion | negative_binomial | 4.4369 | Alias for pure_model — parametric prior |
 | market_champion | market_implied | N/A | Pure-market PMF from BDL consensus |
@@ -18,7 +18,7 @@ New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 
 ## Why diagnostic_champion ≠ publish_champion
 
-**equal_probability** wins on exact-score NLL (3.0219) because:
+**pi_rating** wins on exact-score NLL (3.0046) because:
 - It is **Poisson(λ=1.35, λ=1.35)** — the WC average goals prior — NOT uniform over all cells
 - With only 128 historical WC matches and 32+ teams, James-Stein shrinkage toward the mean
   outperforms team-specific parameter estimation (classic small-sample overfitting)
@@ -46,12 +46,13 @@ New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 
 | Rank | Model | N OOF | NLL | RPS | Brier | ECE | T | Publish-eligible? |
 |------|-------|-------|-----|-----|-------|-----|---|------------------|
-| 1 | equal_probability | 118 | 3.0219 | 0.2382 | 0.6497 | 0.0698 | 1.077 | diagnostic only |
-| 2 | elo | 118 | 3.1493 | 0.2673 | 0.7073 | 0.1969 | 1.255 | diagnostic only |
-| 3 | historical_base_rate | 118 | 4.0844 | 0.2422 | 0.6734 | 0.0260 | 0.492 | diagnostic only |
-| 4 | negative_binomial | 106 | 4.4369 | 0.2841 | 0.7731 | 0.2252 | 2.923 | parametric prior |
-| 5 | dixon_coles | 106 | 4.8542 | 0.3015 | 0.8222 | 0.2467 | 3.000 | parametric prior |
-| 6 | bivariate_poisson | 106 | 4.9404 | 0.3122 | 0.8554 | 0.3180 | 3.000 | parametric prior |
-| 7 | poisson | 106 | 5.1621 | 0.3089 | 0.8441 | 0.2991 | 3.000 | parametric prior |
-| 8 | zero_inflated_poisson | 106 | 5.1658 | 0.3081 | 0.8397 | 0.2702 | 3.000 | parametric prior |
-| 9 | weibull_copula | 106 | 6.6438 | 0.3315 | 0.8798 | 0.3311 | 3.000 | parametric prior |
+| 1 | pi_rating | 118 | 3.0046 | 0.2347 | 0.6424 | 0.0628 | 1.057 | N/A |
+| 2 | equal_probability | 118 | 3.0219 | 0.2382 | 0.6497 | 0.0698 | 1.077 | diagnostic only |
+| 3 | elo | 118 | 3.1493 | 0.2673 | 0.7073 | 0.1969 | 1.255 | diagnostic only |
+| 4 | historical_base_rate | 118 | 4.0844 | 0.2422 | 0.6734 | 0.0260 | 0.492 | diagnostic only |
+| 5 | negative_binomial | 106 | 4.4369 | 0.2841 | 0.7731 | 0.2252 | 2.923 | parametric prior |
+| 6 | dixon_coles | 106 | 4.8542 | 0.3015 | 0.8222 | 0.2467 | 3.000 | parametric prior |
+| 7 | bivariate_poisson | 106 | 4.9404 | 0.3122 | 0.8554 | 0.3180 | 3.000 | parametric prior |
+| 8 | poisson | 106 | 5.1621 | 0.3089 | 0.8441 | 0.2991 | 3.000 | parametric prior |
+| 9 | zero_inflated_poisson | 106 | 5.1658 | 0.3081 | 0.8397 | 0.2702 | 3.000 | parametric prior |
+| 10 | weibull_copula | 106 | 6.8133 | 0.3331 | 0.8824 | 0.3397 | 3.000 | parametric prior |

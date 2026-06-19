@@ -1,6 +1,6 @@
 # Production Readiness Assessment
 
-**Generated**: 2026-06-19T20:52:41Z
+**Generated**: 2026-06-19T22:07:37Z
 
 ## Status: PRE-GAME PMF READY — LIVE BETTING NOT YET APPROVED
 
@@ -13,7 +13,7 @@ penaltyblog ratings, and confederation strength — no team defaults to Elo=1500
 
 | Capability | Status |
 |------------|--------|
-| BDL real data ingestion (2018+2022+2026) | ✅ 9 models, 128 OOF matches |
+| BDL real data ingestion (2018+2022+2026) | ✅ 10 models, 128 OOF matches |
 | Opening day June 11: Mexico+SA, Korea+Czechia | ✅ correct schedules and priors |
 | market_reconciled publish champion | ✅ all 72 named group-stage matches |
 | Composite prior: market + FIFA + qualifying + Elo + Pi + Massey | ✅ all 48 teams |
@@ -50,7 +50,7 @@ penaltyblog ratings, and confederation strength — no team defaults to Elo=1500
 
 | Champion | Model | NLL | Used for |
 |----------|-------|-----|---------|
-| diagnostic_champion | equal_probability | 3.0219 | Audit only |
+| diagnostic_champion | pi_rating | 3.0046 | Audit only |
 | pure_model_champion | negative_binomial | 4.4369 if available | Parametric prior |
 | rating_champion | negative_binomial | N/A | Composite prior |
 | market_champion | market_implied | N/A | Direct market inference |
