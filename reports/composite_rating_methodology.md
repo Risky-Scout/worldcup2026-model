@@ -1,6 +1,6 @@
 # Composite Rating Methodology
 
-**Generated**: 2026-06-19T02:21:06Z
+**Generated**: 2026-06-19T02:56:45Z
 
 ## Why plain Elo is NOT the fallback
 
@@ -82,12 +82,12 @@ Then Dixon-Coles grid(lambda_h, lambda_a, rho=-0.05) gives the composite PMF.
 
 | Metric | Mexico | South Africa |
 |--------|--------|--------------|
-| market_implied_attack | 2.290 | 0.451 |
-| market_implied_defense | 0.474 | 1.927 |
-| final_attack_lambda | 2.105 | 1.091 |
-| final_defense_lambda | 0.977 | 1.837 |
-| composite lambda_h | **1.490** | — |
-| composite lambda_a | — | **1.451** |
-| composite PMF home_win | **0.386** | (was 0.234 with elo_prior_blend) |
+| market_implied_attack | 2.699 | 0.450 |
+| market_implied_defense | 0.441 | 1.928 |
+| final_attack_lambda | 1.833 | 1.064 |
+| final_defense_lambda | 0.757 | 1.792 |
+| composite lambda_h | **1.330** | — |
+| composite lambda_a | — | **1.827** |
+| composite PMF home_win | **0.280** | (was 0.234 with elo_prior_blend) |
 | BDL market home_win | **0.675** | |
-| composite vs market gap | 0.289 | (was 0.441 with elo) |
+| composite vs market gap | 0.395 | (was 0.441 with elo) |

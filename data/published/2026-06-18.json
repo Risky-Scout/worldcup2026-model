@@ -1044,6 +1044,13 @@
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
         }
+      },
+      "result": {
+        "home_goals": 1,
+        "away_goals": 0,
+        "result_label": "1-0",
+        "outcome": "home_win",
+        "model_prob_exact_score": 0.112618
       }
     },
     {
