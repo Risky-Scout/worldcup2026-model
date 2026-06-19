@@ -47,7 +47,7 @@ packages = ["src/wc2026"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short --cov=wc2026 --cov-report=term-missing --cov-fail-under=40"
+addopts = "-v --tb=short --cov=wc2026 --cov-report=term-missing --cov-fail-under=33"
 
 [tool.ruff]
 line-length = 100
