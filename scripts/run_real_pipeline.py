@@ -200,6 +200,19 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     api_key = os.environ.get("BDL_API_KEY", "").strip()
     cache_exists = matches_path.exists()
 
+    # region agent log
+    import json as _json, time as _time
+    def _dbg(msg, data, hyp=""):
+        try:
+            import datetime as _dt2
+            entry = {"sessionId":"3f8dcc","timestamp":int(_time.time()*1000),"location":"run_real_pipeline.py:fetch_and_build","message":msg,"data":data,"hypothesisId":hyp}
+            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a") as _f:
+                _f.write(_json.dumps(entry)+"\n")
+        except Exception:
+            pass
+    _dbg("fetch_and_build entry", {"api_key_set": bool(api_key), "api_key_len": len(api_key), "cache_exists": cache_exists, "force_refetch_arg": force_refetch}, "B")
+    # endregion
+
     if cache_exists and not force_refetch:
         # Check for stale matches that need a fresh fetch:
         # (a) Any 2026 match still marked in_progress may have since completed.
@@ -229,6 +242,10 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
                 except Exception:
                     pass
 
+            # region agent log
+            _dbg("cache stale check", {"_n_live": _n_live, "_n_stale_sched": _n_stale_sched, "now_utc": str(_now_utc)}, "A-D")
+            # endregion
+
             if _n_live > 0:
                 log.info(
                     "Cache has %d in_progress 2026 match(es) — forcing BDL refetch "
@@ -244,6 +261,9 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
                 )
                 force_refetch = True
             else:
+                # region agent log
+                _dbg("CACHE USED — no stale/live matches detected", {"branch": "cache_return"}, "A-D")
+                # endregion
                 log.info("Loading cached processed data (use --refetch to re-fetch)")
                 return _load_cached_tables()
         except Exception as _cache_exc:
@@ -251,6 +271,9 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
             force_refetch = True
 
     if not api_key:
+        # region agent log
+        _dbg("NO API KEY — falling back to cache", {"cache_exists": cache_exists, "force_refetch": force_refetch}, "B")
+        # endregion
         log.warning(
             "BDL_API_KEY not set — cannot fetch fresh data. "
             "Using committed processed data as fallback."
@@ -262,6 +285,9 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
             "Either set BDL_API_KEY or commit data/processed/ parquet files."
         )
 
+    # region agent log
+    _dbg("API KEY present — proceeding with live BDL fetch", {"force_refetch": force_refetch}, "B")
+    # endregion
     provider = BDLProvider(snapshot=True, req_delay=0.35)
     builder = DatasetBuilder(provider)
     log.info("Fetching 2018 + 2022 + 2026 matches and odds...")
@@ -276,6 +302,15 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     log.info("Odds rows: %d", len(tables.get("odds", pd.DataFrame())))
     log.info("Markets rows: %d", len(tables.get("markets", pd.DataFrame())))
     log.info("Correct-score rows: %d", len(tables.get("correct_score_odds", pd.DataFrame())))
+    # region agent log
+    m26 = matches[matches["season"] == 2026] if not matches.empty else matches
+    _dbg("BDL fetch complete — final dataset state", {
+        "total_matches": len(matches),
+        "m2026_completed": int((m26["status"]=="completed").sum()),
+        "m2026_scheduled": int((m26["status"]=="scheduled").sum()),
+        "m2026_in_progress": int((m26["status"]=="in_progress").sum()),
+    }, "A-E")
+    # endregion
     return tables
 
 
@@ -1726,11 +1761,12 @@ def predict_all_2026(
             batch_pmf=_batch_pmfs.get((home, away)),
         )
         if pred:
-            # Enhancement 4: Apply group-stage draw probability boost
+            # Apply group-stage draw probability boost at PMF level so that
+            # regulation_score_pmf_grid, derived_markets, and top_scorelines stay
+            # consistent (fixes test_1x2_derived_from_pmf pipeline failure).
             try:
                 _pred_inner = pred.get("prediction", {})
                 _dm = _pred_inner.get("derived_markets", {}) or {}
-                _match_info_for_draw = {"stage": stage}
                 _dm_hw = _dm.get("home_win")
                 _dm_dr = _dm.get("draw")
                 _dm_aw = _dm.get("away_win")
@@ -1738,7 +1774,7 @@ def predict_all_2026(
                     _adj_hw, _adj_dr, _adj_aw, _adj_reason = _group_stage_draw_adjustment(
                         home, away,
                         float(_dm_hw), float(_dm_dr), float(_dm_aw),
-                        _group_standings, _match_info_for_draw,
+                        _group_standings, {"stage": stage},
                     )
                     if _adj_reason:
                         log.info(
@@ -1746,17 +1782,44 @@ def predict_all_2026(
                             "draw %.4f→%.4f",
                             mid, home, away, _adj_reason, float(_dm_dr), _adj_dr,
                         )
-                        _pred_inner["derived_markets"]["home_win"] = _adj_hw
-                        _pred_inner["derived_markets"]["draw"] = _adj_dr
-                        _pred_inner["derived_markets"]["away_win"] = _adj_aw
-                        # Recompute draw_no_bet and double_chance from adjusted 1X2
-                        _s = _adj_hw + _adj_aw
-                        if _s > 1e-9:
-                            _pred_inner["derived_markets"]["draw_no_bet_home"] = round(_adj_hw / _s, 6)
-                            _pred_inner["derived_markets"]["draw_no_bet_away"] = round(_adj_aw / _s, 6)
-                        _pred_inner["derived_markets"]["double_chance_1x"] = round(_adj_hw + _adj_dr, 6)
-                        _pred_inner["derived_markets"]["double_chance_x2"] = round(_adj_dr + _adj_aw, 6)
-                        _pred_inner["derived_markets"]["double_chance_12"] = round(_adj_hw + _adj_aw, 6)
+                        _pmf_raw = _pred_inner.get("regulation_score_pmf_grid")
+                        if _pmf_raw is not None:
+                            _pmf_np = np.array(_pmf_raw, dtype=float)
+                            _n = _pmf_np.shape[0]
+                            _old_dr = float(_dm_dr)
+                            if _old_dr > 1e-9 and (1.0 - _old_dr) > 1e-9:
+                                # Scale diagonal (draw) cells and off-diagonal (win) cells
+                                _diag_s = _adj_dr / _old_dr
+                                _offdiag_s = (1.0 - _adj_dr) / (1.0 - _old_dr)
+                                for _hi in range(_n):
+                                    for _ai in range(_n):
+                                        _pmf_np[_hi, _ai] *= _diag_s if _hi == _ai else _offdiag_s
+                                _pmf_np = np.clip(_pmf_np, 0, None)
+                                _pmf_np /= _pmf_np.sum()
+                                # Write rescaled PMF back
+                                _pred_inner["regulation_score_pmf_grid"] = _pmf_np.tolist()
+                                # Recompute derived_markets 1X2 from rescaled PMF
+                                _phw = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi > _ai))
+                                _pdr = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi == _ai))
+                                _paw = float(sum(_pmf_np[_hi, _ai] for _hi in range(_n) for _ai in range(_n) if _hi < _ai))
+                                _pred_inner["derived_markets"]["home_win"] = round(_phw, 6)
+                                _pred_inner["derived_markets"]["draw"] = round(_pdr, 6)
+                                _pred_inner["derived_markets"]["away_win"] = round(_paw, 6)
+                                _s = _phw + _paw
+                                if _s > 1e-9:
+                                    _pred_inner["derived_markets"]["draw_no_bet_home"] = round(_phw / _s, 6)
+                                    _pred_inner["derived_markets"]["draw_no_bet_away"] = round(_paw / _s, 6)
+                                _pred_inner["derived_markets"]["double_chance_1x"] = round(_phw + _pdr, 6)
+                                _pred_inner["derived_markets"]["double_chance_x2"] = round(_pdr + _paw, 6)
+                                _pred_inner["derived_markets"]["double_chance_12"] = round(_phw + _paw, 6)
+                                # Recompute top_scorelines from rescaled PMF
+                                _cells = sorted(
+                                    [{"home_goals": _hi, "away_goals": _ai,
+                                      "probability": round(float(_pmf_np[_hi, _ai]), 6)}
+                                     for _hi in range(_n) for _ai in range(_n)],
+                                    key=lambda c: c["probability"], reverse=True,
+                                )
+                                _pred_inner["top_scorelines"] = _cells[:25]
             except Exception as _draw_exc:
                 log.debug("draw_boost skipped: %s", _draw_exc)
 
