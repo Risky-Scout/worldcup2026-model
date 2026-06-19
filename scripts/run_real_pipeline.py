@@ -200,18 +200,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     api_key = os.environ.get("BDL_API_KEY", "").strip()
     cache_exists = matches_path.exists()
 
-    # region agent log
-    import json as _json, time as _time
-    def _dbg(msg, data, hyp=""):
-        try:
-            import datetime as _dt2
-            entry = {"sessionId":"3f8dcc","timestamp":int(_time.time()*1000),"location":"run_real_pipeline.py:fetch_and_build","message":msg,"data":data,"hypothesisId":hyp}
-            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a") as _f:
-                _f.write(_json.dumps(entry)+"\n")
-        except Exception:
-            pass
-    _dbg("fetch_and_build entry", {"api_key_set": bool(api_key), "api_key_len": len(api_key), "cache_exists": cache_exists, "force_refetch_arg": force_refetch}, "B")
-    # endregion
 
     if cache_exists and not force_refetch:
         # Check for stale matches that need a fresh fetch:
@@ -242,9 +230,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
                 except Exception:
                     pass
 
-            # region agent log
-            _dbg("cache stale check", {"_n_live": _n_live, "_n_stale_sched": _n_stale_sched, "now_utc": str(_now_utc)}, "A-D")
-            # endregion
 
             if _n_live > 0:
                 log.info(
@@ -261,9 +246,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
                 )
                 force_refetch = True
             else:
-                # region agent log
-                _dbg("CACHE USED — no stale/live matches detected", {"branch": "cache_return"}, "A-D")
-                # endregion
                 log.info("Loading cached processed data (use --refetch to re-fetch)")
                 return _load_cached_tables()
         except Exception as _cache_exc:
@@ -271,9 +253,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
             force_refetch = True
 
     if not api_key:
-        # region agent log
-        _dbg("NO API KEY — falling back to cache", {"cache_exists": cache_exists, "force_refetch": force_refetch}, "B")
-        # endregion
         log.warning(
             "BDL_API_KEY not set — cannot fetch fresh data. "
             "Using committed processed data as fallback."
@@ -285,9 +264,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
             "Either set BDL_API_KEY or commit data/processed/ parquet files."
         )
 
-    # region agent log
-    _dbg("API KEY present — proceeding with live BDL fetch", {"force_refetch": force_refetch}, "B")
-    # endregion
     provider = BDLProvider(snapshot=True, req_delay=0.35)
     builder = DatasetBuilder(provider)
     log.info("Fetching 2018 + 2022 + 2026 matches and odds...")
@@ -302,15 +278,6 @@ def fetch_and_build(force_refetch: bool = False) -> dict[str, pd.DataFrame]:
     log.info("Odds rows: %d", len(tables.get("odds", pd.DataFrame())))
     log.info("Markets rows: %d", len(tables.get("markets", pd.DataFrame())))
     log.info("Correct-score rows: %d", len(tables.get("correct_score_odds", pd.DataFrame())))
-    # region agent log
-    m26 = matches[matches["season"] == 2026] if not matches.empty else matches
-    _dbg("BDL fetch complete — final dataset state", {
-        "total_matches": len(matches),
-        "m2026_completed": int((m26["status"]=="completed").sum()),
-        "m2026_scheduled": int((m26["status"]=="scheduled").sum()),
-        "m2026_in_progress": int((m26["status"]=="in_progress").sum()),
-    }, "A-E")
-    # endregion
     return tables
 
 
