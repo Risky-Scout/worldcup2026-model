@@ -136,6 +136,18 @@ jobs:
         run: python scripts/deploy_html.py
         continue-on-error: true
 
+      - name: Refresh wc-live.json on FTP (quiet-state with upcoming matches)
+        # Runs live_snapshot.py once per day so wc-live.json on FTP always has
+        # today's upcoming matches + pre-match probabilities even when no game is live.
+        # Prevents live-pitch.html from showing stale data between match days.
+        env:
+          BDL_API_KEY: ${{ secrets.BDL_API_KEY }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python scripts/live_snapshot.py
+        continue-on-error: true
+
       - name: Notify live server to reload lambdas
         run: |
           curl -sf -X GET \
