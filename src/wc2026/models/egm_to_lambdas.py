@@ -35,6 +35,49 @@ class MatchContextAdjustment:
     rho_adj: float = 0.0
 
 
+def margin_total_to_lambdas(
+    margin: float,
+    total: float,
+) -> tuple[float, float]:
+    """
+    Convert (margin, total) into (lambda_home, lambda_away).
+
+    margin = expected home goals - expected away goals  (team strength signal)
+    total  = expected home goals + expected away goals  (tempo/market/tournament signal)
+
+    This decouples margin strength from total-goal environment.
+    The EGM layer should learn margin; the total anchor comes from:
+      - the totals market (primary when available)
+      - a tournament baseline (~2.65 for WC regulation time)
+      - the structural total from attack/defense logs
+
+    lambda_home = (total + margin) / 2
+    lambda_away = (total - margin) / 2
+    """
+    home = (total + margin) / 2.0
+    away = (total - margin) / 2.0
+    return max(home, 0.05), max(away, 0.05)
+
+
+def egm_with_total_anchor(
+    home_egm: float,
+    away_egm: float,
+    total_goal_anchor: float,
+) -> tuple[float, float]:
+    """
+    Compute lambdas from team EGM ratings anchored to a total-goal constraint.
+
+    home_egm: neutral EGM for home team (positive = stronger than average)
+    away_egm: neutral EGM for away team
+    total_goal_anchor: total goals constraint (from market or tournament prior)
+
+    The margin is the difference of EGMs.
+    The total is provided externally (market-implied or tournament baseline).
+    """
+    margin = home_egm - away_egm
+    return margin_total_to_lambdas(margin, total_goal_anchor)
+
+
 def egm_components_to_lambdas(
     home_rating: TeamMarginRating,
     away_rating: TeamMarginRating,
@@ -63,6 +106,10 @@ def egm_components_to_lambdas(
     IMPORTANT: 'home_team' in BDL API is administrative, not true home advantage.
     True host effect must come through host_home_adj_log, set separately.
     Do NOT add a generic league home-advantage offset.
+
+    # NOTE: This function does not enforce a total-goal anchor.
+    # For a calibrated total, use egm_with_total_anchor() instead,
+    # which separates margin strength (from EGM) from total goals (from market/prior).
     """
     lh_log = (
         home_rating.attack_log - away_rating.defense_log

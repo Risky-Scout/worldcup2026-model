@@ -160,7 +160,9 @@ class ShadowEGMRunner:
     ) -> ShadowMatchPrediction:
         import numpy as np
         from src.wc2026.ratings.team_margin import TeamMarginRating
-        from src.wc2026.models.egm_to_lambdas import egm_components_to_lambdas, MatchContextAdjustment
+        from src.wc2026.models.egm_to_lambdas import (
+            egm_components_to_lambdas, MatchContextAdjustment, margin_total_to_lambdas,
+        )
         from src.wc2026.ratings.market_ability import compute_match_market_egm
         from src.wc2026.features.match_context import compute_match_context
         from src.wc2026.features.player_strength import build_player_ratings
@@ -293,6 +295,17 @@ class ShadowEGMRunner:
 
         lh, la, diag = egm_components_to_lambdas(home_rating, away_rating, ctx, self.base_goals)
 
+        # Apply total-goal anchor to prevent lambda inflation
+        WC_TOTAL_BASELINE = 2.65  # World Cup regulation-time average
+        # Use market total if available and plausible
+        if mkt_egm_obj is not None and 1.5 <= mkt_egm_obj.market_total <= 4.5:
+            total_anchor = mkt_egm_obj.market_total
+        else:
+            total_anchor = WC_TOTAL_BASELINE
+
+        margin = pure_egm_home - pure_egm_away
+        lh_anchored, la_anchored = margin_total_to_lambdas(margin, total_anchor)
+
         return ShadowMatchPrediction(
             match_id=match_id,
             home_team=home_team,
@@ -304,9 +317,9 @@ class ShadowEGMRunner:
             away_pure_strength_egm=away_rating.pure_strength_egm,
             home_market_strength_egm=home_rating.market_strength_egm,
             away_market_strength_egm=away_rating.market_strength_egm,
-            match_expected_goal_margin=diag["match_expected_goal_margin"],
-            egm_lambda_home=lh,
-            egm_lambda_away=la,
+            match_expected_goal_margin=lh_anchored - la_anchored,
+            egm_lambda_home=lh_anchored,
+            egm_lambda_away=la_anchored,
             live_lambda_home=live_lambda_home,
             live_lambda_away=live_lambda_away,
             sources_used=home_rating.sources_used,
