@@ -93,6 +93,19 @@ def fetch_bdl(ctx, seasons):
 
     provider.fetch_group_standings(season_list)
     provider.fetch_team_form(match_ids)
+
+    click.echo("  Fetching injuries (OUT/GTD)...")
+    provider.fetch_injuries(statuses=["OUT", "GTD"])
+
+    click.echo("  Fetching tournament futures odds...")
+    provider.fetch_futures()
+
+    click.echo("  Fetching rosters for 2018/2022/2026...")
+    provider.fetch_rosters(seasons=[2018, 2022, 2026])
+
+    click.echo(f"  Fetching match best players for {len(completed_ids)} completed matches...")
+    provider.fetch_best_players(match_ids=completed_ids)
+
     click.echo("BDL fetch complete. Raw snapshots saved to data/raw/bdl/")
 
 

@@ -2304,8 +2304,6 @@ def _predict_one_match(
                 publish_markets[_key_h] = _blended_h
                 publish_markets[_key_a] = _blended_a
 
-    # ── 5b. Compute first-half markets ────────────────────────────────────
-    first_half_markets_out = _first_half_pmf(pl_lh, pl_la)
     composite_markets = _pmf_to_markets(comp_pmf)
     pure_markets = _pmf_to_markets(pure_pmf)
     pl_lh, pl_la = _pmf_lambda(publish_pmf)

@@ -14,7 +14,7 @@ DATA_VERSION ?= v1
         fetch-bdl build-dataset train backtest calibrate \
         predict-date predict-match publish-today audit \
         validate-published validate-live \
-        pipeline update post-match clv-close clv-summary \
+        pipeline update pi-ratings shadow-run post-match clv-close clv-summary \
         docker-build docker-run \
         clean clean-data all
 
@@ -77,6 +77,12 @@ pipeline: ## Run the full prediction pipeline (fetch → build → predict → v
 
 update: ## Daily update: fetch latest BDL data → rebuild → re-predict → validate
 	$(PYTHON) scripts/daily_update.py --date $(DATE)
+
+pi-ratings: ## Generate Pi ratings report from match data
+	python pi-ratings/run_ratings.py
+
+shadow-run: ## Run shadow EGM runner for all scheduled 2026 matches
+	python scripts/run_shadow.py
 
 post-match: ## Post-match update for a completed date (record CLV outcomes, update ratings)
 	$(PYTHON) scripts/daily_update.py --date $(DATE) --post-match
