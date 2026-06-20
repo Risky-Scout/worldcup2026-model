@@ -124,7 +124,12 @@ def _map_pos_to_coords(position: str, is_home: bool, y_index: int, y_total: int)
 
 
 def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) -> dict:
-    """Extract possession, shots, xG, corners, cards from BDL team-stats rows."""
+    """Extract possession, shots, xG, corners, cards from BDL team_match_stats rows.
+
+    BDL team_match_stats field names (from API spec):
+      possession_pct, shots_total, shots_on_target, expected_goals,
+      corners, yellow_cards, red_cards, is_home (boolean).
+    """
     out: dict = {
         "home_possession": 50, "away_possession": 50,
         "home_shots": 0, "away_shots": 0,
@@ -138,14 +143,20 @@ def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) 
         return out
 
     for row in bdl_stats:
-        team_obj = row.get("team") or {}
-        team_name = team_obj.get("name") or team_obj.get("full_name") or ""
-        ha = str(row.get("home_away") or "").lower()
-        is_home = (team_name == home_name) or (ha == "home")
+        # BDL team_match_stats has a direct is_home boolean
+        is_home_flag = row.get("is_home")
+        if is_home_flag is not None:
+            is_home = bool(is_home_flag)
+        else:
+            # Fallback: match by team name
+            team_obj = row.get("team") or {}
+            team_name = team_obj.get("name") or team_obj.get("full_name") or ""
+            ha = str(row.get("home_away") or "").lower()
+            is_home = (team_name == home_name) or (ha == "home")
         p = "home" if is_home else "away"
 
-        def _int(key: str, aliases: list[str] = []) -> int | None:
-            for k in [key] + aliases:
+        def _int(*keys) -> int | None:
+            for k in keys:
                 v = row.get(k)
                 if v is not None:
                     try:
@@ -154,8 +165,8 @@ def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) 
                         pass
             return None
 
-        def _float(key: str, aliases: list[str] = []) -> float | None:
-            for k in [key] + aliases:
+        def _float(*keys) -> float | None:
+            for k in keys:
                 v = row.get(k)
                 if v is not None:
                     try:
@@ -164,31 +175,32 @@ def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) 
                         pass
             return None
 
-        poss = _float("possession", ["ball_possession", "possession_pct"])
+        # BDL API canonical names first, legacy names as fallback
+        poss = _float("possession_pct", "possession", "ball_possession")
         if poss is not None:
             out[f"{p}_possession"] = round(poss, 1)
 
-        shots = _int("shots", ["total_shots", "shots_total"])
+        shots = _int("shots_total", "shots", "total_shots")
         if shots is not None:
             out[f"{p}_shots"] = shots
 
-        sot = _int("shots_on_goal", ["shots_on_target", "shots_on"])
+        sot = _int("shots_on_target", "shots_on_goal", "shots_on")
         if sot is not None:
             out[f"{p}_shots_on_target"] = sot
 
-        xg = _float("expected_goals", ["xg", "xG"])
+        xg = _float("expected_goals", "xg", "xG")
         if xg is not None:
             out[f"{p}_xg"] = round(xg, 3)
 
-        corners = _int("corners", ["corner_kicks"])
+        corners = _int("corners", "corner_kicks")
         if corners is not None:
             out[f"{p}_corners"] = corners
 
-        yellow = _int("yellow_cards", ["yellowcards"])
+        yellow = _int("yellow_cards", "yellowcards")
         if yellow is not None:
             out[f"{p}_yellow_cards"] = yellow
 
-        red = _int("red_cards", ["redcards"])
+        red = _int("red_cards", "redcards")
         if red is not None:
             out[f"{p}_red_cards"] = red
 
@@ -236,92 +248,116 @@ def _synthesize_shot_coords(xg: float, is_home: bool, shot_index: int) -> tuple[
     return round(max(0.5, min(x, 104.5)), 2), round(max(2.0, min(y, 66.0)), 2)
 
 
-def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
-    """Build shots[] from BDL shot rows, mapping coordinates to pitch space.
+def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str,
+                        player_lookup: dict | None = None) -> list[dict]:
+    """Build shots[] from BDL match_shots rows using the correct API field names.
 
-    When BDL does not return (x, y) coordinates (common in live FIFA API data),
-    synthesize realistic positions from xG so the pitch visualization is never blank.
-    Each shot gets a unique shot_id to prevent frontend deduplication from dropping markers.
+    BDL match_shots fields (from API spec):
+      id, match_id, player_id, team_id, is_home (bool),
+      shot_type (goal|save|miss|block|post), situation, body_part, goal_type,
+      xg, xgot,
+      player_x (0-100), player_y (0-100),   ← NORMALIZED PITCH COORDS
+      goal_mouth_x, goal_mouth_y,
+      time_minute, added_time, time_seconds
+
+    Coordinates are normalized 0-100; we convert to FIFA pitch metres (105×68).
+    When coordinates are missing, synthesize from xG so the pitch is never blank.
+    Each shot gets a unique shot_id to prevent frontend deduplication.
     """
     if not bdl_shots:
         return []
 
     shots = []
     for i, row in enumerate(bdl_shots):
-        team_obj = row.get("team") or {}
-        team_name = team_obj.get("name") or team_obj.get("full_name") or ""
-        ha = str(row.get("home_away") or "").lower()
-        is_home = (team_name == home_name) or (ha == "home")
+        # is_home is a direct boolean in BDL match_shots
+        is_home = bool(row.get("is_home", False))
 
-        player = row.get("player") or {}
-        player_name = player.get("display_name") or player.get("name") or ""
-        jersey = str(player.get("jersey_number") or player.get("number") or "")
+        # Player name from lookup table (player_id → name) or inline player object
+        player_id = row.get("player_id")
+        player_name = ""
+        jersey = ""
+        if player_lookup and player_id and player_id in player_lookup:
+            pl = player_lookup[player_id]
+            player_name = pl.get("short_name") or pl.get("name") or ""
+            jersey = str(pl.get("jersey_number") or "")
+        else:
+            player_obj = row.get("player") or {}
+            player_name = player_obj.get("short_name") or player_obj.get("name") or ""
+            jersey = str(player_obj.get("jersey_number") or "")
 
-        def _coord(keys: list[str], default: float, pitch_max: float) -> float:
-            for k in keys:
-                v = row.get(k)
-                if v is not None:
-                    try:
-                        fv = float(v)
-                        # If value appears to be a percentage (0–100) rather than meters
-                        if 0 <= fv <= 100 and pitch_max > 100:
-                            fv = fv * pitch_max / 100.0
-                        return round(fv, 2)
-                    except Exception:
-                        pass
-            return default
-
-        x = _coord(["x", "location_x", "position_x", "coord_x"], 52.5, 105.0)
-        y = _coord(["y", "location_y", "position_y", "coord_y"], 34.0, 68.0)
-
+        # xG / xGoT
         xg_val = 0.0
-        for k in ["xg", "expected_goals", "xG"]:
-            if row.get(k) is not None:
-                try:
-                    xg_val = float(row[k]); break
-                except Exception:
-                    pass
+        try:
+            if row.get("xg") is not None:
+                xg_val = float(row["xg"])
+        except Exception:
+            pass
         xgot_val = 0.0
-        for k in ["xgot", "expected_goals_on_target", "xGoT"]:
-            if row.get(k) is not None:
-                try:
-                    xgot_val = float(row[k]); break
-                except Exception:
-                    pass
+        try:
+            if row.get("xgot") is not None:
+                xgot_val = float(row["xgot"])
+        except Exception:
+            pass
 
-        result_str = str(row.get("result") or row.get("type") or row.get("shot_result") or "").lower()
-        on_target = result_str in ("goal", "saved", "saved_shot", "on_target", "on target")
+        # shot_type: goal | save | miss | block | post
+        shot_type = str(row.get("shot_type") or "").lower()
+        result_str = shot_type  # use shot_type as the result field
+        on_target = shot_type in ("goal", "save")
 
-        minute = 0
-        for k in ["minute", "clock_minute", "match_minute"]:
-            if row.get(k) is not None:
-                try:
-                    minute = int(row[k]); break
-                except Exception:
-                    pass
+        # Minute
+        minute = int(row.get("time_minute") or 0)
+        added = int(row.get("added_time") or 0)
 
-        # When BDL returns no coordinates (both still at default), synthesize from xG.
-        coords_missing = (x == 52.5 and y == 34.0)
+        # Coordinates — BDL returns player_x / player_y normalized 0-100
+        # Convert to FIFA pitch metres: x → 0-105, y → 0-68
+        px = row.get("player_x")
+        py = row.get("player_y")
+        coords_missing = (px is None or py is None)
+
+        if not coords_missing:
+            try:
+                px_f = float(px)
+                py_f = float(py)
+                # BDL uses attacking-perspective coordinates (verified empirically):
+                #   player_x=0  → near the opponent's goal (where shots happen)
+                #   player_x=100 → near the shooter's own end
+                # In our SVG: home attacks RIGHT (toward x=105), away attacks LEFT (toward x=0).
+                # y=0..100 maps linearly to pitch width 0..68 (no flip needed).
+                if is_home:
+                    # x=0 near right goal → pitch_x = 105 * (1 - player_x/100)
+                    x = round((1.0 - px_f / 100.0) * 105.0, 2)
+                else:
+                    # Away attacks left: x=0 near left goal → pitch_x = 105 * player_x/100
+                    x = round((px_f / 100.0) * 105.0, 2)
+                y = round((py_f / 100.0) * 68.0, 2)
+            except Exception:
+                coords_missing = True
+
         if coords_missing:
             x, y = _synthesize_shot_coords(xg_val if xg_val > 0 else 0.05, is_home, i)
 
         shots.append({
-            "shot_id": f"s{i}_{('h' if is_home else 'a')}_{minute}_{round(xg_val*1000)}",
+            "shot_id": f"s{row.get('id', i)}_{('h' if is_home else 'a')}_{minute}{'+'+str(added) if added else ''}",
             "minute": minute,
+            "added_time": added,
             "team": home_name if is_home else away_name,
             "is_home": is_home,
             "player_name": player_name,
             "player_jersey": jersey,
+            "player_id": player_id,
             "x": max(0.5, min(x, 104.5)),
             "y": max(0.5, min(y, 67.5)),
             "xg": round(xg_val, 3),
             "xgot": round(xgot_val, 3),
             "on_target": on_target,
             "result": result_str,
+            "shot_type": shot_type,
+            "situation": str(row.get("situation") or ""),
+            "body_part": str(row.get("body_part") or ""),
             "coords_synthesized": coords_missing,
         })
 
-    return sorted(shots, key=lambda s: s["minute"])
+    return sorted(shots, key=lambda s: (s["minute"], s.get("added_time", 0)))
 
 
 def _extract_goals_from_shots(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
@@ -980,7 +1016,14 @@ def run_live_snapshot() -> dict:
                 # Pitch visualization enrichment — shots, events, player stats, lineup
                 try:
                     match_stats = _extract_team_stats(bdl_stats, home, away)
-                    shots_list = _extract_shot_list(bdl_shots, home, away)
+                    # Build player_id → player dict for name lookup in shots
+                    _player_lookup: dict = {}
+                    for _ps in (bdl_pstats or []):
+                        _pid = _ps.get("player_id")
+                        _pobj = _ps.get("player") or {}
+                        if _pid and _pobj:
+                            _player_lookup[_pid] = _pobj
+                    shots_list = _extract_shot_list(bdl_shots, home, away, _player_lookup)
                     events_list = _extract_events_from_bdl(
                         bdl_match_events, home, away, bdl_shots
                     )

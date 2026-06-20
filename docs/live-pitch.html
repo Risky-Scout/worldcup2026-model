@@ -856,10 +856,12 @@ function addShotMarker(shot, homeColor, awayColor) {
 
   const resultLabel = isGoal ? 'Goal' : isBlocked ? 'Blocked' : isSaved ? 'Saved' : 'Missed';
   const tt = document.getElementById('shot-tooltip');
-  g.addEventListener('mouseenter', evt => {
+    g.addEventListener('mouseenter', evt => {
     tt.style.display = 'block';
     const name = shot.player_name ? shot.player_name : `#${shot.player_jersey||'?'}`;
-    tt.textContent = `${shot.minute}' ${resultLabel} — ${name} · xG ${fmt(xg, 3)}`;
+    const minStr = shot.added_time ? `${shot.minute}+${shot.added_time}'` : `${shot.minute}'`;
+    const extra = [shot.body_part, shot.situation].filter(Boolean).join(', ');
+    tt.textContent = `${minStr} ${resultLabel} — ${name} · xG ${fmt(xg, 3)}${extra ? ' · ' + extra : ''}`;
     tt.style.left = (evt.clientX + 14) + 'px';
     tt.style.top = (evt.clientY - 10) + 'px';
   });
