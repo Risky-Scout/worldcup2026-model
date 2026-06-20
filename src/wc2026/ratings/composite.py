@@ -950,7 +950,7 @@ class CompositeTeamPrior:
                     xg_f = float(xg)
                 except (TypeError, ValueError):
                     continue
-                if xg_f < 0:
+                if not np.isfinite(xg_f) or xg_f < 0:
                     continue
                 team_xg_scored[tn] = team_xg_scored.get(tn, 0.0) + xg_f
                 team_xg_n[tn] = team_xg_n.get(tn, 0) + 1
