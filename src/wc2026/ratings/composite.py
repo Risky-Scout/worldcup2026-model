@@ -794,16 +794,27 @@ class CompositeTeamPrior:
         # Falls back to 1.0 (no-op) if the file does not exist or has no data.
         try:
             import pathlib as _pathlib
-            _shots_path = _pathlib.Path(__file__).parents[3] / "data" / "processed" / "shots.parquet"
+            # Try canonical v1/ path first; fall back to legacy flat path
+            _shots_path = _pathlib.Path(__file__).parents[3] / "data" / "processed" / "v1" / "shots.parquet"
+            if not _shots_path.exists():
+                _shots_path = _pathlib.Path(__file__).parents[3] / "data" / "processed" / "shots.parquet"
             if _shots_path.exists():
                 _shots_df = pd.read_parquet(_shots_path)
-                # Normalise column names to lowercase
                 _shots_df.columns = [c.lower() for c in _shots_df.columns]
-                # Handle alternate column name for xgot
                 if "expected_goals_on_target" in _shots_df.columns and "xgot" not in _shots_df.columns:
                     _shots_df = _shots_df.rename(columns={"expected_goals_on_target": "xgot"})
                 if "expected_goals" in _shots_df.columns and "xg" not in _shots_df.columns:
                     _shots_df = _shots_df.rename(columns={"expected_goals": "xg"})
+                # If team_name is absent but team_id + is_home are present, resolve via matches
+                if "team_name" not in _shots_df.columns and "match_id" in _shots_df.columns and "is_home" in _shots_df.columns:
+                    _matches_path = _shots_path.parent / "matches.parquet"
+                    if _matches_path.exists():
+                        _m = pd.read_parquet(_matches_path, columns=["match_id", "home_team", "away_team"])
+                        _m.columns = [c.lower() for c in _m.columns]
+                        _shots_df = _shots_df.merge(_m, on="match_id", how="left")
+                        _shots_df["team_name"] = _shots_df.apply(
+                            lambda r: r.get("home_team") if r.get("is_home") else r.get("away_team"), axis=1
+                        )
                 if "xg" in _shots_df.columns and "xgot" in _shots_df.columns and "team_name" in _shots_df.columns:
                     for team, tp in self._priors.items():
                         tp.shot_quality_ratio = _compute_shot_quality(team, _shots_df)
