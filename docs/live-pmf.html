@@ -522,13 +522,44 @@ function buildFtCard(m){
   </div>`;
 }
 
+function fmtKickoff(m){
+  // If kickoff_et looks like a formatted time already (contains AM/PM), use it.
+  const et=m.kickoff_et||'';
+  if(et && !et.includes('T') && !et.includes('Z')) return et;
+  // Otherwise format kickoff_utc (or kickoff_et) in the browser.
+  const raw=m.kickoff_utc||m.kickoff_et||'';
+  if(!raw) return '—';
+  try{
+    return new Date(raw).toLocaleTimeString('en-US',{
+      hour:'numeric',minute:'2-digit',timeZone:'America/New_York',hour12:true
+    })+' ET';
+  }catch(e){return raw;}
+}
+
 function buildUpcomingCard(m){
+  const hw=Math.round((m.home_win_prob||0)*100);
+  const dr=Math.round((m.draw_prob||0)*100);
+  const aw=Math.round((m.away_win_prob||0)*100);
+  const hasPct = hw+dr+aw > 0;
+  const probBar = hasPct ? `
+    <div style="margin-top:10px;">
+      <div style="display:flex;border-radius:3px;overflow:hidden;height:6px;width:100%;max-width:280px;">
+        <div style="width:${hw}%;background:var(--gold);"></div>
+        <div style="width:${dr}%;background:#666;"></div>
+        <div style="width:${aw}%;background:#4a8fd4;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;max-width:280px;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">
+        <span style="color:var(--gold);">${hw}%</span>
+        <span>${dr}%</span>
+        <span style="color:#4a8fd4;">${aw}%</span>
+      </div>
+    </div>` : '';
   return `<div class="upcoming-card">
-    <div>
+    <div style="flex:1;">
       <div style="font-size:15px;font-weight:500;">${esc(m.home_team)} <span style="color:var(--text-muted)">vs</span> ${esc(m.away_team)}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Kickoff ${esc(m.kickoff_et)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Kickoff ${fmtKickoff(m)}</div>
+      ${probBar}
     </div>
-    <a href="/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);text-decoration:none;border:1px solid rgba(212,175,55,.3);padding:6px 12px;border-radius:3px;text-transform:uppercase;letter-spacing:.1em;">View Pre-Game →</a>
   </div>`;
 }
 
@@ -536,14 +567,15 @@ function buildUpcomingCard(m){
 function updateKPIs(data){
   const n=data.n_live||0;
   document.getElementById('kpi-live').textContent=n;
-  const totalGoals=(data.live_matches||[]).reduce((s,m)=>(m.current_home_goals||0)+(m.current_away_goals||0)+s,0);
+  const totalGoals=(data.live_matches||[]).reduce((s,m)=>(m.current_home_goals||0)+(m.current_away_goals||0)+s,0)
+    +(data.recently_completed||[]).reduce((s,m)=>(m.current_home_goals||0)+(m.current_away_goals||0)+s,0);
   document.getElementById('kpi-goals').textContent=totalGoals;
   const age=timeSince(data.generated_at);
   document.getElementById('kpi-age').textContent=age;
   // Next kickoff
   const upcoming=(data.upcoming_today||[]);
   if(upcoming.length){
-    document.getElementById('kpi-next').textContent=upcoming[0].kickoff_et||'—';
+    document.getElementById('kpi-next').textContent=fmtKickoff(upcoming[0]);
     document.getElementById('kpi-next-sub').textContent=`${esc(upcoming[0].home_team)} vs ${esc(upcoming[0].away_team)}`;
   } else {
     document.getElementById('kpi-next').textContent='—';

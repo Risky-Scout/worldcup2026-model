@@ -60,6 +60,26 @@ FTP_DIR_SPACE = "/tools/odds-scanner/predictions/world cup"
 FTP_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/live"
 LIVE_FILE = "wc-live.json"
 
+
+def _parse_bdl_dt(ko_str: str) -> "datetime":
+    """Parse a BDL datetime string robustly.
+
+    BDL returns millisecond timestamps like '2026-06-20T03:00:00.000Z' which
+    Python 3.10's fromisoformat() rejects (it only handles 6-digit microseconds,
+    not 3-digit milliseconds, and does not recognise the Z suffix).
+    This helper strips the fractional-seconds component and normalises Z → +00:00.
+    """
+    import re as _re
+    s = str(ko_str).strip()
+    # Strip milliseconds (.000 or .000000) before timezone indicator
+    s = _re.sub(r'\.\d+(?=[Z+\-]|$)', '', s)
+    # Replace Z suffix with explicit UTC offset
+    s = s.replace("Z", "+00:00")
+    # If still no timezone info, assume UTC
+    if "+" not in s[10:] and s[10:].count("-") == 0:
+        s += "+00:00"
+    return datetime.fromisoformat(s)
+
 # Static jersey colors for World Cup teams (used by live-pitch.html via JSON output)
 TEAM_COLORS: dict[str, str] = {
     "Argentina": "#75aadb", "France": "#002395", "Brazil": "#009c3b",
@@ -640,7 +660,7 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
             # changing status from "scheduled" to "in_progress".
             ko_str = m.get("datetime") or m.get("date_time_utc", "")
             try:
-                ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+                ko_dt = _parse_bdl_dt(ko_str)
                 mins_since_ko = (now_utc - ko_dt).total_seconds() / 60.0
             except Exception:
                 mins_since_ko = -999.0
@@ -678,11 +698,11 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
     for m in finished:
         ko_str = m.get("datetime") or m.get("date_time_utc", "")
         try:
-            ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+            ko_dt = _parse_bdl_dt(ko_str)
             # A standard 90-min match + stoppage ends ~105 min after kickoff.
-            # We show FT cards for up to 3 hours post-kickoff (generous buffer).
+            # We show FT cards for up to 4 hours post-kickoff (generous buffer).
             mins_since_ko = (now_utc - ko_dt).total_seconds() / 60.0
-            if 0 <= mins_since_ko <= 180:
+            if 0 <= mins_since_ko <= 240:
                 recently_finished.append(m)
         except Exception:
             pass
@@ -1058,11 +1078,14 @@ def run_live_snapshot() -> dict:
     for m in upcoming[:10]:
         ko_str = m.get("datetime") or m.get("date_time_utc", "")
         try:
-            ko_dt = datetime.fromisoformat(str(ko_str).replace("+00:00", "")).replace(tzinfo=timezone.utc)
-            ko_et = ko_dt.astimezone(
-                __import__("zoneinfo", fromlist=["ZoneInfo"]).ZoneInfo("America/New_York")
-            )
-            ko_et_str = ko_et.strftime("%-I:%M %p ET")
+            from zoneinfo import ZoneInfo as _ZoneInfo
+            ko_dt = _parse_bdl_dt(ko_str)
+            ko_et = ko_dt.astimezone(_ZoneInfo("America/New_York"))
+            # strftime %-I (Linux) vs %#I (Windows); fall back to %I with lstrip
+            try:
+                ko_et_str = ko_et.strftime("%-I:%M %p ET")
+            except ValueError:
+                ko_et_str = ko_et.strftime("%I:%M %p ET").lstrip("0")
         except Exception:
             ko_et_str = str(ko_str)
         home = (m.get("home_team") or {}).get("name") or (m.get("home_team") or {}).get("full_name", "")
