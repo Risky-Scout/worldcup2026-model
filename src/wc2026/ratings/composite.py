@@ -534,17 +534,21 @@ class CompositeTeamPrior:
                     xg_f = float(xg)
                 except (TypeError, ValueError):
                     continue
-                if xg_f < 0:
+                if not np.isfinite(xg_f) or xg_f < 0:
                     continue
                 match_xg.setdefault(mid, {})[tn] = xg_f
                 if bc is not None:
                     try:
-                        match_bc.setdefault(mid, {})[tn] = float(bc)
+                        bc_f = float(bc)
+                        if np.isfinite(bc_f):
+                            match_bc.setdefault(mid, {})[tn] = bc_f
                     except (TypeError, ValueError):
                         pass
                 if sot is not None:
                     try:
-                        match_sot.setdefault(mid, {})[tn] = float(sot)
+                        sot_f = float(sot)
+                        if np.isfinite(sot_f):
+                            match_sot.setdefault(mid, {})[tn] = sot_f
                     except (TypeError, ValueError):
                         pass
 
@@ -580,36 +584,55 @@ class CompositeTeamPrior:
 
             _XG_MIN_GAMES = 2
             for tn, vals in xg_att_acc.items():
-                if len(vals) >= _XG_MIN_GAMES:
-                    xg_att_per_game[tn] = float(sum(vals) / len(vals))
+                finite_vals = [v for v in vals if np.isfinite(v)]
+                if len(finite_vals) >= _XG_MIN_GAMES:
+                    xg_att_per_game[tn] = float(sum(finite_vals) / len(finite_vals))
             for tn, vals in xg_def_acc.items():
-                if len(vals) >= _XG_MIN_GAMES:
-                    xg_def_per_game[tn] = float(sum(vals) / len(vals))
+                finite_vals = [v for v in vals if np.isfinite(v)]
+                if len(finite_vals) >= _XG_MIN_GAMES:
+                    xg_def_per_game[tn] = float(sum(finite_vals) / len(finite_vals))
 
             # big_chances per game (attack, ≥2 matches) — normalize across teams
             for tn, vals in bc_acc.items():
-                if len(vals) >= _XG_MIN_GAMES:
-                    big_chances_per_game[tn] = float(sum(vals) / len(vals))
-            # Normalize to z-scores for blend
+                finite_vals = [v for v in vals if np.isfinite(v)]
+                if len(finite_vals) >= _XG_MIN_GAMES:
+                    big_chances_per_game[tn] = float(sum(finite_vals) / len(finite_vals))
+            # Normalize to z-scores; use nanmean/nanstd so any residual nan in
+            # per-game averages doesn't corrupt the entire population statistics.
             if big_chances_per_game:
-                bc_vals = list(big_chances_per_game.values())
-                bc_mu = float(np.mean(bc_vals))
-                bc_sigma = float(np.std(bc_vals)) if len(bc_vals) > 1 else 1.0
-                if bc_sigma < 1e-6:
+                bc_arr = np.array(list(big_chances_per_game.values()), dtype=float)
+                bc_mu = float(np.nanmean(bc_arr))
+                bc_sigma = float(np.nanstd(bc_arr)) if len(bc_arr) > 1 else 1.0
+                if not np.isfinite(bc_sigma) or bc_sigma < 1e-6:
                     bc_sigma = 1.0
-                big_chances_per_game = {tn: (v - bc_mu) / bc_sigma for tn, v in big_chances_per_game.items()}
+                if np.isfinite(bc_mu):
+                    big_chances_per_game = {
+                        tn: (v - bc_mu) / bc_sigma
+                        for tn, v in big_chances_per_game.items()
+                        if np.isfinite(v)
+                    }
+                else:
+                    big_chances_per_game = {}
 
             # shots_on_target per game (attack, ≥2 matches) — normalize
             for tn, vals in sot_acc.items():
-                if len(vals) >= _XG_MIN_GAMES:
-                    sot_per_game[tn] = float(sum(vals) / len(vals))
+                finite_vals = [v for v in vals if np.isfinite(v)]
+                if len(finite_vals) >= _XG_MIN_GAMES:
+                    sot_per_game[tn] = float(sum(finite_vals) / len(finite_vals))
             if sot_per_game:
-                sot_vals = list(sot_per_game.values())
-                sot_mu = float(np.mean(sot_vals))
-                sot_sigma = float(np.std(sot_vals)) if len(sot_vals) > 1 else 1.0
-                if sot_sigma < 1e-6:
+                sot_arr = np.array(list(sot_per_game.values()), dtype=float)
+                sot_mu = float(np.nanmean(sot_arr))
+                sot_sigma = float(np.nanstd(sot_arr)) if len(sot_arr) > 1 else 1.0
+                if not np.isfinite(sot_sigma) or sot_sigma < 1e-6:
                     sot_sigma = 1.0
-                sot_per_game = {tn: (v - sot_mu) / sot_sigma for tn, v in sot_per_game.items()}
+                if np.isfinite(sot_mu):
+                    sot_per_game = {
+                        tn: (v - sot_mu) / sot_sigma
+                        for tn, v in sot_per_game.items()
+                        if np.isfinite(v)
+                    }
+                else:
+                    sot_per_game = {}
 
             if xg_att_per_game:
                 log.debug(
@@ -1390,14 +1413,14 @@ class CompositeTeamPrior:
         # Blend as fractional adjustments to attack lambda.
         _bc_z = (big_chances_per_game or {}).get(team)
         _sot_z = (sot_per_game or {}).get(team)
-        if _bc_z is not None:
+        if _bc_z is not None and np.isfinite(_bc_z):
             # Map z-score to lambda adjustment: clip to ±2 sigma
             _bc_adj = float(np.clip(_bc_z * 0.05, -0.10, 0.10))
             if "big_chances_wc2026" not in sources:
                 sources.append("big_chances_wc2026")
         else:
             _bc_adj = 0.0
-        if _sot_z is not None:
+        if _sot_z is not None and np.isfinite(_sot_z):
             _sot_adj = float(np.clip(_sot_z * 0.05, -0.10, 0.10))
             if "sot_wc2026" not in sources:
                 sources.append("sot_wc2026")
@@ -1407,7 +1430,7 @@ class CompositeTeamPrior:
         # ── Team form z-score adjustment (weight 0.10) ─────────────────
         # Applies ±5% to att/def λ based on recent avg_rating z-score.
         _form_z = (form_z_scores or {}).get(team)
-        if _form_z is not None:
+        if _form_z is not None and np.isfinite(_form_z):
             _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
             _form_att = composite_att * (1.0 + _form_adj) if False else None  # computed post-blend
             # Store z-score for post-blend application (see below)
@@ -1500,11 +1523,22 @@ class CompositeTeamPrior:
         if "confederation" not in sources:
             sources.append("confederation")
 
-        # Normalize and compute weighted average
+        # Normalize and compute weighted average — nan-safe: skip any source
+        # whose value is nan or non-finite and renormalize over valid sources.
+        # This prevents a single nan source (e.g. xG not provided by BDL) from
+        # poisoning the entire blend even when market_implied is valid.
         att_total_w = sum(w for _, _, w in att_inputs)
         def_total_w = sum(w for _, _, w in def_inputs)
-        composite_att = sum(v * w for _, v, w in att_inputs) / att_total_w
-        composite_def = sum(v * w for _, v, w in def_inputs) / def_total_w
+        _att_result = _nanweighted([(w, v) for _, v, w in att_inputs])
+        _def_result = _nanweighted([(w, v) for _, v, w in def_inputs])
+        if _att_result is None:
+            log.warning("_nanweighted: all attack sources nan for %s — using WC avg", team)
+            _att_result = _WC_AVG_ATTACK
+        if _def_result is None:
+            log.warning("_nanweighted: all defense sources nan for %s — using WC avg", team)
+            _def_result = _WC_AVG_DEFENSE
+        composite_att = _att_result
+        composite_def = _def_result
 
         # ── Host bonus ───────────────────────────────────────────────────
         if tp.is_host:
@@ -1533,7 +1567,7 @@ class CompositeTeamPrior:
         _final_def = tp.final_defense_lambda
 
         # Team form z-score: ±5% on both att and def
-        if _form_z is not None:
+        if _form_z is not None and np.isfinite(_form_z):
             _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
             _final_att *= (1.0 + _form_adj)
             _final_def *= (1.0 - _form_adj)  # good form → concede fewer goals
@@ -1639,6 +1673,22 @@ def _compute_shot_quality(team_name: str, shots_df: "pd.DataFrame | None") -> fl
         return 1.0
     ratio = float((valid["xgot"] / valid["xg"]).mean())
     return float(np.clip(ratio, 0.85, 1.20))
+
+
+def _nanweighted(pairs: list) -> "Optional[float]":
+    """
+    Weighted average of (weight, value) pairs, skipping nan/None values.
+
+    Returns None when every value is nan or the list is empty, allowing the
+    caller to fall back to a sensible WC average rather than propagating nan.
+    """
+    valid = [(w, float(v)) for w, v in pairs if v is not None and np.isfinite(float(v))]
+    if not valid:
+        return None
+    total_w = sum(w for w, _ in valid)
+    if total_w < 1e-9:
+        return None
+    return sum(w * v for w, v in valid) / total_w
 
 
 def _is_tbd(team: str) -> bool:

@@ -1713,6 +1713,30 @@ def predict_all_2026(
         log.warning("predict_many() batch failed (%s) — using per-match predict()", _pm_exc)
         _batch_pmfs = {}
 
+    # ── Pre-compute per-match market O/U total anchor ─────────────────────────
+    # Use the market's O/U line for each match rather than a universal WC average.
+    # For each match, take the median total_value across all vendors in odds_df.
+    # This captures match-specific goal expectation (e.g. Spain vs Saudi ≈ 3.5,
+    # Uruguay vs Cabo Verde ≈ 2.5) vs the flat 3.091 universal fallback.
+    # Falls back to _wc_avg_actual * 2 (or 2.65) when no market data exists.
+    _fallback_total = float(_wc_avg_actual * 2) if _wc_avg_actual else 2.65
+    _per_match_total: dict[int, float] = {}
+    if not odds_df.empty and "total_value" in odds_df.columns and "match_id" in odds_df.columns:
+        try:
+            _tv_df = odds_df[["match_id", "total_value"]].copy()
+            _tv_df["total_value"] = pd.to_numeric(_tv_df["total_value"], errors="coerce")
+            _tv_df = _tv_df[_tv_df["total_value"].notna() & (_tv_df["total_value"] > 0)]
+            for _tv_mid, _tv_grp in _tv_df.groupby("match_id"):
+                _tv_median = float(_tv_grp["total_value"].median())
+                _per_match_total[int(_tv_mid)] = float(np.clip(_tv_median, 1.5, 6.0))
+            log.info(
+                "per_match_total_anchor: %d matches have market O/U line  "
+                "fallback=%.3f",
+                len(_per_match_total), _fallback_total,
+            )
+        except Exception as _tv_exc:
+            log.warning("per_match_total_anchor build failed (%s) — using fallback", _tv_exc)
+
     for _, row in sched_2026.iterrows():
         home = row["home_team"]
         away = row["away_team"]
@@ -1726,6 +1750,8 @@ def predict_all_2026(
             n_skipped += 1
             continue
 
+        _total_anchor_for_match = _per_match_total.get(mid, _fallback_total)
+
         pred = _predict_one_match(
             home, away, mid, stage, stadium, match_dt,
             odds_df, markets_df, ladder, parametric_champ,
@@ -1734,7 +1760,7 @@ def predict_all_2026(
             calib_rho=calib_rho,
             calib_lambda3=calib_lambda3,
             batch_pmf=_batch_pmfs.get((home, away)),
-            total_anchor=(_wc_avg_actual * 2 if _wc_avg_actual else 2.65),
+            total_anchor=_total_anchor_for_match,
         )
         if pred:
             # Apply group-stage draw probability boost at PMF level so that
