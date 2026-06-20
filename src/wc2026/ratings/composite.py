@@ -1704,9 +1704,11 @@ def predict_match_from_composite(
     # high for both teams simultaneously.
     _total_anchor: float = kwargs.get("total_anchor", 2.65)
     if _total_anchor > 0.5:
+        # Inline margin_total_to_lambdas: decouple goal-margin from total-goals volume.
+        # Equivalent to egm_to_lambdas.margin_total_to_lambdas but avoids the src. import chain.
         _margin = float(lam_h) - float(lam_a)
-        from src.wc2026.models.egm_to_lambdas import margin_total_to_lambdas as _mtl
-        lam_h, lam_a = _mtl(_margin, _total_anchor)
+        lam_h = max((_total_anchor + _margin) / 2.0, 0.05)
+        lam_a = max((_total_anchor - _margin) / 2.0, 0.05)
 
     # Enhancement 3: shot quality correction
     lam_h = float(np.clip(lam_h * home_prior.shot_quality_ratio, 0.05, 8.0))
