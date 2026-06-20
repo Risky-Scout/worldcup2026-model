@@ -353,6 +353,9 @@ class TeamPrior:
     tournament_attack_adj: float = 1.0   # multiplier applied to final_attack_lambda
     tournament_defense_adj: float = 1.0  # multiplier applied to final_defense_lambda
 
+    # ── Enhancement 3: xGOT shot quality ratio ────────────────────────────────
+    shot_quality_ratio: float = 1.0  # xGOT/xG ratio, bounded [0.85, 1.20]
+
     def to_row(self) -> dict:
         return {
             "team": self.team,
@@ -785,6 +788,32 @@ class CompositeTeamPrior:
         # ── 7. Apply injury penalties ─────────────────────────────────────────
         if injuries_df is not None and not injuries_df.empty:
             self._apply_injury_penalties(injuries_df)
+
+        # ── 8. Enhancement 3: xGOT shot quality ratio ─────────────────────────
+        # Load shots.parquet (if available) to compute per-team xGOT/xG ratio.
+        # Falls back to 1.0 (no-op) if the file does not exist or has no data.
+        try:
+            import pathlib as _pathlib
+            _shots_path = _pathlib.Path(__file__).parents[3] / "data" / "processed" / "shots.parquet"
+            if _shots_path.exists():
+                _shots_df = pd.read_parquet(_shots_path)
+                # Normalise column names to lowercase
+                _shots_df.columns = [c.lower() for c in _shots_df.columns]
+                # Handle alternate column name for xgot
+                if "expected_goals_on_target" in _shots_df.columns and "xgot" not in _shots_df.columns:
+                    _shots_df = _shots_df.rename(columns={"expected_goals_on_target": "xgot"})
+                if "expected_goals" in _shots_df.columns and "xg" not in _shots_df.columns:
+                    _shots_df = _shots_df.rename(columns={"expected_goals": "xg"})
+                if "xg" in _shots_df.columns and "xgot" in _shots_df.columns and "team_name" in _shots_df.columns:
+                    for team, tp in self._priors.items():
+                        tp.shot_quality_ratio = _compute_shot_quality(team, _shots_df)
+                    log.info("xGOT shot quality ratios applied from %s", _shots_path.name)
+                else:
+                    log.debug("shots.parquet missing required columns (xg/xgot/team_name); shot_quality_ratio=1.0")
+            else:
+                log.debug("shots.parquet not found at %s; shot_quality_ratio=1.0", _shots_path)
+        except Exception as _sq_exc:
+            log.debug("Shot quality ratio computation skipped (%s)", _sq_exc)
 
         self._fitted = True
         n_market = sum(1 for tp in self._priors.values() if "market_implied" in tp.sources_used)
@@ -1581,6 +1610,26 @@ def build_composite_prior(
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+def _compute_shot_quality(team_name: str, shots_df: "pd.DataFrame | None") -> float:
+    """
+    Compute per-team shot quality index = mean(xGOT/xG) over completed 2026 matches.
+
+    Falls back to 1.0 if shots data unavailable or fewer than 5 valid shots.
+    Result is bounded to [0.85, 1.20].
+    """
+    if shots_df is None or shots_df.empty:
+        return 1.0
+    team_shots = shots_df[shots_df["team_name"] == team_name]
+    valid = team_shots[
+        team_shots["xg"].notna() & team_shots["xgot"].notna() &
+        (team_shots["xg"] > 0.01)
+    ]
+    if len(valid) < 5:
+        return 1.0
+    ratio = float((valid["xgot"] / valid["xg"]).mean())
+    return float(np.clip(ratio, 0.85, 1.20))
+
+
 def _is_tbd(team: str) -> bool:
     if not team:
         return True
@@ -1600,6 +1649,7 @@ def predict_match_from_composite(
     max_goals: int = 15,
     model: str = "dixon_coles",
     rho: float = -0.05,
+    **kwargs,
 ) -> tuple[np.ndarray, float, float]:
     """
     Produce a composite_rating_pmf from team priors.
@@ -1646,6 +1696,21 @@ def predict_match_from_composite(
     # Cap to reasonable range
     lam_h = float(np.clip(lam_h, 0.3, 5.0))
     lam_a = float(np.clip(lam_a, 0.3, 5.0))
+
+    # ── Enhancement 2: WC total-goals anchor ──────────────────────────────────
+    # Decouple goal-margin signal from total-goals volume.
+    # total_anchor comes from wc_avg_actual_goals (calibration health) or WC baseline.
+    # Using margin_total_to_lambdas prevents lambda inflation when attack ratings are
+    # high for both teams simultaneously.
+    _total_anchor: float = kwargs.get("total_anchor", 2.65)
+    if _total_anchor > 0.5:
+        _margin = float(lam_h) - float(lam_a)
+        from src.wc2026.models.egm_to_lambdas import margin_total_to_lambdas as _mtl
+        lam_h, lam_a = _mtl(_margin, _total_anchor)
+
+    # Enhancement 3: shot quality correction
+    lam_h = float(np.clip(lam_h * home_prior.shot_quality_ratio, 0.05, 8.0))
+    lam_a = float(np.clip(lam_a * away_prior.shot_quality_ratio, 0.05, 8.0))
 
     # Build PMF using calibrated rho from the fitted Dixon-Coles model
     try:

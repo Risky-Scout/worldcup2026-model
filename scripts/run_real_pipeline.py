@@ -871,10 +871,18 @@ def _supplement_T_from_wc2026(
     try:
         res = _ms(neg_ll, bounds=(0.8, 3.0), method="bounded")
         T_2026 = float(np.clip(res.x, 1.0, 1.5))
-        blended = round(0.7 * base_T + 0.3 * T_2026, 3)
+        # Enhancement 4: WC2026-dominant temperature when we have enough data
+        if len(outcomes) >= 24:
+            wc_weight = 0.60   # was 0.30
+            base_weight = 0.40  # was 0.70
+        else:
+            wc_weight = 0.30
+            base_weight = 0.70
+        blended = round(base_weight * base_T + wc_weight * T_2026, 3)
         log.info(
-            "T supplement from %d WC2026 outcomes: T_direct=%.3f  T_heuristic=%.3f  T_blended=%.3f",
-            len(outcomes), T_2026, base_T, blended,
+            "T supplement from %d WC2026 outcomes: T_direct=%.3f  T_heuristic=%.3f  T_blended=%.3f"
+            "  (wc_weight=%.2f)",
+            len(outcomes), T_2026, base_T, blended, wc_weight,
         )
         return blended
     except Exception as _exc:
@@ -1726,6 +1734,7 @@ def predict_all_2026(
             calib_rho=calib_rho,
             calib_lambda3=calib_lambda3,
             batch_pmf=_batch_pmfs.get((home, away)),
+            total_anchor=(_wc_avg_actual * 2 if _wc_avg_actual else 2.65),
         )
         if pred:
             # Apply group-stage draw probability boost at PMF level so that
@@ -1911,6 +1920,7 @@ def _predict_one_match(
     calib_rho: float = -0.05,
     calib_lambda3: float = 0.0,
     batch_pmf: "np.ndarray | None" = None,
+    total_anchor: float = 2.65,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
@@ -1944,6 +1954,7 @@ def _predict_one_match(
     try:
         comp_pmf, comp_lh, comp_la = predict_match_from_composite(
             home, away, composite_prior, max_goals=15, rho=calib_rho,
+            total_anchor=total_anchor,
         )
         home_prior = composite_prior.get_prior(home)
         away_prior = composite_prior.get_prior(away)
@@ -2025,6 +2036,38 @@ def _predict_one_match(
             comp_pmf /= s
         log.debug("temp_calibrated comp_pmf: T=%.3f  lh=%.4f  la=%.4f",
                   calib_temperature, comp_lh, comp_la)
+
+    # ── Enhancement 1: Hierarchical Bayesian blend (20%) ──────────────────────
+    # The BHGM applies partial pooling / shrinkage across teams — crucial with
+    # only 32 WC matches. Blended at 20% to improve uncertainty quantification
+    # for extreme matchups without destabilizing the composite prior.
+    if "bayesian_hierarchical" in ladder._models:
+        try:
+            _bayes_grid = ladder._models["bayesian_hierarchical"].predict(
+                home, away, neutral=True
+            )
+            _bayes_pmf_raw = np.array(_bayes_grid.grid, dtype=np.float64)
+            _bayes_pmf_raw = np.clip(_bayes_pmf_raw, 0, None)
+            _bayes_sum = _bayes_pmf_raw.sum()
+            if _bayes_sum > 1e-9:
+                _bayes_pmf_raw /= _bayes_sum
+            # Resize to match comp_pmf dimensions if needed
+            _min_dim = min(comp_pmf.shape[0], _bayes_pmf_raw.shape[0])
+            _b = _bayes_pmf_raw[:_min_dim, :_min_dim]
+            _c = comp_pmf[:_min_dim, :_min_dim]
+            _blended = 0.80 * _c + 0.20 * _b
+            _blended /= _blended.sum()
+            # Pad back if sizes differ
+            if _min_dim < comp_pmf.shape[0]:
+                comp_pmf_new = comp_pmf.copy()
+                comp_pmf_new[:_min_dim, :_min_dim] = _blended
+                comp_pmf_new /= comp_pmf_new.sum()
+                comp_pmf = comp_pmf_new
+            else:
+                comp_pmf = _blended
+            log.debug("Bayesian blend applied for %s vs %s", home, away)
+        except Exception as _bayes_exc:
+            log.debug("Bayesian blend skipped (%s)", _bayes_exc)
 
 
     # ── 2. Pure parametric PMF (if both teams have WC training history) ───
