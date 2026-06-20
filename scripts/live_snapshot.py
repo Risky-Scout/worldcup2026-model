@@ -182,13 +182,52 @@ def _extract_team_stats(bdl_stats: list | None, home_name: str, away_name: str) 
     return out
 
 
+def _synthesize_shot_coords(xg: float, is_home: bool, shot_index: int) -> tuple[float, float]:
+    """
+    When BDL does not provide shot coordinates, synthesize realistic (x, y) from xG.
+    xG correlates with distance to goal: higher xG = closer to goal.
+    Home team attacks toward x=105; away team attacks toward x=0.
+    A small deterministic offset per shot_index prevents duplicate IDs.
+    """
+    import math
+    # Approximate: xG ~ 0.5 * exp(-0.15 * distance_to_goal_meters)
+    # → distance = -ln(xG / 0.5) / 0.15, clamped to [4, 35]
+    xg_clamped = max(0.005, min(xg, 0.85))
+    dist = -math.log(xg_clamped / 0.5) / 0.15
+    dist = max(4.0, min(dist, 35.0))
+
+    # Horizontal spread angle — varies by index to separate markers
+    angle_deg = (shot_index % 9 - 4) * 8.0  # -32° to +32° in 8° steps
+    angle_rad = angle_deg * math.pi / 180.0
+
+    # Distance from goal-line end
+    dx = dist * math.cos(angle_rad)
+    dy = dist * math.sin(angle_rad)
+
+    if is_home:
+        # Attacking toward x=105 (right goal)
+        x = 105.0 - dx
+        y = 34.0 + dy
+    else:
+        # Attacking toward x=0 (left goal)
+        x = dx
+        y = 34.0 - dy
+
+    return round(max(0.5, min(x, 104.5)), 2), round(max(2.0, min(y, 66.0)), 2)
+
+
 def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -> list[dict]:
-    """Build shots[] from BDL shot rows, mapping coordinates to pitch space."""
+    """Build shots[] from BDL shot rows, mapping coordinates to pitch space.
+
+    When BDL does not return (x, y) coordinates (common in live FIFA API data),
+    synthesize realistic positions from xG so the pitch visualization is never blank.
+    Each shot gets a unique shot_id to prevent frontend deduplication from dropping markers.
+    """
     if not bdl_shots:
         return []
 
     shots = []
-    for row in bdl_shots:
+    for i, row in enumerate(bdl_shots):
         team_obj = row.get("team") or {}
         team_name = team_obj.get("name") or team_obj.get("full_name") or ""
         ha = str(row.get("home_away") or "").lower()
@@ -214,6 +253,7 @@ def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -
 
         x = _coord(["x", "location_x", "position_x", "coord_x"], 52.5, 105.0)
         y = _coord(["y", "location_y", "position_y", "coord_y"], 34.0, 68.0)
+
         xg_val = 0.0
         for k in ["xg", "expected_goals", "xG"]:
             if row.get(k) is not None:
@@ -240,7 +280,13 @@ def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -
                 except Exception:
                     pass
 
+        # When BDL returns no coordinates (both still at default), synthesize from xG.
+        coords_missing = (x == 52.5 and y == 34.0)
+        if coords_missing:
+            x, y = _synthesize_shot_coords(xg_val if xg_val > 0 else 0.05, is_home, i)
+
         shots.append({
+            "shot_id": f"s{i}_{('h' if is_home else 'a')}_{minute}_{round(xg_val*1000)}",
             "minute": minute,
             "team": home_name if is_home else away_name,
             "is_home": is_home,
@@ -252,6 +298,7 @@ def _extract_shot_list(bdl_shots: list | None, home_name: str, away_name: str) -
             "xgot": round(xgot_val, 3),
             "on_target": on_target,
             "result": result_str,
+            "coords_synthesized": coords_missing,
         })
 
     return sorted(shots, key=lambda s: s["minute"])
@@ -919,6 +966,52 @@ def run_live_snapshot() -> dict:
                     )
                     player_stats_list = _extract_player_stats(bdl_pstats)
                     lineup_home, lineup_away = _load_lineup_for_match(mid, home, away, today_et)
+
+                    # Fallback: if team-stats endpoint returned 0 shots but shots_list has
+                    # data, count shots and xG directly from the shots list.
+                    if match_stats["home_shots"] == 0 and match_stats["away_shots"] == 0 and shots_list:
+                        match_stats["home_shots"] = sum(1 for s in shots_list if s["is_home"])
+                        match_stats["away_shots"] = sum(1 for s in shots_list if not s["is_home"])
+                        match_stats["home_shots_on_target"] = sum(1 for s in shots_list if s["is_home"] and s["on_target"])
+                        match_stats["away_shots_on_target"] = sum(1 for s in shots_list if not s["is_home"] and s["on_target"])
+                        match_stats["home_xg"] = round(sum(s["xg"] for s in shots_list if s["is_home"]), 3)
+                        match_stats["away_xg"] = round(sum(s["xg"] for s in shots_list if not s["is_home"]), 3)
+
+                    # Augment shots_list with goal events so every goal appears on the pitch.
+                    # Goals from the events feed may not be in bdl_shots (BDL often omits
+                    # home-team shots in live data). Synthesize a shot marker for each goal
+                    # event that is not already represented in shots_list.
+                    existing_goal_minutes = {
+                        s["minute"] for s in shots_list
+                        if s.get("result") == "goal" or (s["xgot"] > 0.5)
+                    }
+                    goal_shot_count = len(shots_list)
+                    for ev in events_list:
+                        if ev.get("type") != "goal":
+                            continue
+                        ev_min = ev.get("minute", 0)
+                        ev_home = ev.get("is_home", False)
+                        # Add a pitch marker for this goal if not already covered
+                        if ev_min not in existing_goal_minutes:
+                            gx, gy = _synthesize_shot_coords(0.45, ev_home, goal_shot_count)
+                            shots_list.append({
+                                "shot_id": f"g{goal_shot_count}_{('h' if ev_home else 'a')}_{ev_min}",
+                                "minute": ev_min,
+                                "team": home if ev_home else away,
+                                "is_home": ev_home,
+                                "player_name": ev.get("player_name", ""),
+                                "player_jersey": ev.get("player_jersey", ""),
+                                "x": gx,
+                                "y": gy,
+                                "xg": 0.45,
+                                "xgot": 0.9,
+                                "on_target": True,
+                                "result": "goal",
+                                "coords_synthesized": True,
+                            })
+                            existing_goal_minutes.add(ev_min)
+                            goal_shot_count += 1
+
                     d.update({
                         "home_possession":      match_stats["home_possession"],
                         "away_possession":      match_stats["away_possession"],
@@ -934,7 +1027,7 @@ def run_live_snapshot() -> dict:
                         "away_yellow_cards":    match_stats["away_yellow_cards"],
                         "home_red_cards":       match_stats["home_red_cards"],
                         "away_red_cards":       match_stats["away_red_cards"],
-                        "shots":                shots_list,
+                        "shots":                sorted(shots_list, key=lambda s: s["minute"]),
                         "events":               events_list,
                         "player_stats":         player_stats_list,
                         "lineup_home":          lineup_home,
