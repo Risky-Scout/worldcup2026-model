@@ -4358,13 +4358,28 @@ def main():
         except Exception:
             pass
 
+        # calib_rho and calib_temperature are scoped inside predict_all_2026;
+        # read them from the latest health record written by that function.
+        _calib_rho_val = None
+        _calib_temp_val = None
+        try:
+            _cal_path2 = Path("data/calibration/health.jsonl")
+            if _cal_path2.exists():
+                _cal_lines2 = [l.strip() for l in _cal_path2.read_text().splitlines() if l.strip()]
+                if _cal_lines2:
+                    _last2 = _json.loads(_cal_lines2[-1])
+                    _calib_rho_val = _last2.get("calib_rho")
+                    _calib_temp_val = _last2.get("calib_temperature")
+        except Exception:
+            pass
+
         _health_path.write_text(_json.dumps({
             "last_pipeline_run": generated_at,
             "n_matches": len(all_preds),
             "status": "ok",
             "market_weight": round(_adaptive_market_weight, 2),
-            "calib_rho": round(calib_rho, 4),
-            "calib_temperature": round(calib_temperature, 3),
+            "calib_rho": round(_calib_rho_val, 4) if _calib_rho_val is not None else None,
+            "calib_temperature": round(_calib_temp_val, 3) if _calib_temp_val is not None else None,
             "clv_rolling_avg_pct": _clv_avg,
             "clv_positive_market_count": _clv_pos_count,
             "n_closing_odds_captured": _n_closing,

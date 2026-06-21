@@ -3,6 +3,8 @@ International Poisson abilities fitted on full international match history.
 
 Reads `data/external/international_results.csv` (Kaggle 1872-2026 dataset).
 Applies 3-year half-life exponential time decay on match dates.
+Also loads `data/external/former_names.csv` to map historical team names
+(e.g. "West Germany" → "Germany", "Zaire" → "DR Congo") before fitting.
 Returns per-team {"offensive_ability": float, "defensive_ability": float}.
 
 If the CSV file does not exist, returns an empty dict (graceful fallback).
@@ -24,6 +26,60 @@ _DECAY_RATE = math.log(2.0) / _HALF_LIFE_YEARS  # per-year decay constant
 
 _WC_AVG = 1.30  # goal average used as league-average baseline
 
+# Extra aliases for WC 2026 team name normalization not covered by former_names.csv
+EXTRA_ALIASES: dict[str, str] = {
+    "Korea Republic": "South Korea",
+    "IR Iran": "Iran",
+    "USA": "United States",
+    "Türkiye": "Turkey",
+    "Turkey": "Turkey",
+    "Ivory Coast": "Côte d'Ivoire",
+    "Cote d'Ivoire": "Côte d'Ivoire",
+    "Bosnia-Herzegovina": "Bosnia & Herzegovina",
+    "Cape Verde": "Cabo Verde",
+}
+
+
+def _load_name_mapping(former_names_path: Path) -> dict[str, str]:
+    """
+    Build a former_name → current_name mapping from former_names.csv.
+
+    For each (former, current) pair uses the most recent `current` value
+    (by end_date) to handle chains like Yugoslavia → Serbia.
+    """
+    if not former_names_path.exists():
+        log.debug("former_names.csv not found at %s — skipping name mapping", former_names_path)
+        return {}
+
+    try:
+        df = pd.read_csv(former_names_path, low_memory=False)
+    except Exception as exc:
+        log.warning("Could not read %s: %s", former_names_path, exc)
+        return {}
+
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    required = {"current", "former", "end_date"}
+    if not required.issubset(set(df.columns)):
+        log.warning("former_names.csv missing columns: %s", required - set(df.columns))
+        return {}
+
+    df["end_date"] = pd.to_datetime(df["end_date"], errors="coerce")
+    # Sort so the most recent end_date row wins when a former name appears multiple times
+    df = df.sort_values("end_date", ascending=True, na_position="first")
+
+    mapping: dict[str, str] = {}
+    for _, row in df.iterrows():
+        former = str(row["former"]).strip()
+        current = str(row["current"]).strip()
+        if former and current and former != "nan" and current != "nan":
+            mapping[former] = current
+
+    # Overlay EXTRA_ALIASES (they take precedence for WC 2026 normalization)
+    mapping.update(EXTRA_ALIASES)
+
+    log.info("international_poisson: loaded %d name aliases", len(mapping))
+    return mapping
+
 
 def _compute_decay_weight(match_date: pd.Timestamp, reference_date: pd.Timestamp) -> float:
     """Exponential time-decay weight with 3-year half-life."""
@@ -33,6 +89,7 @@ def _compute_decay_weight(match_date: pd.Timestamp, reference_date: pd.Timestamp
 
 def fit_international_poisson(
     csv_path: Optional[Path] = None,
+    former_names_path: Optional[Path] = None,
     reference_date: Optional[pd.Timestamp] = None,
 ) -> dict[str, dict[str, float]]:
     """
@@ -40,18 +97,24 @@ def fit_international_poisson(
 
     Parameters
     ----------
-    csv_path        Path to international_results.csv.  Defaults to
-                    data/external/international_results.csv relative to repo root.
-    reference_date  Reference date for decay weighting (default: today).
+    csv_path            Path to international_results.csv.  Defaults to
+                        data/external/international_results.csv relative to repo root.
+    former_names_path   Path to former_names.csv.  Defaults to
+                        data/external/former_names.csv relative to repo root.
+    reference_date      Reference date for decay weighting (default: today).
 
     Returns
     -------
     dict: team_name → {"offensive_ability": float, "defensive_ability": float}
     Empty dict if data file not found or fitting fails.
     """
+    repo_root = Path(__file__).resolve().parents[3]
+
     if csv_path is None:
-        repo_root = Path(__file__).resolve().parents[3]
         csv_path = repo_root / "data" / "external" / "international_results.csv"
+
+    if former_names_path is None:
+        former_names_path = repo_root / "data" / "external" / "former_names.csv"
 
     if not csv_path.exists():
         log.debug("international_results.csv not found at %s — skipping", csv_path)
@@ -84,6 +147,13 @@ def fit_international_poisson(
     df["away_score"] = df["away_score"].astype(int)
 
     log.info("international_poisson: %d matches loaded", len(df))
+
+    # Load name mapping and apply to team columns
+    name_map = _load_name_mapping(former_names_path)
+    if name_map:
+        df["home_team"] = df["home_team"].map(lambda x: name_map.get(str(x).strip(), str(x).strip()))
+        df["away_team"] = df["away_team"].map(lambda x: name_map.get(str(x).strip(), str(x).strip()))
+        log.info("international_poisson: name mapping applied")
 
     # Compute decay weights
     df["weight"] = df["date"].apply(lambda d: _compute_decay_weight(d, reference_date))
@@ -157,3 +227,16 @@ def fit_international_poisson(
     )
 
     return result
+
+
+def load_international_abilities(
+    csv_path: Optional[Path] = None,
+    former_names_path: Optional[Path] = None,
+    reference_date: Optional[pd.Timestamp] = None,
+) -> dict[str, dict[str, float]]:
+    """Convenience wrapper — same as fit_international_poisson."""
+    return fit_international_poisson(
+        csv_path=csv_path,
+        former_names_path=former_names_path,
+        reference_date=reference_date,
+    )
