@@ -912,6 +912,23 @@ def run_live_snapshot() -> dict:
         except Exception as exc:
             log.warning("Could not fetch live team stats/shots: %s", exc)
 
+    # Fetch momentum for live matches
+    live_momentum: "dict[str, Any]" = {}
+    if live_ids:
+        try:
+            from wc2026.data.providers.bdl import BDLProvider as _BDLProviderMom
+            import pandas as _pd_mom
+            _mom_provider = _BDLProviderMom(snapshot=False)
+            momentum_rows = _mom_provider.fetch_momentum(match_ids=live_ids)
+            if momentum_rows:
+                _mom_df = _pd_mom.DataFrame(momentum_rows)
+                for _m_mid, _m_grp in _mom_df.groupby("match_id"):
+                    live_momentum[str(_m_mid)] = _m_grp.reset_index(drop=True)
+                log.info("Momentum fetched: %d rows for %d live matches",
+                         len(momentum_rows), len(live_ids))
+        except Exception as _mom_exc:
+            log.debug("Momentum fetch failed: %s", _mom_exc)
+
     # Fetch avg positions for live matches (used for defensive block depth)
     live_avg_positions: dict[str, list] = {}  # match_id → [avg_position rows]
     if live_ids:
@@ -998,7 +1015,8 @@ def run_live_snapshot() -> dict:
         try:
             result = predictor.predict_from_bdl(bdl_m, pregame_lh=lh, pregame_la=la,
                                                 bdl_stats=bdl_stats, bdl_shots=bdl_shots,
-                                                avg_positions=bdl_avg_pos)
+                                                avg_positions=bdl_avg_pos,
+                                                momentum_df=live_momentum.get(mid))
             if result:
                 d = result.to_dict()
                 d["pregame_lh"] = lh

@@ -1737,6 +1737,49 @@ def predict_all_2026(
         except Exception as _tv_exc:
             log.warning("per_match_total_anchor build failed (%s) — using fallback", _tv_exc)
 
+    # ── Pre-compute per-match team-total market lines ──────────────────────────
+    # Extract team-total O/U lines from markets_df (scope home_team / away_team or
+    # market_type containing "team_total").  These serve as per-team lambda anchors.
+    _per_match_home_total: dict[int, float] = {}
+    _per_match_away_total: dict[int, float] = {}
+    if markets_df is not None and not markets_df.empty:
+        try:
+            _mt_cols = [c.lower() for c in markets_df.columns]
+            _mt_df = markets_df.copy()
+            _mt_df.columns = _mt_cols  # normalise to lower-case
+            # Identify team-total rows by market_type or scope
+            _is_team_total = pd.Series([False] * len(_mt_df), index=_mt_df.index)
+            if "market_type" in _mt_cols:
+                _is_team_total |= _mt_df["market_type"].astype(str).str.lower().str.contains("team_total", na=False)
+            if "scope" in _mt_cols:
+                _is_team_total |= _mt_df["scope"].astype(str).str.lower().isin(["home_team", "away_team"])
+            _tt_df = _mt_df[_is_team_total].copy()
+            if not _tt_df.empty and "match_id" in _mt_cols and "line_value" in _mt_cols:
+                _tt_df["line_value"] = pd.to_numeric(_tt_df["line_value"], errors="coerce")
+                _tt_df = _tt_df[_tt_df["line_value"].notna() & (_tt_df["line_value"] > 0)]
+                for _tt_mid, _tt_grp in _tt_df.groupby("match_id"):
+                    _tt_mid_int = int(_tt_mid)
+                    # Determine scope per row
+                    if "scope" in _tt_grp.columns:
+                        _home_rows = _tt_grp[_tt_grp["scope"].astype(str).str.lower() == "home_team"]
+                        _away_rows = _tt_grp[_tt_grp["scope"].astype(str).str.lower() == "away_team"]
+                    else:
+                        _home_rows = _away_rows = pd.DataFrame()
+                    if len(_home_rows) > 0:
+                        _per_match_home_total[_tt_mid_int] = float(
+                            np.clip(_home_rows["line_value"].median(), 0.3, 6.0)
+                        )
+                    if len(_away_rows) > 0:
+                        _per_match_away_total[_tt_mid_int] = float(
+                            np.clip(_away_rows["line_value"].median(), 0.3, 6.0)
+                        )
+            log.info(
+                "team_total_anchor: home=%d  away=%d matches with team-total line",
+                len(_per_match_home_total), len(_per_match_away_total),
+            )
+        except Exception as _tt_exc:
+            log.warning("team_total_anchor build failed (%s) — skipping", _tt_exc)
+
     for _, row in sched_2026.iterrows():
         home = row["home_team"]
         away = row["away_team"]
@@ -1761,6 +1804,9 @@ def predict_all_2026(
             calib_lambda3=calib_lambda3,
             batch_pmf=_batch_pmfs.get((home, away)),
             total_anchor=_total_anchor_for_match,
+            home_team_total=_per_match_home_total.get(mid),
+            away_team_total=_per_match_away_total.get(mid),
+            standings_dict=_group_standings,
         )
         if pred:
             # Apply group-stage draw probability boost at PMF level so that
@@ -1947,6 +1993,9 @@ def _predict_one_match(
     calib_lambda3: float = 0.0,
     batch_pmf: "np.ndarray | None" = None,
     total_anchor: float = 2.65,
+    home_team_total: "float | None" = None,
+    away_team_total: "float | None" = None,
+    standings_dict: "dict | None" = None,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
@@ -1976,11 +2025,69 @@ def _predict_one_match(
 
     model_warnings = []
 
+    # ── Compute standings differentials ───────────────────────────────────────
+    _pts_diff = 0.0
+    _gd_diff = 0.0
+    if standings_dict:
+        _home_std = standings_dict.get(home, {})
+        _away_std = standings_dict.get(away, {})
+        _pts_diff = float(_home_std.get("pts", 0)) - float(_away_std.get("pts", 0))
+        _gd_diff  = float(_home_std.get("gd", 0))  - float(_away_std.get("gd", 0))
+
+    # ── Compute venue context adjustment (match_context.py features) ──────────
+    _venue_lambda_adj = None
+    try:
+        from wc2026.features.match_context import compute_match_context as _cmc
+        import datetime as _dt
+        _home_std_ctx = standings_dict.get(home, {}) if standings_dict else {}
+        _away_std_ctx = standings_dict.get(away, {}) if standings_dict else {}
+        _mc_home_std = (
+            {"points": _home_std_ctx.get("pts", 0), "played": _home_std_ctx.get("gp", 0),
+             "goal_difference": _home_std_ctx.get("gd", 0)} if _home_std_ctx else None
+        )
+        _mc_away_std = (
+            {"points": _away_std_ctx.get("pts", 0), "played": _away_std_ctx.get("gp", 0),
+             "goal_difference": _away_std_ctx.get("gd", 0)} if _away_std_ctx else None
+        )
+        _mc_result = _cmc(
+            match_row={"id": match_id, "stage": {"name": stage, "order": 0}},
+            home_team_country_code="",
+            away_team_country_code="",
+            stadium_row=None,
+            home_standing=_mc_home_std,
+            away_standing=_mc_away_std,
+            home_match_dates=[],
+            away_match_dates=[],
+            prediction_timestamp=_dt.datetime.utcnow(),
+        )
+        _total_h_log = (
+            _mc_result.host_home_adj_log
+            + _mc_result.venue_home_adj_log
+            + _mc_result.rest_travel_home_adj_log
+        )
+        _total_a_log = (
+            _mc_result.host_away_adj_log
+            + _mc_result.venue_away_adj_log
+            + _mc_result.rest_travel_away_adj_log
+        )
+        if abs(_total_h_log) > 0.005 or abs(_total_a_log) > 0.005:
+            _venue_lambda_adj = (
+                float(np.exp(_total_h_log)),
+                float(np.exp(_total_a_log)),
+            )
+    except Exception as _ctx_exc:
+        log.debug("venue_context skipped for %s v %s: %s", home, away, _ctx_exc)
+
     # ── 1. Composite rating PMF (always available via composite_prior) ────
     try:
         comp_pmf, comp_lh, comp_la = predict_match_from_composite(
             home, away, composite_prior, max_goals=15, rho=calib_rho,
             total_anchor=total_anchor,
+            home_team_total=home_team_total,
+            away_team_total=away_team_total,
+            pts_diff=_pts_diff,
+            gd_diff=_gd_diff,
+            venue_lambda_adj=_venue_lambda_adj,
         )
         home_prior = composite_prior.get_prior(home)
         away_prior = composite_prior.get_prior(away)

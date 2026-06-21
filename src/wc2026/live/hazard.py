@@ -279,6 +279,26 @@ def momentum_scaling(
         return 1.0, 1.0
 
 
+def passes_ft_scaling(
+    home_passes_ft: float,
+    away_passes_ft: float,
+) -> tuple[float, float]:
+    """Scale hazard based on passes into final third dominance.
+
+    If home has >60% of final-third passes, +3% attack; if <40%, -3%.
+    Returns (home_scale, away_scale).
+    """
+    total = home_passes_ft + away_passes_ft
+    if total < 5:
+        return 1.0, 1.0
+    home_share = home_passes_ft / total
+    if home_share > 0.60:
+        return 1.03, 0.97
+    elif home_share < 0.40:
+        return 0.97, 1.03
+    return 1.0, 1.0
+
+
 def compute_live_rates(
     minute: float,
     home_goals: int,
@@ -294,6 +314,8 @@ def compute_live_rates(
     away_momentum_scale: float = 1.0,
     home_defensive_depth: Optional[float] = None,
     away_defensive_depth: Optional[float] = None,
+    home_passes_ft_scale: float = 1.0,
+    away_passes_ft_scale: float = 1.0,
 ) -> tuple[float, float]:
     """
     Compute the instantaneous goal rate (per-minute) for each team.
@@ -372,6 +394,10 @@ def compute_live_rates(
     base_h *= h_card
     base_a *= a_card
 
+    # Apply passes-final-third scaling
+    base_h *= home_passes_ft_scale
+    base_a *= away_passes_ft_scale
+
     return max(float(base_h), 0.0), max(float(base_a), 0.0)
 
 
@@ -392,6 +418,8 @@ def expected_goals_remaining(
     momentum_df=None,
     home_defensive_depth: Optional[float] = None,
     away_defensive_depth: Optional[float] = None,
+    home_passes_ft: float = 0.0,
+    away_passes_ft: float = 0.0,
 ) -> tuple[float, float]:
     """
     Integrate the hazard over remaining regulation time to get expected
@@ -409,6 +437,9 @@ def expected_goals_remaining(
 
     # Compute momentum scales once for the current snapshot
     h_mom, a_mom = momentum_scaling(match_id, minute, momentum_df)
+
+    # Compute passes-final-third scales once
+    h_pft, a_pft = passes_ft_scaling(home_passes_ft, away_passes_ft)
 
     total_h = 0.0
     total_a = 0.0
@@ -430,6 +461,8 @@ def expected_goals_remaining(
             away_momentum_scale=a_mom,
             home_defensive_depth=home_defensive_depth,
             away_defensive_depth=away_defensive_depth,
+            home_passes_ft_scale=h_pft,
+            away_passes_ft_scale=a_pft,
         )
         total_h += h_rate * step_minutes
         total_a += a_rate * step_minutes

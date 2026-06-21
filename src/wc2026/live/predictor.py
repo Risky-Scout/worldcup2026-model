@@ -171,6 +171,8 @@ class LivePMFPredictor:
         momentum_df=None,
         home_defensive_depth: Optional[float] = None,
         away_defensive_depth: Optional[float] = None,
+        home_passes_ft: float = 0.0,
+        away_passes_ft: float = 0.0,
     ) -> "LivePMFResult":
         """
         Compute the live score PMF for a given match state.
@@ -245,6 +247,8 @@ class LivePMFPredictor:
             momentum_df=momentum_df,
             home_defensive_depth=home_defensive_depth,
             away_defensive_depth=away_defensive_depth,
+            home_passes_ft=home_passes_ft,
+            away_passes_ft=away_passes_ft,
         )
 
         # ── Fix 3 log: mandatory xG blend status on every live snapshot ──
@@ -595,6 +599,8 @@ class LivePMFPredictor:
             #   corners, possession_pct, fouls, yellow_cards.
             # NOTE: xgot does NOT exist in team_match_stats — it lives in match_shots only.
             h_stats = a_stats = None
+            h_passes_ft = 0.0
+            a_passes_ft = 0.0
             if bdl_stats:
                 def _safe_float(d, k):
                     v = d.get(k)
@@ -602,6 +608,20 @@ class LivePMFPredictor:
 
                 h_raw = next((r for r in bdl_stats if r.get("is_home") is True), {})
                 a_raw = next((r for r in bdl_stats if r.get("is_home") is False), {})
+
+                # Extract passes_final_third for hazard scaling
+                _hpft = h_raw.get("passes_final_third") or h_raw.get("passes_into_final_third")
+                _apft = a_raw.get("passes_final_third") or a_raw.get("passes_into_final_third")
+                if _hpft is not None:
+                    try:
+                        h_passes_ft = float(_hpft)
+                    except (TypeError, ValueError):
+                        pass
+                if _apft is not None:
+                    try:
+                        a_passes_ft = float(_apft)
+                    except (TypeError, ValueError):
+                        pass
 
                 # xgot from match_shots: sum xgot per is_home flag
                 h_xgot = a_xgot = None
@@ -696,6 +716,8 @@ class LivePMFPredictor:
                 momentum_df=momentum_df,
                 home_defensive_depth=home_defensive_depth,
                 away_defensive_depth=away_defensive_depth,
+                home_passes_ft=h_passes_ft,
+                away_passes_ft=a_passes_ft,
             )
 
         except Exception as exc:

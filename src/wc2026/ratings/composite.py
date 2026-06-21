@@ -647,6 +647,7 @@ class CompositeTeamPrior:
         if team_form_df is not None and not team_form_df.empty:
             wc26_ids = set(m2026["match_id"].astype(str).tolist())
             team_ratings_acc: dict[str, list[tuple]] = {}  # team → [(datetime, rating)]
+            team_wdl_acc: dict[str, list[str]] = {}  # team → [wdl_string, ...]
             for _, row in team_form_df.iterrows():
                 mid = str(row.get("match_id", ""))
                 if mid not in wc26_ids:
@@ -668,6 +669,22 @@ class CompositeTeamPrior:
                     continue
                 ts = row.get("updated_at") or row.get("match_datetime") or ""
                 team_ratings_acc.setdefault(team_name, []).append((str(ts), r_f))
+                # Collect WDL form string if present
+                form_val = row.get("value") or row.get("form") or ""
+                if form_val and isinstance(form_val, str):
+                    team_wdl_acc.setdefault(team_name, []).append(form_val)
+
+            def _parse_form_points(form_str: str) -> float:
+                """Parse WDL string like 'WWDLW' → normalized points [0,1]."""
+                if not form_str or not isinstance(form_str, str):
+                    return 0.5
+                total = 0.0
+                n = 0
+                for ch in form_str.upper():
+                    if ch == "W":   total += 3; n += 1
+                    elif ch == "D": total += 1; n += 1
+                    elif ch == "L": total += 0; n += 1
+                return (total / (n * 3)) if n > 0 else 0.5
 
             # Keep most recent 3, compute mean rating per team
             team_avg_rating: dict[str, float] = {}
@@ -676,16 +693,40 @@ class CompositeTeamPrior:
                 recent = [r for _, r in entries_sorted[:3]]
                 team_avg_rating[tn] = float(np.mean(recent))
 
+            # Compute per-team WDL form points (normalized)
+            team_wdl_pts: dict[str, float] = {}
+            for tn, wdl_list in team_wdl_acc.items():
+                pts_vals = [_parse_form_points(s) for s in wdl_list if s]
+                if pts_vals:
+                    team_wdl_pts[tn] = float(np.mean(pts_vals))
+
             if team_avg_rating:
                 vals = list(team_avg_rating.values())
                 mu = float(np.mean(vals))
                 sigma = float(np.std(vals)) if len(vals) > 1 else 1.0
                 if sigma < 1e-6:
                     sigma = 1.0
-                form_z_scores = {tn: (v - mu) / sigma for tn, v in team_avg_rating.items()}
+                rating_z = {tn: (v - mu) / sigma for tn, v in team_avg_rating.items()}
+
+                # WDL form z-scores (if available)
+                if team_wdl_pts:
+                    wdl_vals = list(team_wdl_pts.values())
+                    wdl_mu = float(np.mean(wdl_vals))
+                    wdl_sigma = float(np.std(wdl_vals)) if len(wdl_vals) > 1 else 1.0
+                    if wdl_sigma < 1e-6:
+                        wdl_sigma = 1.0
+                    wdl_z = {tn: (v - wdl_mu) / wdl_sigma for tn, v in team_wdl_pts.items()}
+                    # Blend 50% avg_rating z-score + 50% WDL points z-score
+                    form_z_scores = {
+                        tn: 0.5 * rating_z.get(tn, 0.0) + 0.5 * wdl_z.get(tn, rating_z.get(tn, 0.0))
+                        for tn in rating_z
+                    }
+                else:
+                    form_z_scores = rating_z
+
                 log.info(
-                    "team_form z-scores computed: %d teams  mu=%.3f  sigma=%.3f",
-                    len(form_z_scores), mu, sigma,
+                    "team_form z-scores computed: %d teams  mu=%.3f  sigma=%.3f  wdl_teams=%d",
+                    len(form_z_scores), mu, sigma, len(team_wdl_pts),
                 )
 
         # ── 4d. Pre-compute futures-implied win probability per team ──────────
@@ -848,6 +889,36 @@ class CompositeTeamPrior:
                 log.debug("shots.parquet not found at %s; shot_quality_ratio=1.0", _shots_path)
         except Exception as _sq_exc:
             log.debug("Shot quality ratio computation skipped (%s)", _sq_exc)
+
+        # ── 9. International Poisson abilities (Phase 2 — Kaggle history) ────────
+        # Loads data/external/international_results.csv if present.
+        # Blends per-team offensive/defensive abilities at 15% weight.
+        # Graceful fallback: no effect if file is missing.
+        try:
+            from wc2026.ratings.international_poisson import fit_international_poisson as _fit_intl
+            _intl_abilities = _fit_intl()
+            if _intl_abilities:
+                _blend_w = 0.15
+                for team, tp in self._priors.items():
+                    _ia = _intl_abilities.get(team)
+                    if _ia is None:
+                        continue
+                    _io = float(_ia.get("offensive_ability", tp.final_attack_lambda))
+                    _id = float(_ia.get("defensive_ability", tp.final_defense_lambda))
+                    tp.final_attack_lambda = round(
+                        float((1.0 - _blend_w) * tp.final_attack_lambda + _blend_w * _io), 4
+                    )
+                    tp.final_defense_lambda = round(
+                        float((1.0 - _blend_w) * tp.final_defense_lambda + _blend_w * _id), 4
+                    )
+                    if "intl_poisson" not in tp.sources_used:
+                        tp.sources_used.append("intl_poisson")
+                log.info(
+                    "international_poisson blend applied: %d teams at w=%.2f",
+                    len(_intl_abilities), _blend_w,
+                )
+        except Exception as _intl_exc:
+            log.debug("international_poisson blend skipped (%s)", _intl_exc)
 
         self._fitted = True
         n_market = sum(1 for tp in self._priors.values() if "market_implied" in tp.sources_used)
@@ -1019,7 +1090,7 @@ class CompositeTeamPrior:
     def _fit_elo(self, hist: pd.DataFrame) -> dict[str, float]:
         try:
             from penaltyblog.ratings import Elo
-            elo = Elo(k=20, home_field_advantage=0)
+            elo = Elo(k=20, home_field_advantage=100)
             for _, row in hist.iterrows():
                 hg, ag = int(row["home_goals"]), int(row["away_goals"])
                 result = 2 if hg > ag else (1 if hg == ag else 0)  # penaltyblog: 0=away, 1=draw, 2=home
@@ -1091,20 +1162,18 @@ class CompositeTeamPrior:
 
     def _apply_injury_penalties(self, injuries_df: pd.DataFrame) -> None:
         """
-        Apply lambda penalties for OUT/GTD players by position.
+        Apply lambda penalties using blueprint injury_impact_score formula.
 
-        Penalties per player:
-          OUT GK:    multiply defense λ by 0.92
-          OUT FW/MF: multiply attack λ by 0.94 per player
-          GTD GK:    multiply defense λ by 0.96 (half penalty)
-          GTD FW/MF: multiply attack λ by 0.97 per player
-        Total attack penalty capped at 0.75; defense penalty capped at 0.75.
+        injury_impact_score = Σ(player.avg_rating × weight)
+        where OUT=1.0, GTD=0.5.  Normalized to [0,1] relative to squad total.
+        Scaling: lambda *= max(1 - impact_score * 0.15, 0.75)
+
+        GK special case: OUT GK also applies a defensive penalty (mult 0.92).
+        key_player_out is flagged when any player with avg_rating > 7.5 is OUT.
         """
         _GK_OUT_DEF = 0.92
-        _FW_MF_OUT_ATT = 0.94
-        _GK_GTD_DEF = 0.96
-        _FW_MF_GTD_ATT = 0.97
         _CAP_FLOOR = 0.75
+        _SQUAD_TOTAL_RATING = 77.0  # approximate 11-player squad at 7.0 avg
 
         for team, tp in self._priors.items():
             team_injuries = injuries_df[
@@ -1113,36 +1182,42 @@ class CompositeTeamPrior:
             if team_injuries.empty:
                 continue
 
-            att_mult = 1.0
-            def_mult = 1.0
+            impact_score = 0.0
+            gk_out = False
+            key_player_out = False
             n_applied = 0
 
             for _, row in team_injuries.iterrows():
                 status = str(row.get("status", "")).upper()
                 pos = str(row.get("player_position", row.get("position", ""))).upper()
                 name = str(row.get("player_name", "unknown"))
+                avg_r = row.get("avg_rating")
+                try:
+                    avg_r_f = float(avg_r) if avg_r is not None else 7.0
+                except (TypeError, ValueError):
+                    avg_r_f = 7.0
 
                 if status == "OUT":
+                    impact_score += avg_r_f * 1.0
+                    n_applied += 1
+                    if avg_r_f > 7.5:
+                        key_player_out = True
                     if "GK" in pos:
-                        def_mult *= _GK_OUT_DEF
-                        n_applied += 1
-                    elif any(p in pos for p in ("FW", "MF", "ST", "CF", "CAM", "AM", "RW", "LW", "SS", "OM", "CM", "RM", "LM", "DM", "CDM")):
-                        att_mult *= _FW_MF_OUT_ATT
-                        n_applied += 1
+                        gk_out = True
                 elif status == "GTD":
-                    if "GK" in pos:
-                        def_mult *= _GK_GTD_DEF
-                        n_applied += 1
-                    elif any(p in pos for p in ("FW", "MF", "ST", "CF", "CAM", "AM", "RW", "LW", "SS", "OM", "CM", "RM", "LM", "DM", "CDM")):
-                        att_mult *= _FW_MF_GTD_ATT
-                        n_applied += 1
+                    impact_score += avg_r_f * 0.5
+                    n_applied += 1
 
             if n_applied == 0:
                 continue
 
-            # Apply caps
-            att_mult = max(att_mult, _CAP_FLOOR)
-            def_mult = max(def_mult, _CAP_FLOOR)
+            # Normalize impact_score to [0, 1]
+            norm_impact = min(impact_score / max(_SQUAD_TOTAL_RATING, 1.0), 1.0)
+
+            att_mult = max(1.0 - norm_impact * 0.15, _CAP_FLOOR)
+            def_mult = 1.0
+            if gk_out:
+                def_mult = min(def_mult, _GK_OUT_DEF)
 
             old_att = tp.final_attack_lambda
             old_def = tp.final_defense_lambda
@@ -1153,9 +1228,10 @@ class CompositeTeamPrior:
                 tp.sources_used.append("injuries")
 
             log.warning(
-                "Injuries applied: %s  n=%d  att_mult=%.3f  def_mult=%.3f"
-                "  att: %.3f→%.3f  def: %.3f→%.3f",
-                team, n_applied, att_mult, def_mult,
+                "Injuries applied: %s  n=%d  impact=%.3f  norm=%.3f  key_out=%s"
+                "  att_mult=%.3f  def_mult=%.3f  att: %.3f→%.3f  def: %.3f→%.3f",
+                team, n_applied, impact_score, norm_impact, key_player_out,
+                att_mult, def_mult,
                 old_att, tp.final_attack_lambda, old_def, tp.final_defense_lambda,
             )
 
@@ -1770,6 +1846,46 @@ def predict_match_from_composite(
         _margin = float(lam_h) - float(lam_a)
         lam_h = max((_total_anchor + _margin) / 2.0, 0.05)
         lam_a = max((_total_anchor - _margin) / 2.0, 0.05)
+
+    # ── Team total market lines anchor (blueprint Tier 1, #3 signal) ──────────
+    _home_tt = kwargs.get("home_team_total")
+    _away_tt = kwargs.get("away_team_total")
+    if _home_tt and isinstance(_home_tt, (int, float)) and 0.3 < _home_tt < 6.0:
+        lam_h = 0.50 * float(_home_tt) + 0.50 * lam_h
+    if _away_tt and isinstance(_away_tt, (int, float)) and 0.3 < _away_tt < 6.0:
+        lam_a = 0.50 * float(_away_tt) + 0.50 * lam_a
+    lam_h = float(np.clip(lam_h, 0.05, 8.0))
+    lam_a = float(np.clip(lam_a, 0.05, 8.0))
+
+    # ── Group standings differential (blueprint Tier 2, r=0.17/0.19) ──────────
+    _pts_diff = kwargs.get("pts_diff", 0.0)
+    _gd_diff  = kwargs.get("gd_diff", 0.0)
+    if _pts_diff != 0 or _gd_diff != 0:
+        _pts_scale = float(np.clip(1.0 + _pts_diff * 0.009, 0.92, 1.08))
+        _gd_scale  = float(np.clip(1.0 + _gd_diff  * 0.004, 0.96, 1.04))
+        lam_h = float(np.clip(lam_h * _pts_scale * _gd_scale, 0.05, 8.0))
+        lam_a = float(np.clip(lam_a / _pts_scale / _gd_scale, 0.05, 8.0))
+
+    # ── Confederation differential (blueprint Tier 2) ─────────────────────────
+    _home_conf_str = getattr(home_prior, "confederation", None) or ""
+    _away_conf_str = getattr(away_prior, "confederation", None) or ""
+    _CONF_STR = {"CONMEBOL": 0.90, "UEFA": 1.00, "CONCACAF": 0.60,
+                 "CAF": 0.50, "AFC": 0.45, "OFC": 0.30}
+    _home_cs = _CONF_STR.get(_home_conf_str.upper(), 0.70)
+    _away_cs = _CONF_STR.get(_away_conf_str.upper(), 0.70)
+    _conf_diff = _home_cs - _away_cs
+    if abs(_conf_diff) > 0.05:
+        _conf_scale = float(np.clip(1.0 + _conf_diff * 0.04, 0.97, 1.05))
+        lam_h = float(np.clip(lam_h * _conf_scale, 0.05, 8.0))
+        lam_a = float(np.clip(lam_a / _conf_scale, 0.05, 8.0))
+
+    # ── Venue lambda adjustment (match_context: rest/travel/capacity) ─────────
+    _venue_lam_adj = kwargs.get("venue_lambda_adj")
+    if _venue_lam_adj and isinstance(_venue_lam_adj, (list, tuple)) and len(_venue_lam_adj) == 2:
+        _vh, _va = float(_venue_lam_adj[0]), float(_venue_lam_adj[1])
+        if 0.8 < _vh < 1.2 and 0.8 < _va < 1.2:
+            lam_h = float(np.clip(lam_h * _vh, 0.05, 8.0))
+            lam_a = float(np.clip(lam_a * _va, 0.05, 8.0))
 
     # Enhancement 3: shot quality correction
     lam_h = float(np.clip(lam_h * home_prior.shot_quality_ratio, 0.05, 8.0))
