@@ -1,10 +1,10 @@
 {
-  "rho": -0.03,
-  "total_anchor": 3.0,
-  "n_matches_used": 32,
-  "calibrated_at": "2026-06-20T18:59:15.348525+00:00",
-  "log_likelihood": -97.5571,
-  "rmse_total_goals": 1.8708,
+  "rho": -0.1,
+  "total_anchor": 3.0278,
+  "n_matches_used": 36,
+  "calibrated_at": "2026-06-21T11:05:10.644909+00:00",
+  "log_likelihood": -111.4225,
+  "rmse_total_goals": 1.9074,
   "rho_source": "fitted",
   "total_source": "fitted"
 }
