@@ -57,7 +57,16 @@ DEPLOYMENTS = [
 ]
 
 
+def _chmod(ftp: ftplib.FTP, mode: str, path: str) -> None:
+    """Try SITE CHMOD; silently skip if the server doesn't support it."""
+    try:
+        ftp.sendcmd(f"SITE CHMOD {mode} {path}")
+    except Exception:
+        pass
+
+
 def _ensure_remote_dir(ftp: ftplib.FTP, path: str) -> None:
+    """Create every component of path and chmod each directory 755."""
     parts = [p for p in path.split("/") if p]
     current = ""
     for part in parts:
@@ -71,6 +80,8 @@ def _ensure_remote_dir(ftp: ftplib.FTP, path: str) -> None:
             except ftplib.error_perm as e:
                 if "exists" not in str(e).lower():
                     raise
+        # Always chmod 755 so nginx (www-data) can traverse the directory
+        _chmod(ftp, "755", current)
 
 
 def deploy() -> None:
@@ -88,6 +99,7 @@ def deploy() -> None:
         print(f"  Connected: {ftp.getwelcome()[:80]}")
 
         _ensure_remote_dir(ftp, REMOTE_DIR)
+        ftp.cwd(REMOTE_DIR)
 
         for d in DEPLOYMENTS:
             local_path: Path = d["local"]
@@ -96,27 +108,21 @@ def deploy() -> None:
                 continue
 
             content = local_path.read_bytes()
-            ftp.cwd(REMOTE_DIR)
-            remote_path = f'{REMOTE_DIR}/{d["remote_file"]}'
+            filename = d["remote_file"]
 
-            # Delete before upload so FTP permission errors on overwrite never block deploys
+            # Delete before upload so stale/locked files never block deploys
             try:
-                ftp.delete(d["remote_file"])
+                ftp.delete(filename)
             except Exception:
                 pass
 
-            ftp.storbinary(f'STOR {d["remote_file"]}', io.BytesIO(content))
+            ftp.storbinary(f"STOR {filename}", io.BytesIO(content))
 
-            # Set 644 so nginx can serve the file
-            for mode in ("755", "644"):
-                try:
-                    ftp.sendcmd(f"SITE CHMOD {mode} {remote_path}")
-                    break
-                except Exception:
-                    pass
+            # chmod 644 using relative filename (CWD is already REMOTE_DIR)
+            _chmod(ftp, "644", filename)
 
             size_kb = len(content) / 1024
-            print(f"  ✓ {d['description']}: {remote_path} ({size_kb:.1f} KB)")
+            print(f"  ✓ {d['description']}: {REMOTE_DIR}/{filename} ({size_kb:.1f} KB)")
 
     print("Deploy complete.")
 
