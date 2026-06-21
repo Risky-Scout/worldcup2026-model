@@ -149,7 +149,6 @@ function getMatchId() {
 // ── Fetch wc-predictions.json (for PMF grid) ──────────────────────────────────
 async function loadPredictionsData() {
   var urls = [
-    './wc-predictions.json',
     '../wc-predictions.json',
     '../../worldcup/wc-predictions.json',
     '/tools/odds-scanner/predictions/worldcup/wc-predictions.json',
