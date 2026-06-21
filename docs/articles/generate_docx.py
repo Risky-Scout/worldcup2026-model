@@ -968,34 +968,142 @@ def build_article2():
         "banner appears if the underlying prediction file is more than four hours old.")
 
     add_h3(doc, "The KPI Cards")
-    add_bullet(doc, "The number of regulation kickoffs scheduled for today's date in Eastern Time.", bold_prefix="Matches Today")
-    add_bullet(doc, "Individual betting markets across all today's matches passing all three edge filters simultaneously: raw edge >= 4%, 90% CI lower bound above market no-vig price, and market implied > 2%. This is a strict filter -- the count is frequently zero or very small. That is correct behavior.", bold_prefix="Value Bets")
-    add_bullet(doc, "The single largest edge percentage found across all today's markets, with the specific market and match identified. An edge of +12% means the model estimates that outcome is 12% more likely than the bookmaker's no-vig price implies.", bold_prefix="Best Edge")
-    add_bullet(doc, "The average total expected goals across today's fixtures -- the model's best estimate of how many goals each match will produce under current conditions.", bold_prefix="Avg xG / Match")
+    add_body(doc, "Four summary numbers compress the entire day's modeling output into a single glance.",
+             space_after=Pt(4))
+    kpi_tbl = doc.add_table(rows=5, cols=2)
+    kpi_tbl.style = 'Table Grid'
+    for cell in kpi_tbl.columns[0].cells: cell.width = Inches(1.5)
+    for cell in kpi_tbl.columns[1].cells: cell.width = Inches(4.8)
+    dark_table_header(kpi_tbl, ["KPI Card", "What It Shows and How to Read It"])
+    kpi_rows = [
+        ("Matches Today",
+         "The number of regulation kickoffs scheduled for today's date in Eastern Time. "
+         "Count of 0 means an off-day or rest day."),
+        ("Value Bets",
+         "Individual betting markets across all today's matches passing all three edge "
+         "filters simultaneously: raw edge >= 4%, 90% CI lower bound above market no-vig "
+         "price, and market implied > 2%. This is a strict filter -- the count is "
+         "frequently zero or very small. That is correct behavior."),
+        ("Best Edge",
+         "The single largest edge percentage found across all today's markets, with the "
+         "specific market and match labeled below the number. An edge of +12% means the "
+         "model estimates that outcome is 12% more likely than the bookmaker's no-vig "
+         "price implies. Does NOT guarantee the bet will win."),
+        ("Avg xG / Match",
+         "The average total expected goals across today's fixtures -- the model's best "
+         "estimate of how many goals each match will produce. 2.6 = higher-scoring slate; "
+         "2.2 = defensive slate."),
+    ]
+    for i, (name, desc) in enumerate(kpi_rows, 1):
+        row = kpi_tbl.rows[i]
+        row.cells[0].text = name
+        row.cells[1].text = desc
+        style_data_row(kpi_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "The Bankroll Sizing Tool")
     add_body(doc,
         "Enter a bankroll amount and select a Kelly fraction. For every market passing all "
-        "three edge filters, the tool computes a recommended dollar stake.")
-    add_bullet(doc, "Theoretically optimal. Produces large drawdowns when edge estimates contain error. Not recommended unless confidence in the edge is very high.", bold_prefix="Full Kelly")
-    add_bullet(doc, "Bet size divided by two. Substantially reduces variance while retaining most compounding advantage. The default and standard recommendation.", bold_prefix="Half Kelly")
-    add_bullet(doc, "Conservative setting. Appropriate when acknowledging significant uncertainty in the model's estimates.", bold_prefix="Quarter Kelly")
-    add_body(doc, "All three fractions are hard-capped at 5% of entered bankroll regardless of what the formula computes.")
+        "three edge filters, the tool computes a recommended dollar stake using the Kelly "
+        "criterion: the fraction of your bankroll that maximizes the long-run growth rate "
+        "of the bankroll given this edge.",
+        space_after=Pt(4))
+    kelly_tbl = doc.add_table(rows=4, cols=2)
+    kelly_tbl.style = 'Table Grid'
+    for cell in kelly_tbl.columns[0].cells: cell.width = Inches(1.4)
+    for cell in kelly_tbl.columns[1].cells: cell.width = Inches(4.9)
+    dark_table_header(kelly_tbl, ["Fraction", "Stake Formula and When to Use"])
+    kelly_rows = [
+        ("Full Kelly",
+         "f* = Edge / (Decimal odds - 1). Theoretically optimal for long-run growth. "
+         "Produces large drawdowns in practice when edge estimates contain error. "
+         "Use only when highly confident in edge accuracy."),
+        ("Half Kelly",
+         "f* / 2  [default]. Standard recommendation in sports modeling literature when "
+         "parameter uncertainty is non-negligible. Substantially reduces variance while "
+         "retaining most of the compounding advantage."),
+        ("Quarter Kelly",
+         "f* / 4  [conservative]. Appropriate early in the tournament when calibration "
+         "sample is small, or when spreading capital across several simultaneous markets."),
+    ]
+    for i, (frac, desc) in enumerate(kelly_rows, 1):
+        row = kelly_tbl.rows[i]
+        row.cells[0].text = frac
+        row.cells[1].text = desc
+        style_data_row(kelly_tbl, i, alt=(i % 2 == 0))
+    add_body(doc,
+        "All three fractions are hard-capped at 5% of your entered bankroll regardless of "
+        "what the formula computes. This prevents extreme positions when the model "
+        "identifies an unusually large apparent edge.",
+        space_after=Pt(6))
 
     add_h3(doc, "The Match Table")
-    add_bullet(doc, "Home vs away. All matches treated as neutral venue except USA, Canada, and Mexico which carry a co-host adjustment (+0.10 attack, -0.10 defense).", bold_prefix="Match")
-    add_bullet(doc, "Three-segment bar showing Home Win (gold), Draw (gray), Away Win (blue) probabilities for regulation time. Derived by summing the appropriate cells of the joint PMF grid.", bold_prefix="1X2 Probability Bars")
-    add_bullet(doc, "Probability that total regulation goals exceed 2.5 -- three or more goals scored. Sum of all PMF cells where home_goals + away_goals >= 3.", bold_prefix="O/U 2.5")
-    add_bullet(doc, "Both Teams to Score. Sum of all cells where home_goals >= 1 AND away_goals >= 1.", bold_prefix="BTTS")
-    add_bullet(doc, "The single most probable final scoreline and its probability -- the peak cell of the joint grid.", bold_prefix="Top Score")
-    add_bullet(doc, "The model's expected goals for home and away separately after market reconciliation -- lambda_home and lambda_away.", bold_prefix="xG (H-A)")
-    add_bullet(doc, "Highest-edge market for this match passing all three value filters. If no market passes, this cell is blank.", bold_prefix="Best Edge / Fair Odds")
+    add_body(doc, "Each row represents one match. The columns, working left to right:",
+             space_after=Pt(4))
+    mtbl = doc.add_table(rows=8, cols=2)
+    mtbl.style = 'Table Grid'
+    for cell in mtbl.columns[0].cells: cell.width = Inches(1.6)
+    for cell in mtbl.columns[1].cells: cell.width = Inches(4.7)
+    dark_table_header(mtbl, ["Column", "Description"])
+    match_rows = [
+        ("Match",
+         "Home vs. away. Neutral venue for all except USA/Canada/Mexico who receive "
+         "+0.10 attack / -0.10 defense as co-hosts."),
+        ("1X2 Bars",
+         "Three-segment bar: Home Win (gold), Draw (gray), Away Win (blue). "
+         "Probabilities sum to 100%. Derived by summing appropriate cells of the PMF grid."),
+        ("O/U 2.5",
+         "P(total regulation goals >= 3). Sum of all cells where h+a >= 3. "
+         "Above 55% = model leans higher-scoring. Below 45% = tight match."),
+        ("BTTS",
+         "P(both teams score >= 1). Sum of all cells except first row and first column. "
+         "A 38% BTTS means good chance one team gets shut out."),
+        ("Top Score",
+         "The single most probable scoreline (peak cell of the PMF) with its probability. "
+         "Usually 1-0 or 1-1 carrying 12-18% in group stage."),
+        ("xG (H-A)",
+         "lambda_home and lambda_away after market reconciliation. "
+         "1.8-0.7 = clear favorite-underdog. 1.2-1.1 = near coin flip."),
+        ("Best Edge / Fair Odds",
+         "Highest-edge market passing all three filters. Empty when none qualifies. "
+         "Fair American odds shown are model no-margin prices."),
+    ]
+    for i, (col, desc) in enumerate(match_rows, 1):
+        row = mtbl.rows[i]
+        row.cells[0].text = col
+        row.cells[1].text = desc
+        style_data_row(mtbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "The Expanded Row")
-    add_body(doc, "Click any match row to reveal three additional panels:")
-    add_bullet(doc, "All non-trivial scorelines ranked from most to least likely, with proportion bars. Raw joint PMF values read directly from the grid.", bold_prefix="Full Scoreline Distribution")
-    add_bullet(doc, "Every market the engine has priced: 1X2, BTTS, Over/Under at every standard line from 0.5 through 6.5, Draw No Bet, Double Chance, Win to Nil, Asian Handicap, and team-level totals.", bold_prefix="All Markets")
-    add_bullet(doc, "For each market: model probability, market no-vig implied probability, edge %, fair odds, and current market odds. Rows highlighted in gold have passed all three value filters.", bold_prefix="Edge Report")
+    add_body(doc, "Clicking any match row expands it to reveal three additional panels with "
+                  "the full detail behind the summary numbers.",
+             space_after=Pt(4))
+    exp_tbl = doc.add_table(rows=4, cols=2)
+    exp_tbl.style = 'Table Grid'
+    for cell in exp_tbl.columns[0].cells: cell.width = Inches(1.9)
+    for cell in exp_tbl.columns[1].cells: cell.width = Inches(4.4)
+    dark_table_header(exp_tbl, ["Panel", "Contents"])
+    exp_rows = [
+        ("Full Scoreline Distribution",
+         "All non-trivial scorelines ranked from most to least likely, with probability "
+         "bars. These are raw joint PMF cell values read directly from the grid."),
+        ("All Markets",
+         "Every market the engine has priced from the joint PMF: 1X2, BTTS, "
+         "Over/Under at every standard line from 0.5 through 6.5, Draw No Bet, "
+         "Double Chance, Win to Nil, Asian Handicap, and team-level totals."),
+        ("Edge Report",
+         "For each market: model probability, no-vig market implied probability "
+         "(averaged across up to 8 bookmakers after Shin devigging), edge %, "
+         "fair American odds, and best available market American odds. "
+         "Rows highlighted in gold have passed all three value filters."),
+    ]
+    for i, (panel, contents) in enumerate(exp_rows, 1):
+        row = exp_tbl.rows[i]
+        row.cells[0].text = panel
+        row.cells[1].text = contents
+        style_data_row(exp_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     # ── Page 2 ────────────────────────────────────────────────────────────────
     add_h2(doc, "Page 2 -- PMF Distributions")
@@ -1106,14 +1214,47 @@ def build_article2():
     add_spacer(doc, 6)
 
     add_h3(doc, "Connection Badge")
-    add_bullet(doc, "Active push connection. When a goal or status change is reported, the server recomputes the full conditional PMF and pushes it to connected browsers. Target latency: under 200 milliseconds.", bold_prefix="WebSocket (green)")
-    add_bullet(doc, "Push connection unavailable. The page fetches updated data from a static JSON file every 60 seconds. Automatic fallback -- no user action needed.", bold_prefix="Polling (yellow)")
+    conn_tbl = doc.add_table(rows=3, cols=2)
+    conn_tbl.style = 'Table Grid'
+    for cell in conn_tbl.columns[0].cells: cell.width = Inches(1.5)
+    for cell in conn_tbl.columns[1].cells: cell.width = Inches(4.8)
+    dark_table_header(conn_tbl, ["Badge", "What It Means"])
+    conn_rows = [
+        ("WebSocket (green)",
+         "Active push connection. When a goal or status change is reported, the server "
+         "recomputes the full conditional PMF and pushes it to connected browsers. "
+         "Target latency: under 200 milliseconds."),
+        ("Polling (yellow)",
+         "Push connection unavailable. The page fetches updated data from a static "
+         "JSON file every 60 seconds. Automatic fallback -- no user action needed."),
+    ]
+    for i, (badge, meaning) in enumerate(conn_rows, 1):
+        row = conn_tbl.rows[i]
+        row.cells[0].text = badge
+        row.cells[1].text = meaning
+        style_data_row(conn_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "Live KPI Cards")
-    add_bullet(doc, "Number of World Cup matches currently in progress.", bold_prefix="Matches Live")
-    add_bullet(doc, "Next scheduled match with Eastern Time kickoff.", bold_prefix="Next Kickoff")
-    add_bullet(doc, "Total goals scored across all live and recently completed matches.", bold_prefix="Goals Today")
-    add_bullet(doc, "Time since the last live snapshot. Under 2 minutes is normal. Above 10 minutes during a live match triggers a health warning banner.", bold_prefix="Data Age")
+    live_kpi_tbl = doc.add_table(rows=5, cols=2)
+    live_kpi_tbl.style = 'Table Grid'
+    for cell in live_kpi_tbl.columns[0].cells: cell.width = Inches(1.4)
+    for cell in live_kpi_tbl.columns[1].cells: cell.width = Inches(4.9)
+    dark_table_header(live_kpi_tbl, ["KPI Card", "What It Shows"])
+    live_kpi_rows = [
+        ("Matches Live",  "Number of World Cup matches currently in progress."),
+        ("Next Kickoff",  "Next scheduled match with Eastern Time kickoff."),
+        ("Goals Today",   "Total goals scored across all live and recently completed matches."),
+        ("Data Age",
+         "Time since the last live snapshot. Under 2 minutes is normal. "
+         "Above 10 minutes during a live match triggers a health warning banner."),
+    ]
+    for i, (card, show) in enumerate(live_kpi_rows, 1):
+        row = live_kpi_tbl.rows[i]
+        row.cells[0].text = card
+        row.cells[1].text = show
+        style_data_row(live_kpi_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "Win Probability Bar and Shift Table")
     add_body(doc,
@@ -1178,12 +1319,36 @@ def build_article2():
     add_body(doc,
         "Below the pitch, a row of key performance indicators derived from the live stats "
         "feed shows each team's current in-match momentum. These same KPIs feed directly "
-        "into the live hazard model:")
-    add_bullet(doc, "Passes into the final third, updated each snapshot. The ratio between teams wires into the +/-3% attack hazard adjustment.", bold_prefix="Passes Final Third")
-    add_bullet(doc, "The BDL match momentum score for each team, displayed as a bar. When one team's momentum score exceeds the threshold, the +8% (home) or +5% (away) hazard scaling activates.", bold_prefix="Match Momentum")
-    add_bullet(doc, "Running xG for each team accumulated during the match, blended at 60% into the live hazard from minute 15 onward.", bold_prefix="Live xG")
-    add_bullet(doc, "Total shots attempted by each team in the match.", bold_prefix="Shots")
-    add_bullet(doc, "Shots on target for each team -- the most predictive single stat for in-play goal likelihood.", bold_prefix="Shots on Target")
+        "into the live hazard model:",
+        space_after=Pt(4))
+    mom_tbl = doc.add_table(rows=6, cols=2)
+    mom_tbl.style = 'Table Grid'
+    for cell in mom_tbl.columns[0].cells: cell.width = Inches(1.6)
+    for cell in mom_tbl.columns[1].cells: cell.width = Inches(4.7)
+    dark_table_header(mom_tbl, ["KPI", "What It Measures and How It Feeds the Model"])
+    mom_rows = [
+        ("Passes Final Third",
+         "Passes completed into the opponent's final third, updated each snapshot. "
+         "The ratio between teams wires directly into the +/-3% attack hazard adjustment."),
+        ("Match Momentum",
+         "The BDL match momentum score for each team, shown as a bar. When one team's "
+         "momentum exceeds the threshold, the +8% (home) or +5% (away) hazard scaling "
+         "activates in the live model."),
+        ("Live xG",
+         "Running expected goals for each team accumulated during the match. "
+         "Blended at 60% weight into the live hazard from minute 15 onward."),
+        ("Shots",
+         "Total shot attempts by each team in the match."),
+        ("Shots on Target",
+         "Shots on target for each team -- the most predictive single in-play stat "
+         "for goal likelihood over the remainder of the match."),
+    ]
+    for i, (kpi, desc) in enumerate(mom_rows, 1):
+        row = mom_tbl.rows[i]
+        row.cells[0].text = kpi
+        row.cells[1].text = desc
+        style_data_row(mom_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "Data Freshness")
     add_body(doc,
@@ -1211,9 +1376,32 @@ def build_article2():
         "it easy to identify where the model and market diverge significantly.")
 
     add_h3(doc, "Edge, EV, and Confidence Grades")
-    add_bullet(doc, "The percentage by which the model's probability exceeds the market's no-vig probability. Computed identically to the edge on Page 1 -- same formula, same source.", bold_prefix="Edge")
-    add_bullet(doc, "Expected Value: the dollar return per $100 wagered assuming the model's probability is the true probability. EV = (model_prob x net_payout) - (1 - model_prob) x 100.", bold_prefix="EV")
-    add_bullet(doc, "A letter grade (A through F) reflecting the combined strength of the edge, the CI lower bound check, and the number of bookmakers confirming the price. An A grade means the edge is large, robust to lambda uncertainty, and confirmed across multiple books.", bold_prefix="Confidence Grade")
+    ev_tbl = doc.add_table(rows=4, cols=2)
+    ev_tbl.style = 'Table Grid'
+    for cell in ev_tbl.columns[0].cells: cell.width = Inches(1.5)
+    for cell in ev_tbl.columns[1].cells: cell.width = Inches(4.8)
+    dark_table_header(ev_tbl, ["Metric", "Definition"])
+    ev_rows = [
+        ("Edge",
+         "The percentage by which the model's probability exceeds the market's no-vig "
+         "probability. Computed identically to the edge on Page 1 -- same formula, same "
+         "source PMF."),
+        ("EV",
+         "Expected Value: the dollar return per $100 wagered assuming the model's "
+         "probability is the true probability. "
+         "EV = (model_prob x net_payout) - (1 - model_prob) x 100."),
+        ("Confidence Grade",
+         "A letter grade (A through F) reflecting the combined strength of the edge, "
+         "the CI lower bound check, and the number of bookmakers confirming the price. "
+         "An A grade means the edge is large, robust to lambda uncertainty, and "
+         "confirmed across multiple books."),
+    ]
+    for i, (metric, defn) in enumerate(ev_rows, 1):
+        row = ev_tbl.rows[i]
+        row.cells[0].text = metric
+        row.cells[1].text = defn
+        style_data_row(ev_tbl, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
 
     add_h3(doc, "Trader Action Notes")
     add_body(doc,
