@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-21T14:25:58.110107+00:00",
+  "generated_at": "2026-06-21T16:51:40.859966+00:00",
   "date": "2026-06-21",
   "pregame_matches": [
     {
@@ -1092,8 +1092,8 @@
           "model_prob": 0.29142,
           "model_fair_odds": 3.4315,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1102,8 +1102,8 @@
           "model_prob": 0.46044,
           "model_fair_odds": 2.1718,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1112,8 +1112,8 @@
           "model_prob": 0.53956,
           "model_fair_odds": 1.8534,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1122,8 +1122,8 @@
           "model_prob": 0.39385,
           "model_fair_odds": 2.539,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1132,8 +1132,8 @@
           "model_prob": 0.60615,
           "model_fair_odds": 1.6498,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1142,8 +1142,8 @@
           "model_prob": 0.6557,
           "model_fair_odds": 1.5251,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1152,8 +1152,8 @@
           "model_prob": 0.3443,
           "model_fair_odds": 2.9044,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1162,8 +1162,8 @@
           "model_prob": 0.83605,
           "model_fair_odds": 1.1961,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1172,8 +1172,8 @@
           "model_prob": 0.16395,
           "model_fair_odds": 6.0994,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1202,8 +1202,8 @@
           "model_prob": 0.6066,
           "model_fair_odds": 1.6485,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1222,8 +1222,8 @@
           "model_prob": 0.19745,
           "model_fair_odds": 5.0646,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1232,8 +1232,8 @@
           "model_prob": 0.956,
           "model_fair_odds": 1.046,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
@@ -1262,8 +1262,8 @@
           "model_prob": 0.19595,
           "model_fair_odds": 5.1033,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": null,
-          "closing_source": null,
+          "closing_timestamp": "2026-06-21T15:57:00.010754+00:00",
+          "closing_source": "live_capture",
           "beat_close": null
         },
         {
