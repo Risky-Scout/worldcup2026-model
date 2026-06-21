@@ -1,6 +1,6 @@
 # Reconciliation Method Comparison
 
-**Generated**: 2026-06-21T01:37:38Z
+**Generated**: 2026-06-21T02:13:57Z
 
 ## Methods compared
 
@@ -25,7 +25,7 @@ This prevents SLSQP from being selected when it diverges or creates artifacts.
 | Method | Count |
 |--------|-------|
 | slsqp_core | 35 |
-| blend | 3 |
+| blend | 2 |
 
 ## SLSQP core-grid design
 
