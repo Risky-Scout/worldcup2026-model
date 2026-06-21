@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-21T22:52:30.394927+00:00",
+  "generated_at": "2026-06-21T23:29:12.117183+00:00",
   "date": "2026-06-21",
   "pregame_matches": [
     {
@@ -14,10 +14,10 @@
       "mode": "pregame",
       "minute": null,
       "score": null,
-      "odds_timestamp": "2026-06-21T22:48:03.202Z",
+      "odds_timestamp": "2026-06-21T23:26:03.886Z",
       "top_action": "PASS",
       "best_edge_market": "under_4_5",
-      "best_edge_pct": 0.89,
+      "best_edge_pct": 0.87,
       "confidence": "D",
       "summary_note": "No actionable markets for New Zealand vs Egypt at current prices.",
       "markets": [
@@ -25,73 +25,58 @@
           "market_id": "over_4_5",
           "market_label": "Total Over 4.5",
           "selection_label": "Total Over 4.5",
-          "model_probability": 0.1055,
-          "model_fair_american": 848,
+          "model_probability": 0.1057,
+          "model_fair_american": 846,
           "market_odds_american": 774,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.1144,
-          "edge_pp": -0.89,
-          "ev_per_100": -7.79,
+          "edge_pp": -0.87,
+          "ev_per_100": -7.62,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +848. No material edge on this market at current prices."
+          "trader_note": "Model fair: +846. No material edge on this market at current prices."
         },
         {
           "market_id": "under_4_5",
           "market_label": "Total Under 4.5",
           "selection_label": "Total Under 4.5",
-          "model_probability": 0.8945,
-          "model_fair_american": -848,
+          "model_probability": 0.8943,
+          "model_fair_american": -846,
           "market_odds_american": -774,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.8856,
-          "edge_pp": 0.89,
-          "ev_per_100": 1.01,
+          "edge_pp": 0.87,
+          "ev_per_100": 0.98,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: -848. No material edge on this market at current prices."
+          "trader_note": "Model fair: -846. No material edge on this market at current prices."
         },
         {
           "market_id": "home_over_2_5",
           "market_label": "Home Team Over 2.5",
           "selection_label": "New Zealand Over 2.5",
-          "model_probability": 0.0388,
-          "model_fair_american": 2478,
-          "market_odds_american": 2169,
+          "model_probability": 0.0387,
+          "model_fair_american": 2481,
+          "market_odds_american": 2173,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.0441,
+          "market_no_vig_probability": 0.044,
           "edge_pp": -0.53,
-          "ev_per_100": -11.97,
+          "ev_per_100": -11.95,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +2478. No material edge on this market at current prices."
-        },
-        {
-          "market_id": "away_over_2_5",
-          "market_label": "Away Team Over 2.5",
-          "selection_label": "Egypt Over 2.5",
-          "model_probability": 0.2553,
-          "model_fair_american": 292,
-          "market_odds_american": 284,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.2603,
-          "edge_pp": -0.5,
-          "ev_per_100": -1.92,
-          "confidence": "D",
-          "action": "PASS",
-          "trader_note": "Model fair: +292. No material edge on this market at current prices."
+          "trader_note": "Model fair: +2481. No material edge on this market at current prices."
         },
         {
           "market_id": "asian_handicap_home_1_5",
           "market_label": "AH Home +1.5",
           "selection_label": "New Zealand +1.5",
-          "model_probability": 0.6531,
+          "model_probability": 0.6529,
           "model_fair_american": -188,
-          "market_odds_american": -185,
+          "market_odds_american": -184,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.6485,
-          "edge_pp": 0.45,
-          "ev_per_100": 0.7,
+          "market_no_vig_probability": 0.6483,
+          "edge_pp": 0.46,
+          "ev_per_100": 0.71,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -188. No material edge on this market at current prices."
@@ -100,28 +85,43 @@
           "market_id": "asian_handicap_home_2",
           "market_label": "AH Home +2",
           "selection_label": "New Zealand +2",
-          "model_probability": 0.6531,
+          "model_probability": 0.6529,
           "model_fair_american": -188,
-          "market_odds_american": -185,
+          "market_odds_american": -184,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.6485,
-          "edge_pp": 0.45,
-          "ev_per_100": 0.7,
+          "market_no_vig_probability": 0.6483,
+          "edge_pp": 0.46,
+          "ev_per_100": 0.71,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -188. No material edge on this market at current prices."
         },
         {
+          "market_id": "away_over_2_5",
+          "market_label": "Away Team Over 2.5",
+          "selection_label": "Egypt Over 2.5",
+          "model_probability": 0.256,
+          "model_fair_american": 291,
+          "market_odds_american": 284,
+          "market_odds_estimated": true,
+          "market_no_vig_probability": 0.2604,
+          "edge_pp": -0.44,
+          "ev_per_100": -1.71,
+          "confidence": "D",
+          "action": "PASS",
+          "trader_note": "Model fair: +291. No material edge on this market at current prices."
+        },
+        {
           "market_id": "btts_no",
           "market_label": "BTTS No",
           "selection_label": "BTTS No",
-          "model_probability": 0.5521,
+          "model_probability": 0.5525,
           "model_fair_american": -123,
           "market_odds_american": -121,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.5485,
-          "edge_pp": 0.36,
-          "ev_per_100": 0.66,
+          "edge_pp": 0.4,
+          "ev_per_100": 0.73,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -123. No material edge on this market at current prices."
@@ -130,13 +130,13 @@
           "market_id": "btts_yes",
           "market_label": "BTTS Yes",
           "selection_label": "BTTS Yes",
-          "model_probability": 0.4479,
+          "model_probability": 0.4475,
           "model_fair_american": 123,
           "market_odds_american": 121,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.4515,
-          "edge_pp": -0.36,
-          "ev_per_100": -0.8,
+          "edge_pp": -0.4,
+          "ev_per_100": -0.89,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +123. No material edge on this market at current prices."
@@ -145,88 +145,58 @@
           "market_id": "home_over_1_5",
           "market_label": "Home Team Over 1.5",
           "selection_label": "New Zealand Over 1.5",
-          "model_probability": 0.1793,
-          "model_fair_american": 458,
+          "model_probability": 0.1794,
+          "model_fair_american": 457,
           "market_odds_american": 447,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.1829,
-          "edge_pp": -0.35,
-          "ev_per_100": -1.92,
+          "market_no_vig_probability": 0.1827,
+          "edge_pp": -0.33,
+          "ev_per_100": -1.81,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +458. No material edge on this market at current prices."
+          "trader_note": "Model fair: +457. No material edge on this market at current prices."
         },
         {
           "market_id": "over_1_5",
           "market_label": "Total Over 1.5",
           "selection_label": "Total Over 1.5",
-          "model_probability": 0.7232,
+          "model_probability": 0.7233,
           "model_fair_american": -261,
           "market_odds_american": -265,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.7258,
+          "market_no_vig_probability": 0.7259,
           "edge_pp": -0.26,
-          "ev_per_100": -0.35,
+          "ev_per_100": -0.36,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -261. No material edge on this market at current prices."
         },
         {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "selection_label": "Total Over 3.5",
-          "model_probability": 0.2488,
-          "model_fair_american": 302,
-          "market_odds_american": 298,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.2514,
-          "edge_pp": -0.26,
-          "ev_per_100": -1.04,
-          "confidence": "D",
-          "action": "PASS",
-          "trader_note": "Model fair: +302. No material edge on this market at current prices."
-        },
-        {
           "market_id": "under_1_5",
           "market_label": "Total Under 1.5",
           "selection_label": "Total Under 1.5",
-          "model_probability": 0.2768,
+          "model_probability": 0.2767,
           "model_fair_american": 261,
           "market_odds_american": 265,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.2742,
+          "market_no_vig_probability": 0.2741,
           "edge_pp": 0.26,
-          "ev_per_100": 0.93,
+          "ev_per_100": 0.96,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +261. No material edge on this market at current prices."
         },
         {
-          "market_id": "under_3_5",
-          "market_label": "Total Under 3.5",
-          "selection_label": "Total Under 3.5",
-          "model_probability": 0.7512,
-          "model_fair_american": -302,
-          "market_odds_american": -298,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.7486,
-          "edge_pp": 0.26,
-          "ev_per_100": 0.35,
-          "confidence": "D",
-          "action": "PASS",
-          "trader_note": "Model fair: -302. No material edge on this market at current prices."
-        },
-        {
           "market_id": "clean_sheet_away",
           "market_label": "Away Clean Sheet",
           "selection_label": "Away Clean Sheet",
-          "model_probability": 0.4592,
+          "model_probability": 0.4595,
           "model_fair_american": 118,
           "market_odds_american": 119,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.4573,
-          "edge_pp": 0.18,
-          "ev_per_100": 0.4,
+          "market_no_vig_probability": 0.4574,
+          "edge_pp": 0.21,
+          "ev_per_100": 0.47,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +118. No material edge on this market at current prices."
@@ -235,133 +205,133 @@
           "market_id": "home_over_0_5",
           "market_label": "Home Team Over 0.5",
           "selection_label": "New Zealand Over 0.5",
-          "model_probability": 0.5408,
+          "model_probability": 0.5405,
           "model_fair_american": -118,
           "market_odds_american": -119,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5427,
-          "edge_pp": -0.18,
-          "ev_per_100": -0.34,
+          "market_no_vig_probability": 0.5426,
+          "edge_pp": -0.21,
+          "ev_per_100": -0.39,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -118. No material edge on this market at current prices."
         },
         {
+          "market_id": "over_3_5",
+          "market_label": "Total Over 3.5",
+          "selection_label": "Total Over 3.5",
+          "model_probability": 0.2495,
+          "model_fair_american": 301,
+          "market_odds_american": 298,
+          "market_odds_estimated": true,
+          "market_no_vig_probability": 0.2514,
+          "edge_pp": -0.2,
+          "ev_per_100": -0.78,
+          "confidence": "D",
+          "action": "PASS",
+          "trader_note": "Model fair: +301. No material edge on this market at current prices."
+        },
+        {
+          "market_id": "under_3_5",
+          "market_label": "Total Under 3.5",
+          "selection_label": "Total Under 3.5",
+          "model_probability": 0.7505,
+          "model_fair_american": -301,
+          "market_odds_american": -298,
+          "market_odds_estimated": true,
+          "market_no_vig_probability": 0.7486,
+          "edge_pp": 0.2,
+          "ev_per_100": 0.26,
+          "confidence": "D",
+          "action": "PASS",
+          "trader_note": "Model fair: -301. No material edge on this market at current prices."
+        },
+        {
           "market_id": "away_over_0_5",
           "market_label": "Away Team Over 0.5",
           "selection_label": "Egypt Over 0.5",
-          "model_probability": 0.8247,
+          "model_probability": 0.8245,
           "model_fair_american": -470,
           "market_odds_american": -476,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.8263,
-          "edge_pp": -0.16,
-          "ev_per_100": -0.2,
+          "edge_pp": -0.17,
+          "ev_per_100": -0.21,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -470. No material edge on this market at current prices."
         },
         {
-          "market_id": "away_over_1_5",
-          "market_label": "Away Team Over 1.5",
-          "selection_label": "Egypt Over 1.5",
-          "model_probability": 0.526,
-          "model_fair_american": -111,
-          "market_odds_american": -112,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5276,
-          "edge_pp": -0.16,
-          "ev_per_100": -0.3,
-          "confidence": "D",
-          "action": "PASS",
-          "trader_note": "Model fair: -111. No material edge on this market at current prices."
-        },
-        {
           "market_id": "clean_sheet_home",
           "market_label": "Home Clean Sheet",
           "selection_label": "Home Clean Sheet",
-          "model_probability": 0.1753,
+          "model_probability": 0.1755,
           "model_fair_american": 470,
           "market_odds_american": 476,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.1737,
-          "edge_pp": 0.16,
-          "ev_per_100": 0.94,
+          "edge_pp": 0.17,
+          "ev_per_100": 0.99,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +470. No material edge on this market at current prices."
         },
         {
-          "market_id": "asian_handicap_home_neg1",
-          "market_label": "AH Home -1",
-          "selection_label": "New Zealand -1",
-          "model_probability": 0.0479,
-          "model_fair_american": 1989,
-          "market_odds_american": 2025,
+          "market_id": "away_over_1_5",
+          "market_label": "Away Team Over 1.5",
+          "selection_label": "Egypt Over 1.5",
+          "model_probability": 0.5262,
+          "model_fair_american": -111,
+          "market_odds_american": -112,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.047,
-          "edge_pp": 0.08,
-          "ev_per_100": 1.76,
+          "market_no_vig_probability": 0.5277,
+          "edge_pp": -0.15,
+          "ev_per_100": -0.28,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +1989. No material edge on this market at current prices."
-        },
-        {
-          "market_id": "asian_handicap_home_neg1_5",
-          "market_label": "AH Home -1.5",
-          "selection_label": "New Zealand -1.5",
-          "model_probability": 0.0479,
-          "model_fair_american": 1989,
-          "market_odds_american": 2025,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.047,
-          "edge_pp": 0.08,
-          "ev_per_100": 1.76,
-          "confidence": "D",
-          "action": "PASS",
-          "trader_note": "Model fair: +1989. No material edge on this market at current prices."
+          "trader_note": "Model fair: -111. No material edge on this market at current prices."
         },
         {
           "market_id": "draw_no_bet_away",
           "market_label": "DNB Away",
           "selection_label": "Egypt DNB",
-          "model_probability": 0.79,
-          "model_fair_american": -376,
+          "model_probability": 0.7902,
+          "model_fair_american": -377,
           "market_odds_american": -378,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.7908,
+          "market_no_vig_probability": 0.7909,
           "edge_pp": -0.08,
           "ev_per_100": -0.1,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: -376. No material edge on this market at current prices."
+          "trader_note": "Model fair: -377. No material edge on this market at current prices."
         },
         {
           "market_id": "draw_no_bet_home",
           "market_label": "DNB Home",
           "selection_label": "New Zealand DNB",
-          "model_probability": 0.21,
-          "model_fair_american": 376,
+          "model_probability": 0.2098,
+          "model_fair_american": 377,
           "market_odds_american": 378,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.2092,
+          "market_no_vig_probability": 0.2091,
           "edge_pp": 0.08,
-          "ev_per_100": 0.37,
+          "ev_per_100": 0.36,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +376. No material edge on this market at current prices."
+          "trader_note": "Model fair: +377. No material edge on this market at current prices."
         },
         {
           "market_id": "over_2_5",
           "market_label": "Total Over 2.5",
           "selection_label": "Total Over 2.5",
-          "model_probability": 0.4681,
+          "model_probability": 0.4682,
           "model_fair_american": 114,
           "market_odds_american": 114,
           "market_odds_estimated": false,
           "market_no_vig_probability": 0.4673,
           "edge_pp": 0.08,
-          "ev_per_100": 0.17,
+          "ev_per_100": 0.19,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +114. No material edge on this market at current prices."
@@ -370,91 +340,121 @@
           "market_id": "under_2_5",
           "market_label": "Total Under 2.5",
           "selection_label": "Total Under 2.5",
-          "model_probability": 0.5319,
+          "model_probability": 0.5318,
           "model_fair_american": -114,
           "market_odds_american": -114,
           "market_odds_estimated": false,
           "market_no_vig_probability": 0.5327,
           "edge_pp": -0.08,
-          "ev_per_100": -0.16,
+          "ev_per_100": -0.18,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -114. No material edge on this market at current prices."
         },
         {
+          "market_id": "asian_handicap_home_neg1",
+          "market_label": "AH Home -1",
+          "selection_label": "New Zealand -1",
+          "model_probability": 0.0477,
+          "model_fair_american": 1995,
+          "market_odds_american": 2028,
+          "market_odds_estimated": true,
+          "market_no_vig_probability": 0.047,
+          "edge_pp": 0.07,
+          "ev_per_100": 1.57,
+          "confidence": "D",
+          "action": "PASS",
+          "trader_note": "Model fair: +1995. No material edge on this market at current prices."
+        },
+        {
+          "market_id": "asian_handicap_home_neg1_5",
+          "market_label": "AH Home -1.5",
+          "selection_label": "New Zealand -1.5",
+          "model_probability": 0.0477,
+          "model_fair_american": 1995,
+          "market_odds_american": 2028,
+          "market_odds_estimated": true,
+          "market_no_vig_probability": 0.047,
+          "edge_pp": 0.07,
+          "ev_per_100": 1.57,
+          "confidence": "D",
+          "action": "PASS",
+          "trader_note": "Model fair: +1995. No material edge on this market at current prices."
+        },
+        {
           "market_id": "asian_handicap_home_-0.5",
           "market_label": "AH Home -0.5",
           "selection_label": "New Zealand -0.5",
-          "model_probability": 0.1603,
-          "model_fair_american": 524,
+          "model_probability": 0.16,
+          "model_fair_american": 525,
           "market_odds_american": 527,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.1596,
+          "market_no_vig_probability": 0.1594,
           "edge_pp": 0.06,
-          "ev_per_100": 0.4,
+          "ev_per_100": 0.39,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +524. No material edge on this market at current prices."
+          "trader_note": "Model fair: +525. No material edge on this market at current prices."
         },
         {
           "market_id": "asian_handicap_home_0",
           "market_label": "AH Home 0 (Pick'em)",
           "selection_label": "New Zealand 0 (Pick'em)",
-          "model_probability": 0.1603,
-          "model_fair_american": 524,
+          "model_probability": 0.16,
+          "model_fair_american": 525,
           "market_odds_american": 527,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.1596,
+          "market_no_vig_probability": 0.1594,
           "edge_pp": 0.06,
-          "ev_per_100": 0.4,
+          "ev_per_100": 0.39,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +524. No material edge on this market at current prices."
+          "trader_note": "Model fair: +525. No material edge on this market at current prices."
         },
         {
           "market_id": "asian_handicap_home_neg0_5",
           "market_label": "AH Home -0.5",
           "selection_label": "New Zealand -0.5",
-          "model_probability": 0.1603,
-          "model_fair_american": 524,
+          "model_probability": 0.16,
+          "model_fair_american": 525,
           "market_odds_american": 527,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.1596,
+          "market_no_vig_probability": 0.1594,
           "edge_pp": 0.06,
-          "ev_per_100": 0.4,
+          "ev_per_100": 0.39,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +524. No material edge on this market at current prices."
+          "trader_note": "Model fair: +525. No material edge on this market at current prices."
         },
         {
           "market_id": "double_chance_x2",
           "market_label": "Double Chance X2",
           "selection_label": "Double Chance X2",
-          "model_probability": 0.8397,
-          "model_fair_american": -524,
+          "model_probability": 0.84,
+          "model_fair_american": -525,
           "market_odds_american": -527,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.8404,
+          "market_no_vig_probability": 0.8406,
           "edge_pp": -0.06,
-          "ev_per_100": -0.08,
+          "ev_per_100": -0.07,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: -524. No material edge on this market at current prices."
+          "trader_note": "Model fair: -525. No material edge on this market at current prices."
         },
         {
           "market_id": "home_win",
           "market_label": "Home Win (1X2)",
           "selection_label": "New Zealand ML",
-          "model_probability": 0.1603,
-          "model_fair_american": 524,
-          "market_odds_american": 526,
+          "model_probability": 0.16,
+          "model_fair_american": 525,
+          "market_odds_american": 527,
           "market_odds_estimated": false,
-          "market_no_vig_probability": 0.1596,
+          "market_no_vig_probability": 0.1594,
           "edge_pp": 0.06,
-          "ev_per_100": 0.4,
+          "ev_per_100": 0.38,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +524. No material edge on this market at current prices."
+          "trader_note": "Model fair: +525. No material edge on this market at current prices."
         },
         {
           "market_id": "asian_handicap_home_0_5",
@@ -464,7 +464,7 @@
           "model_fair_american": 152,
           "market_odds_american": 152,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.3968,
+          "market_no_vig_probability": 0.3969,
           "edge_pp": 0.04,
           "ev_per_100": 0.1,
           "confidence": "D",
@@ -479,7 +479,7 @@
           "model_fair_american": 152,
           "market_odds_american": 152,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.3968,
+          "market_no_vig_probability": 0.3969,
           "edge_pp": 0.04,
           "ev_per_100": 0.1,
           "confidence": "D",
@@ -494,7 +494,7 @@
           "model_fair_american": -152,
           "market_odds_american": -152,
           "market_odds_estimated": false,
-          "market_no_vig_probability": 0.6032,
+          "market_no_vig_probability": 0.6031,
           "edge_pp": -0.04,
           "ev_per_100": -0.06,
           "confidence": "D",
@@ -509,7 +509,7 @@
           "model_fair_american": 152,
           "market_odds_american": 152,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.3968,
+          "market_no_vig_probability": 0.3969,
           "edge_pp": 0.04,
           "ev_per_100": 0.1,
           "confidence": "D",
@@ -521,25 +521,25 @@
           "market_label": "AH Home -2",
           "selection_label": "New Zealand -2",
           "model_probability": 0.0101,
-          "model_fair_american": 9824,
-          "market_odds_american": 9531,
+          "model_fair_american": 9825,
+          "market_odds_american": 9549,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.0104,
           "edge_pp": -0.03,
-          "ev_per_100": -2.95,
+          "ev_per_100": -2.79,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +9824. No material edge on this market at current prices."
+          "trader_note": "Model fair: +9825. No material edge on this market at current prices."
         },
         {
           "market_id": "double_chance_12",
           "market_label": "Double Chance 12",
           "selection_label": "Double Chance 12",
-          "model_probability": 0.763,
+          "model_probability": 0.7628,
           "model_fair_american": -322,
-          "market_odds_american": -322,
+          "market_odds_american": -321,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.7628,
+          "market_no_vig_probability": 0.7626,
           "edge_pp": 0.02,
           "ev_per_100": 0.03,
           "confidence": "D",
@@ -550,13 +550,13 @@
           "market_id": "draw",
           "market_label": "Draw (1X2)",
           "selection_label": "Draw",
-          "model_probability": 0.237,
+          "model_probability": 0.2372,
           "model_fair_american": 322,
-          "market_odds_american": 322,
+          "market_odds_american": 321,
           "market_odds_estimated": false,
-          "market_no_vig_probability": 0.2372,
+          "market_no_vig_probability": 0.2374,
           "edge_pp": -0.02,
-          "ev_per_100": -0.1,
+          "ev_per_100": -0.09,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +322. No material edge on this market at current prices."
@@ -565,45 +565,49 @@
           "market_id": "over_0_5",
           "market_label": "Total Over 0.5",
           "selection_label": "Total Over 0.5",
-          "model_probability": 0.9176,
-          "model_fair_american": -1114,
-          "market_odds_american": -1112,
+          "model_probability": 0.9175,
+          "model_fair_american": -1112,
+          "market_odds_american": -1110,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.9175,
-          "edge_pp": 0.01,
-          "ev_per_100": 0.01,
+          "market_no_vig_probability": 0.9174,
+          "edge_pp": 0.02,
+          "ev_per_100": 0.02,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: -1114. No material edge on this market at current prices."
+          "trader_note": "Model fair: -1112. No material edge on this market at current prices."
         },
         {
           "market_id": "under_0_5",
           "market_label": "Total Under 0.5",
           "selection_label": "Total Under 0.5",
-          "model_probability": 0.0824,
-          "model_fair_american": 1114,
-          "market_odds_american": 1112,
+          "model_probability": 0.0825,
+          "model_fair_american": 1112,
+          "market_odds_american": 1110,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.0825,
-          "edge_pp": -0.01,
-          "ev_per_100": -0.15,
+          "market_no_vig_probability": 0.0826,
+          "edge_pp": -0.02,
+          "ev_per_100": -0.19,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +1114. No material edge on this market at current prices."
+          "trader_note": "Model fair: +1112. No material edge on this market at current prices."
         }
       ],
       "line_movement": {
         "snapshots_available": 5,
         "open_edge_pp": -0.79,
-        "current_edge_pp": -0.89,
-        "edge_change": -0.1,
-        "note": "Edge decreased from open; market may have adjusted."
+        "current_edge_pp": -0.87,
+        "edge_change": -0.08,
+        "note": "Edge stable since open."
       },
       "what_changed": [
         {
           "market_id": "over_4_5",
           "market_label": "Total Over 4.5",
           "changes": {
+            "model_probability": {
+              "prev": 0.1005,
+              "curr": 0.1057
+            },
             "market_odds_american": {
               "prev": 826,
               "curr": 774
@@ -616,7 +620,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.8995,
-              "curr": 0.8945
+              "curr": 0.8943
             },
             "market_odds_american": {
               "prev": -826,
@@ -630,25 +634,7 @@
           "changes": {
             "market_odds_american": {
               "prev": 2259,
-              "curr": 2169
-            }
-          }
-        },
-        {
-          "market_id": "away_over_2_5",
-          "market_label": "Away Team Over 2.5",
-          "changes": {
-            "model_probability": {
-              "prev": 0.2489,
-              "curr": 0.2553
-            },
-            "market_odds_american": {
-              "prev": 299,
-              "curr": 284
-            },
-            "edge_pp": {
-              "prev": -0.21,
-              "curr": -0.5
+              "curr": 2173
             }
           }
         },
@@ -658,11 +644,11 @@
           "changes": {
             "market_odds_american": {
               "prev": -190,
-              "curr": -185
+              "curr": -184
             },
             "edge_pp": {
               "prev": 0.15,
-              "curr": 0.45
+              "curr": 0.46
             }
           }
         },
@@ -672,11 +658,29 @@
           "changes": {
             "market_odds_american": {
               "prev": -190,
-              "curr": -185
+              "curr": -184
             },
             "edge_pp": {
               "prev": 0.15,
-              "curr": 0.45
+              "curr": 0.46
+            }
+          }
+        },
+        {
+          "market_id": "away_over_2_5",
+          "market_label": "Away Team Over 2.5",
+          "changes": {
+            "model_probability": {
+              "prev": 0.2489,
+              "curr": 0.256
+            },
+            "market_odds_american": {
+              "prev": 299,
+              "curr": 284
+            },
+            "edge_pp": {
+              "prev": -0.21,
+              "curr": -0.44
             }
           }
         },
@@ -686,7 +690,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.5606,
-              "curr": 0.5521
+              "curr": 0.5525
             },
             "market_odds_american": {
               "prev": -126,
@@ -700,7 +704,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.4394,
-              "curr": 0.4479
+              "curr": 0.4475
             },
             "market_odds_american": {
               "prev": 126,
@@ -724,29 +728,11 @@
           "changes": {
             "model_probability": {
               "prev": 0.715,
-              "curr": 0.7232
+              "curr": 0.7233
             },
             "market_odds_american": {
               "prev": -252,
               "curr": -265
-            }
-          }
-        },
-        {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "changes": {
-            "model_probability": {
-              "prev": 0.2413,
-              "curr": 0.2488
-            },
-            "market_odds_american": {
-              "prev": 314,
-              "curr": 298
-            },
-            "edge_pp": {
-              "prev": 0.01,
-              "curr": -0.26
             }
           }
         },
@@ -756,29 +742,11 @@
           "changes": {
             "model_probability": {
               "prev": 0.285,
-              "curr": 0.2768
+              "curr": 0.2767
             },
             "market_odds_american": {
               "prev": 252,
               "curr": 265
-            }
-          }
-        },
-        {
-          "market_id": "under_3_5",
-          "market_label": "Total Under 3.5",
-          "changes": {
-            "model_probability": {
-              "prev": 0.7587,
-              "curr": 0.7512
-            },
-            "market_odds_american": {
-              "prev": -314,
-              "curr": -298
-            },
-            "edge_pp": {
-              "prev": -0.01,
-              "curr": 0.26
             }
           }
         },
@@ -788,7 +756,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.465,
-              "curr": 0.4592
+              "curr": 0.4595
             },
             "market_odds_american": {
               "prev": 116,
@@ -802,11 +770,47 @@
           "changes": {
             "model_probability": {
               "prev": 0.535,
-              "curr": 0.5408
+              "curr": 0.5405
             },
             "market_odds_american": {
               "prev": -116,
               "curr": -119
+            }
+          }
+        },
+        {
+          "market_id": "over_3_5",
+          "market_label": "Total Over 3.5",
+          "changes": {
+            "model_probability": {
+              "prev": 0.2413,
+              "curr": 0.2495
+            },
+            "market_odds_american": {
+              "prev": 314,
+              "curr": 298
+            },
+            "edge_pp": {
+              "prev": 0.01,
+              "curr": -0.2
+            }
+          }
+        },
+        {
+          "market_id": "under_3_5",
+          "market_label": "Total Under 3.5",
+          "changes": {
+            "model_probability": {
+              "prev": 0.7587,
+              "curr": 0.7505
+            },
+            "market_odds_american": {
+              "prev": -314,
+              "curr": -298
+            },
+            "edge_pp": {
+              "prev": -0.01,
+              "curr": 0.2
             }
           }
         },
@@ -816,25 +820,11 @@
           "changes": {
             "model_probability": {
               "prev": 0.8192,
-              "curr": 0.8247
+              "curr": 0.8245
             },
             "market_odds_american": {
               "prev": -457,
               "curr": -476
-            }
-          }
-        },
-        {
-          "market_id": "away_over_1_5",
-          "market_label": "Away Team Over 1.5",
-          "changes": {
-            "model_probability": {
-              "prev": 0.5166,
-              "curr": 0.526
-            },
-            "market_odds_american": {
-              "prev": -107,
-              "curr": -112
             }
           }
         },
@@ -844,7 +834,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.1808,
-              "curr": 0.1753
+              "curr": 0.1755
             },
             "market_odds_american": {
               "prev": 457,
@@ -853,22 +843,16 @@
           }
         },
         {
-          "market_id": "asian_handicap_home_neg1",
-          "market_label": "AH Home -1",
+          "market_id": "away_over_1_5",
+          "market_label": "Away Team Over 1.5",
           "changes": {
+            "model_probability": {
+              "prev": 0.5166,
+              "curr": 0.5262
+            },
             "market_odds_american": {
-              "prev": 2030,
-              "curr": 2025
-            }
-          }
-        },
-        {
-          "market_id": "asian_handicap_home_neg1_5",
-          "market_label": "AH Home -1.5",
-          "changes": {
-            "market_odds_american": {
-              "prev": 2030,
-              "curr": 2025
+              "prev": -107,
+              "curr": -112
             }
           }
         },
@@ -898,7 +882,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.4565,
-              "curr": 0.4681
+              "curr": 0.4682
             },
             "market_odds_american": {
               "prev": 120,
@@ -912,11 +896,31 @@
           "changes": {
             "model_probability": {
               "prev": 0.5435,
-              "curr": 0.5319
+              "curr": 0.5318
             },
             "market_odds_american": {
               "prev": -120,
               "curr": -114
+            }
+          }
+        },
+        {
+          "market_id": "asian_handicap_home_neg1",
+          "market_label": "AH Home -1",
+          "changes": {
+            "market_odds_american": {
+              "prev": 2030,
+              "curr": 2028
+            }
+          }
+        },
+        {
+          "market_id": "asian_handicap_home_neg1_5",
+          "market_label": "AH Home -1.5",
+          "changes": {
+            "market_odds_american": {
+              "prev": 2030,
+              "curr": 2028
             }
           }
         },
@@ -966,7 +970,7 @@
           "changes": {
             "market_odds_american": {
               "prev": 521,
-              "curr": 526
+              "curr": 527
             }
           }
         },
@@ -1016,7 +1020,7 @@
           "changes": {
             "market_odds_american": {
               "prev": 9669,
-              "curr": 9531
+              "curr": 9549
             }
           }
         },
@@ -1026,7 +1030,7 @@
           "changes": {
             "market_odds_american": {
               "prev": -316,
-              "curr": -322
+              "curr": -321
             }
           }
         },
@@ -1036,7 +1040,7 @@
           "changes": {
             "market_odds_american": {
               "prev": 316,
-              "curr": 322
+              "curr": 321
             }
           }
         },
@@ -1046,7 +1050,7 @@
           "changes": {
             "market_odds_american": {
               "prev": -1064,
-              "curr": -1112
+              "curr": -1110
             }
           }
         },
@@ -1056,7 +1060,7 @@
           "changes": {
             "market_odds_american": {
               "prev": 1064,
-              "curr": 1112
+              "curr": 1110
             }
           }
         }
@@ -1103,20 +1107,20 @@
           "beat_close": null
         },
         {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "model_prob": 0.57848,
-          "model_fair_odds": 1.7287,
+          "market_id": "under_1_5",
+          "market_label": "Total Under 1.5",
+          "model_prob": 0.10499,
+          "model_fair_odds": 9.5247,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
           "closing_timestamp": null,
           "closing_source": null,
           "beat_close": null
         },
         {
-          "market_id": "under_1_5",
-          "market_label": "Total Under 1.5",
-          "model_prob": 0.10499,
-          "model_fair_odds": 9.5247,
+          "market_id": "over_3_5",
+          "market_label": "Total Over 3.5",
+          "model_prob": 0.57848,
+          "model_fair_odds": 1.7287,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
           "closing_timestamp": null,
           "closing_source": null,
