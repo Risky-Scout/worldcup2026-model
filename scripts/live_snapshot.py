@@ -773,14 +773,20 @@ def _compute_live_edge(
                 "error": "no_odds"}
 
     try:
-        # 3B — Shin devigging
+        # 3B — Devigging: try Shin first; fall back to MULTIPLICATIVE when Shin's
+        # Brent-method solver fails on extreme or synthetic odds distributions.
         odds = [float(live_hw_odds), float(live_dr_odds), float(live_aw_odds)]
         # Guard against invalid odds (<= 1.0)
         if any(o <= 1.0 for o in odds):
             raise ValueError(f"Invalid odds: {odds}")
-        implied = pb.implied.calculate_implied(odds, method=ImpliedMethod.SHIN)
+        try:
+            implied = pb.implied.calculate_implied(odds, method=ImpliedMethod.SHIN)
+            shin_z = implied.method_params.get("z") if implied.method_params else None
+        except Exception as _shin_exc:
+            log.debug("Shin devigging failed (%s); retrying with MULTIPLICATIVE", _shin_exc)
+            implied = pb.implied.calculate_implied(odds, method=ImpliedMethod.MULTIPLICATIVE)
+            shin_z = None
         market_margin = float(implied.margin)
-        shin_z = implied.method_params.get("z") if implied.method_params else None
 
         # 3C — Per-outcome edge using estimated probabilities from live model
         home_vb = pb.betting.identify_value_bet(

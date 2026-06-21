@@ -487,6 +487,15 @@ table.xray-table {
 .edge-neg  { color: var(--red);   font-weight: 600; }
 .edge-zero { color: var(--text-muted); }
 
+/* ── Estimated odds tag ─────────────────────────────────────────────────── */
+.est-tag {
+  font-size: 0.7em;
+  color: var(--text-muted);
+  vertical-align: super;
+  margin-left: 1px;
+  cursor: help;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }

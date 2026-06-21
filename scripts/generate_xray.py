@@ -374,15 +374,24 @@ def build_markets(
         edge_pp = (model_prob - market_no_vig) * 100
         model_fair_american = prob_to_american(model_prob)
 
-        # Market odds from edge report
+        # Market odds: use actual odds from edge report when available,
+        # otherwise estimate from market_no_vig (fair market decimal = 1/p_no_vig).
         edge_entry = edge_lookup.get(key)
         market_odds_decimal: float | None = None
         market_odds_american: int | None = None
+        market_odds_estimated: bool = False
         if edge_entry:
             raw_odds = edge_entry.get("market_odds")
             if raw_odds and isinstance(raw_odds, (int, float)) and raw_odds > 1.0:
                 market_odds_decimal = float(raw_odds)
                 market_odds_american = decimal_to_american(market_odds_decimal)
+        if market_odds_decimal is None and market_no_vig > 0.01:
+            # Estimate market fair decimal from no-vig probability.
+            # This is the market's implied fair price (no vig), slightly better
+            # than actual market odds but allows approximate EV calculation.
+            market_odds_decimal = 1.0 / market_no_vig
+            market_odds_american = decimal_to_american(market_odds_decimal)
+            market_odds_estimated = True
 
         # EV
         ev_per_100: float | None = None
@@ -433,6 +442,7 @@ def build_markets(
             "model_probability": round(model_prob, 4),
             "model_fair_american": model_fair_american,
             "market_odds_american": market_odds_american,
+            "market_odds_estimated": market_odds_estimated,
             "market_no_vig_probability": round(market_no_vig, 4),
             "edge_pp": round(edge_pp, 2),
             "ev_per_100": round(ev_per_100, 2) if ev_per_100 is not None else None,
@@ -443,6 +453,7 @@ def build_markets(
 
     # Sort by |edge_pp| descending
     market_rows.sort(key=lambda x: abs(x["edge_pp"]), reverse=True)
+
     return market_rows
 
 
@@ -690,15 +701,23 @@ def process_live_match(
     prev_snapshots: dict[tuple, list[dict]],
     now_utc: datetime,
     live_generated_at: str | None,
+    pub_match_lookup: dict[str, dict] | None = None,
 ) -> dict:
     match_id = str(lm.get("match_id", ""))
     home = lm.get("home_team", "")
     away = lm.get("away_team", "")
 
     dm = lm.get("derived_markets", {})
-    # Live JSON may not have market_implied_markets; build a rough vig-removed estimate
-    # from the 1X2 probs if missing, or just use dm with no-vig passthrough
-    mim = lm.get("market_implied_markets", dm)
+    # Live JSON may not have market_implied_markets. When missing, use the
+    # pregame market_implied_markets from the published prediction (191 markets)
+    # so edge = live-model-prob minus pregame-market-no-vig gives a meaningful comparison.
+    mim = lm.get("market_implied_markets")
+    if mim is None and pub_match_lookup:
+        pub_m = pub_match_lookup.get(match_id, {})
+        mim = pub_m.get("prediction", {}).get("market_implied_markets")
+    if mim is None:
+        mim = dm  # last resort: zero-edge fallback
+
 
     edges_raw = lm.get("live_edge", {})
     edges: list[dict] = []
@@ -837,13 +856,16 @@ def generate(date: str | None = None) -> None:
     live_match_ids = {str(lm["match_id"]) for lm in live_doc.get("live_matches", [])}
     live_generated_at = live_doc.get("generated_at")
 
+    # Build lookup by match_id so live matches can use pregame market_implied_markets
+    pub_match_lookup: dict[str, dict] = {str(m.get("match_id", "")): m for m in pub_matches}
+
     pregame_results: list[dict] = []
     live_results: list[dict] = []
 
     # Process live matches first
     for lm in live_doc.get("live_matches", []):
         try:
-            obj = process_live_match(lm, clv_index, prev_snapshots, now_utc, live_generated_at)
+            obj = process_live_match(lm, clv_index, prev_snapshots, now_utc, live_generated_at, pub_match_lookup)
             live_results.append(obj)
         except Exception as e:
             print(f"  WARN: live match {lm.get('match_id')} failed: {e}")

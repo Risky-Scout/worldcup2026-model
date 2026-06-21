@@ -52,7 +52,7 @@ import pandas as pd
 
 log = logging.getLogger(__name__)
 
-CLEAN_HEAD = "0a819c6"
+CLEAN_HEAD = "973f2bc"
 PROMOTION_FLAGS_REQUIRED = {
     "WC_BREAKING_SCHEMA_CHANGES_ALLOWED": False,
     "WC_USE_EGM_FOR_PUBLIC": False,   # must be False until Gate 4

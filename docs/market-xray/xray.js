@@ -33,9 +33,10 @@ function calculateEV(modelProb, marketDecimal) {
   return modelProb * (marketDecimal - 1) * 100 - (1 - modelProb) * 100;
 }
 
-function formatAmericanOdds(american) {
+function formatAmericanOdds(american, estimated) {
   if (american == null) return '—';
-  return american > 0 ? '+' + american : '' + american;
+  const base = american > 0 ? '+' + american : '' + american;
+  return estimated ? base + '<span class="est-tag" title="Fair market estimate (no actual book odds)">~</span>' : base;
 }
 
 function formatEdgePP(pp) {
@@ -180,7 +181,7 @@ function renderMarketsTable(markets, container, options) {
         <td>${formatPct(m.model_probability)}</td>
         <td>${formatPct(m.market_no_vig_probability)}</td>
         <td style="font-weight:600">${formatAmericanOdds(m.model_fair_american)}</td>
-        <td style="color:var(--blue)">${formatAmericanOdds(m.market_odds_american)}</td>
+        <td style="color:var(--blue)">${formatAmericanOdds(m.market_odds_american, m.market_odds_estimated)}</td>
         <td class="${edgeCls}">${formatEdgePP(m.edge_pp)}</td>
         <td>${m.ev_per_100 != null ? formatEV(m.ev_per_100) : '—'}</td>
         <td>${confidenceBadge(m.confidence)}</td>
