@@ -28,7 +28,6 @@ CALLOUT_B = RGBColor(0xFD, 0xF8, 0xED)
 
 def new_doc():
     doc = Document()
-    # Page margins: 1 inch all sides
     for section in doc.sections:
         section.page_width  = Inches(8.5)
         section.page_height = Inches(11)
@@ -36,18 +35,16 @@ def new_doc():
         section.right_margin  = Inches(1.1)
         section.top_margin    = Inches(1.0)
         section.bottom_margin = Inches(1.0)
-    # Remove default empty paragraph
     for p in doc.paragraphs:
         p._element.getparent().remove(p._element)
     return doc
 
 
 def set_cell_bg(cell, rgb: RGBColor):
-    """Set table cell background color via XML."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
-    hex_color = str(rgb)  # RGBColor.__str__ returns hex like '0A0E1A'
+    hex_color = str(rgb)
     shd.set(qn('w:val'), 'clear')
     shd.set(qn('w:color'), 'auto')
     shd.set(qn('w:fill'), hex_color)
@@ -55,7 +52,6 @@ def set_cell_bg(cell, rgb: RGBColor):
 
 
 def set_cell_border(cell, **kwargs):
-    """Set borders on a table cell."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     tcBorders = OxmlElement('w:tcBorders')
@@ -69,7 +65,6 @@ def set_cell_border(cell, **kwargs):
 
 
 def para_keep_with_next(para):
-    """Mark paragraph to keep with next (prevents orphan headings)."""
     pPr = para._p.get_or_add_pPr()
     kwn = OxmlElement('w:keepWithNext')
     pPr.append(kwn)
@@ -78,7 +73,6 @@ def para_keep_with_next(para):
 
 
 def add_site_header(doc, article_title):
-    """Top branding bar: WIZARDOFODDS.COM | Article Title."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after  = Pt(4)
@@ -89,7 +83,6 @@ def add_site_header(doc, article_title):
     run2 = p.add_run(f"     |     {article_title}")
     run2.font.size = Pt(9)
     run2.font.color.rgb = MUTED_CLR
-    # Gold bottom border on paragraph
     pPr = p._p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     bottom = OxmlElement('w:bottom')
@@ -134,7 +127,6 @@ def add_h2(doc, text):
     run.bold = True
     run.font.size = Pt(14)
     run.font.color.rgb = BODY_CLR
-    # Gold bottom border
     pPr = p._p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     bottom = OxmlElement('w:bottom')
@@ -165,8 +157,6 @@ def add_body(doc, text, space_after=Pt(7), justify=True):
     p.paragraph_format.space_after  = space_after
     if justify:
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    # Handle simple bold markup: **text** or split on markers
-    # We'll use a simple approach: bold segments wrapped in **
     run = p.add_run(text)
     run.font.size = Pt(10)
     run.font.color.rgb = BODY_CLR
@@ -189,7 +179,6 @@ def add_body_rich(doc, segments, space_after=Pt(7), justify=True):
 
 
 def add_formula(doc, text):
-    """Monospace formula box with light blue background."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(4)
     p.paragraph_format.space_after  = Pt(6)
@@ -199,7 +188,6 @@ def add_formula(doc, text):
     run.font.name = 'Courier New'
     run.font.size = Pt(9)
     run.font.color.rgb = RGBColor(0x1A, 0x20, 0x60)
-    # Light blue shading on paragraph
     pPr = p._p.get_or_add_pPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
@@ -210,11 +198,9 @@ def add_formula(doc, text):
 
 
 def add_callout(doc, label, text):
-    """Gold left-border callout box."""
     tbl = doc.add_table(rows=1, cols=1)
     tbl.style = 'Table Grid'
     cell = tbl.cell(0, 0)
-    # Label
     lp = cell.add_paragraph()
     lp.paragraph_format.space_before = Pt(2)
     lp.paragraph_format.space_after  = Pt(2)
@@ -222,7 +208,6 @@ def add_callout(doc, label, text):
     lr.bold = True
     lr.font.size = Pt(9)
     lr.font.color.rgb = GOLD
-    # Body
     bp = cell.add_paragraph()
     bp.paragraph_format.space_before = Pt(0)
     bp.paragraph_format.space_after  = Pt(4)
@@ -231,11 +216,9 @@ def add_callout(doc, label, text):
     br.font.size = Pt(9.5)
     br.font.color.rgb = RGBColor(0x33, 0x33, 0x55)
     br.italic = True
-    # Remove default empty paragraph added by add_paragraph inside cell
     for spare in cell.paragraphs[:1]:
         spare._element.getparent().remove(spare._element)
     set_cell_bg(cell, CALLOUT_B)
-    # Gold left border
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     tcBorders = OxmlElement('w:tcBorders')
@@ -285,7 +268,6 @@ def add_page_break(doc):
 
 
 def dark_table_header(tbl, headers):
-    """Style the first row of a table as a dark navy header with gold text."""
     hdr_row = tbl.rows[0]
     for i, cell in enumerate(hdr_row.cells):
         cell.text = ''
@@ -353,11 +335,12 @@ def build_article1():
         "long-run results.")
     add_body(doc,
         "This model produces a full joint probability distribution over every possible final "
-        "score for every 2026 FIFA World Cup match. It runs six competing parametric models "
-        "daily, blends them with a composite rating system built from six independent data "
-        "sources, reconciles the result against live bookmaker prices, and runs every output "
-        "through an automated calibration framework. The pipeline runs without human "
-        "intervention 24 hours a day.")
+        "score for every 2026 FIFA World Cup match. It blends 12 independent signal sources "
+        "into a composite team rating, runs six competing parametric models daily, anchors "
+        "each match's goal totals against live bookmaker lines, reconciles the result against "
+        "market probabilities, and applies a Hierarchical Bayesian blend before final "
+        "calibration. The pipeline runs without human intervention 24 hours a day and FTP-"
+        "uploads results to WizardOfOdds.com after every run.")
 
     # ── What a PMF Is ────────────────────────────────────────────────────────
     add_h2(doc, "What a Joint Score PMF Actually Is")
@@ -377,7 +360,6 @@ def build_article1():
         "no separate model for Over/Under, no separate model for BTTS -- every number flows "
         "from one source of truth:")
 
-    # Markets table
     tbl = doc.add_table(rows=9, cols=2)
     tbl.style = 'Table Grid'
     tbl.columns[0].width = Inches(1.8)
@@ -406,7 +388,7 @@ def build_article1():
         "different sources or use different models for different markets.")
 
     # ── Step 1: Composite Prior ───────────────────────────────────────────────
-    add_h2(doc, "Step 1: Rating Every Team -- The Composite Prior")
+    add_h2(doc, "Step 1: Rating Every Team -- The 12-Signal Composite Prior")
     add_body(doc,
         "The first task is assigning each of the 48 World Cup teams an attack lambda and "
         "a defense lambda -- the expected goals scored and conceded against an average "
@@ -414,49 +396,154 @@ def build_article1():
         "entirely. Club data does not transfer cleanly to international football. FIFA "
         "rankings can lag months behind a team's actual form. Bookmaker odds contain genuine "
         "signal but can be distorted by public betting flow on marquee matches. The solution "
-        "is a composite prior blended from six independent data sources.")
+        "is a composite prior blended from twelve independent signal sources.")
 
-    # Rating sources table
-    add_h3(doc, "The Six Rating Sources")
-    add_body(doc, "Weights shown are for matches where bookmaker odds are available:", space_after=Pt(4))
-    tbl2 = doc.add_table(rows=7, cols=4)
+    add_h3(doc, "The Twelve Signal Sources")
+    add_body(doc, "All twelve sources are active for every prediction:", space_after=Pt(4))
+    tbl2 = doc.add_table(rows=13, cols=4)
     tbl2.style = 'Table Grid'
-    col_widths = [1.5, 1.9, 0.7, 2.1]
+    col_widths = [0.4, 1.6, 1.7, 0.65]
     for i, w in enumerate(col_widths):
         for cell in tbl2.columns[i].cells:
             cell.width = Inches(w)
-    dark_table_header(tbl2, ["Source", "Primary Data", "Weight", "Key Strength"])
+    dark_table_header(tbl2, ["#", "Signal Source", "Primary Data", "Weight"])
     sources = [
-        ("1. Market-Implied",         "1X2 odds from up to 6 bookmakers",    "30%",  "Late team news, sharp money, all available information"),
-        ("2. FIFA Ranking",           "March 2026 points snapshot",          "~12%", "Long-run international performance across all competitions"),
-        ("3. Qualifying Record",      "Attack/defense efficiency, shrunk",   "~10%", "Campaign-specific form, recent competitive history"),
-        ("4. Pi Rating (penaltyblog)","Goal-margin Elo, goal-sensitive",     "~18%", "Fast form updates, responds to margin of victory"),
-        ("5. Elo Rating (penaltyblog)","Win/loss/draw outcomes",             "~35%", "Stability and long-run signal, not distorted by flukes"),
-        ("6. Confederation Baseline", "Historical WC averages by region",   "~5%",  "Soft floor preventing impossible extreme estimates"),
+        ("1",  "market_implied",       "BDL consensus 1X2 odds, SHIN no-vig",               "~20%"),
+        ("2",  "futures_implied",       "Tournament outright futures odds",                   "~5%"),
+        ("3",  "best_player_form",      "Top-player performance ratings per team",            "~5%"),
+        ("4",  "fifa_ranking",          "March 2026 official FIFA ranking points",            "~10%"),
+        ("5",  "qualifying",            "Attack/defense efficiency, Bayesian-shrunk",         "~8%"),
+        ("6",  "penaltyblog_pi",        "Pi Ratings -- goal-margin dynamic rating",           "~15%"),
+        ("7",  "penaltyblog_elo",       "Elo rating, home_field_advantage=100",               "~12%"),
+        ("8",  "massey",               "Massey method ratings",                              "~5%"),
+        ("9",  "confederation",         "Confederation strength adjustment",                  "~5%"),
+        ("10", "tournament_wc2026",     "In-tournament Bayesian shrinkage on WC2026 results", "~5%"),
+        ("11", "injuries",             "avg_rating x (OUT=1.0 / GTD=0.5) impact score",     "~5%"),
+        ("12", "intl_poisson",          "Bivariate Poisson on 49,433 Kaggle intl matches",   "~15%"),
     ]
-    for i, (src, data, wt, strength) in enumerate(sources, 1):
+    for i, (num, src, data, wt) in enumerate(sources, 1):
         row = tbl2.rows[i]
-        row.cells[0].text = src
-        row.cells[1].text = data
-        row.cells[2].text = wt
-        row.cells[3].text = strength
+        row.cells[0].text = num
+        row.cells[1].text = src
+        row.cells[2].text = data
+        row.cells[3].text = wt
         style_data_row(tbl2, i, alt=(i % 2 == 0))
     add_spacer(doc, 8)
 
-    add_h3(doc, "Source 1: Market-Implied Strength (30% weight)")
+    add_h3(doc, "Signal 1: market_implied (BDL Consensus Odds, ~20% weight)")
     add_body(doc,
         "When bookmaker odds are available, they encode information no rating system can "
         "access: late team news, undisclosed injuries, sharp professional money, and the "
         "aggregate view of every serious analyst who has looked at the match. The model "
         "reverse-engineers what attack and defense lambdas would produce the bookmaker's "
-        "observed 1X2 probabilities. Before doing this, the bookmaker margin must be removed. "
-        "SHIN normalization is applied to all odds from all bookmakers to convert them to "
-        "fair (no-margin) probabilities. Using raw odds as fair probabilities would "
-        "consistently bias every market comparison -- this step is not optional. Up to 6 "
-        "sportsbooks contribute: FanDuel, DraftKings, BetMGM, BetRivers, Caesars, and "
-        "Fanatics. Their no-vig probabilities are averaged to produce a consensus view.")
+        "observed 1X2 probabilities. SHIN normalization removes the bookmaker margin before "
+        "any comparison. Up to 6 sportsbooks contribute: FanDuel, DraftKings, BetMGM, "
+        "BetRivers, Caesars, and Fanatics. The market_weight parameter is fixed at 0.20 for "
+        "CLV-independence mode -- preventing the model from over-fitting to the very prices "
+        "it is trying to beat.")
 
-    add_h3(doc, "Host Advantage and Altitude Adjustments")
+    add_h3(doc, "Signal 2: futures_implied (Tournament Outright Futures, ~5%)")
+    add_body(doc,
+        "Tournament outright futures odds (winner, top-4, group winner) are converted to "
+        "team strength priors using a Bradley-Terry decomposition. These odds embed long-run "
+        "tournament expectations and provide useful signal for teams where match-level 1X2 "
+        "odds are thin or unavailable -- for example, in early group-stage fixtures.")
+
+    add_h3(doc, "Signal 3: best_player_form (Top-Player Performance, ~5%)")
+    add_body(doc,
+        "For each team, the performance rating of the top-rated player currently in the "
+        "tournament squad is used as a proxy for the team's ceiling performance level. "
+        "This captures the 'superstar factor' that pure team-level ratings miss: the "
+        "presence of an elite in-form striker or creative midfielder shifts a team's "
+        "attacking potential beyond what aggregate ratings show.")
+
+    add_h3(doc, "Signal 4: fifa_ranking (~10% weight)")
+    add_body(doc,
+        "FIFA's official points system, converted to an attack lambda via a calibrated "
+        "sigmoid mapping. Captures long-run international performance across all "
+        "competitions. Weakness: updates infrequently. The model uses the March 2026 "
+        "snapshot -- the last official pre-tournament update.")
+
+    add_h3(doc, "Signal 5: qualifying (~8% weight)")
+    add_body(doc,
+        "Each team's attack and defense efficiency during their qualifying campaign, "
+        "Bayesian-shrunk toward the confederation average using the n/(n+3) formula. "
+        "A team that dominated its qualifying group carries a meaningfully different "
+        "expected output than one that scraped through.")
+
+    add_h3(doc, "Signals 6-7: penaltyblog_pi and penaltyblog_elo (~27% combined)")
+    add_body(doc,
+        "Pi Rating (goal-margin-sensitive, ~15%) and Elo (~12%), both computed using the "
+        "penaltyblog library. Pi updates on actual goal margins -- a 4-0 win earns a larger "
+        "boost than a 1-0 win -- making it highly responsive to genuine form shifts. Elo "
+        "updates only on match result (win/draw/loss), providing stability that prevents "
+        "the prior from swinging sharply on an unusual scoreline. penaltyblog_elo is "
+        "parameterized with home_field_advantage=100, calibrated to international data.")
+
+    add_h3(doc, "Signal 8: massey (~5%)")
+    add_body(doc,
+        "Massey ratings solve a least-squares system over the full history of international "
+        "results to assign each team a strength rating. They are particularly useful for "
+        "teams with limited recent match data, where Elo and Pi have small sample noise. "
+        "The Massey signal acts as an additional stabilizer for data-sparse regions.")
+
+    add_h3(doc, "Signal 9: confederation (~5%)")
+    add_body(doc,
+        "Historical World Cup attack averages by confederation: CONMEBOL 1.45, UEFA 1.35, "
+        "CONCACAF 1.20, CAF 1.10, AFC 1.10, OFC 0.90. Acts as a soft floor preventing "
+        "any team from receiving a lambda wildly inconsistent with their region's historical "
+        "output. Provides meaningful signal only for data-sparse teams.")
+
+    add_h3(doc, "Signal 10: tournament_wc2026 (In-Tournament Bayesian Shrinkage, ~5%)")
+    add_body(doc,
+        "Once WC2026 matches complete, results feed back into each team's rating via "
+        "Bayesian shrinkage. For n completed WC2026 matches, the shrinkage weight is "
+        "n/(n+3): one match contributes 25%, two matches 40%, three matches 50%. "
+        "Adjustments are capped at +/-30%. When BallDontLie shot data is available, "
+        "tournament ratios blend 40% actual goals with 60% expected goals (xG) to "
+        "reduce small-sample noise. As of June 2026: 22 teams have active adjustments.")
+
+    add_h3(doc, "Signal 11: injuries (Blueprint Injury Impact Score, ~5%)")
+    add_body(doc,
+        "For each team, an injury impact score is computed from the BallDontLie squad "
+        "and injury report data:")
+    add_formula(doc,
+        "injury_impact = SUM over injured players of:\n"
+        "    player_avg_rating x status_weight\n"
+        "\n"
+        "Where status_weight = 1.0 for OUT, 0.5 for GTD (game-time decision)\n"
+        "\n"
+        "Higher impact score -> larger downward adjustment to attack/defense lambdas")
+    add_body(doc,
+        "This captures the effect of missing star players that no pre-tournament rating "
+        "system can account for. A team missing its first-choice striker has a measurably "
+        "different expected attack rate than their composite rating implies.")
+
+    add_h3(doc, "Signal 12: intl_poisson (International Bivariate Poisson, 15% blend)")
+    add_body(doc,
+        "A dedicated Bivariate Poisson model fitted from scratch on 49,433 international "
+        "football matches sourced from the Kaggle international results dataset, spanning "
+        "1872 through 2026. A 3-year exponential half-life decay weighting ensures "
+        "recent results dominate while the full historical depth provides stable "
+        "long-run team strength estimates for every nation regardless of how active "
+        "their recent calendar has been.")
+    add_body(doc,
+        "The intl_poisson signal is particularly valuable for: (a) neutralizing home "
+        "advantage effects -- the historical dataset allows precise estimation of neutral-"
+        "venue attack and defense rates for all 48 teams; (b) providing independent "
+        "validation of the live-market and Elo signals; and (c) anchoring predictions "
+        "for low-data teams whose Elo and Pi ratings rest on thin sample bases. The "
+        "signal is blended at 15% weight into the composite prior.")
+    add_callout(doc, "Why 12 Sources Instead of Fewer?",
+        "Each source captures information the others miss. Market odds encode late-breaking "
+        "news. Elo encodes long-run outcome stability. Pi encodes recent goal-margin form. "
+        "intl_poisson encodes deep historical attack/defense patterns. Massey stabilizes "
+        "data-sparse nations. Futures encode tournament-level expectations. Injuries encode "
+        "what no pre-tournament rating can know. The ensemble is more robust than any "
+        "single source, and correlation between sources is low enough that each genuinely "
+        "adds information.")
+
+    add_h3(doc, "Host and Altitude Adjustments")
     add_body(doc,
         "USA, Canada, and Mexico each receive +0.10 to attack lambda and -0.10 to defense "
         "lambda as co-hosts. All other matches are treated as neutral venue. Three Mexican "
@@ -467,32 +554,124 @@ def build_article1():
     add_bullet(doc, "Estadio Akron, Guadalajara (1,560m): 0.97x multiplier -- approximately 3% reduction")
     add_bullet(doc, "Estadio BBVA, Monterrey (530m): no adjustment")
 
-    add_h3(doc, "Tournament Adjustment: Learning from 2026 Results")
-    add_body(doc,
-        "Once WC2026 matches complete, their results feed back into each team's composite "
-        "rating through a Bayesian shrinkage mechanism. For a team with n completed WC2026 "
-        "matches, the shrinkage factor is n / (n + 3). This means one match contributes "
-        "25% weight, two matches contribute 40%, three matches 50% -- preventing overreaction "
-        "to a single result while genuinely updating on multiple games. Adjustments are "
-        "capped at +/- 30%. Currently 22 teams have active tournament adjustments from "
-        "11 completed WC2026 matches. Expected goals data from BallDontLie is blended in "
-        "for all 22 teams (40% actual goals / 60% xG) to reduce noise.")
-
     add_h3(doc, "Dynamic WC_AVG Scaling")
     add_body(doc,
         "This World Cup is playing at a historically high scoring rate. The historical "
-        "average from 2018 and 2022 was 1.30 goals per team per match. Through 11 completed "
+        "average from 2018 and 2022 was 1.30 goals per team per match. Through completed "
         "2026 matches, the observed rate is 1.455 goals per team per match. The model applies "
         "a scaling factor of 1.119x to all 52 team lambdas after the composite prior is "
         "built, ensuring predictions reflect the actual tournament environment rather than "
         "being anchored to historical baselines.")
-    add_callout(doc, "Current Status -- June 2026",
-        "22 teams have active tournament adjustments from 11 completed WC2026 matches. "
-        "The WC_AVG scale factor is 1.119x (observed 1.455 goals/team vs historical 1.30). "
-        "xG blend is active for all 22 teams with completed matches.")
 
-    # ── Step 2: Bivariate Poisson ─────────────────────────────────────────────
-    add_h2(doc, "Step 2: How P(Home=h, Away=a) Is Calculated -- The Bivariate Poisson")
+    # ── Step 2: Per-Match Calibration Enhancements ───────────────────────────
+    add_h2(doc, "Step 2: Per-Match Calibration Enhancements")
+    add_body(doc,
+        "After the composite team lambdas are established, each individual match receives "
+        "a set of per-match adjustments derived from live bookmaker data, group standings, "
+        "and shot quality metrics. These adjustments fine-tune the team-level prior to "
+        "the specific context of each fixture.")
+
+    add_h3(doc, "total_anchor: BDL Market Over/Under Line")
+    add_body(doc,
+        "For each match, the model pulls the Over/Under total line from BallDontLie "
+        "bookmaker data. The median across all available vendors is taken (clipped to the "
+        "range 1.5 -- 6.0) and used as a per-match expected total goals anchor. This "
+        "anchor is blended with the parametric estimate, ensuring the model's expected "
+        "total goals stays grounded in current market pricing. When no BDL O/U data is "
+        "available, the model falls back to the tournament-wide average.")
+
+    add_h3(doc, "home_team_total / away_team_total: Individual Team Totals")
+    add_body(doc,
+        "Where BDL markets carry individual team total lines (e.g., Home Over 1.5 / "
+        "Away Over 0.5), the implied team goal expectations are extracted and blended "
+        "at 50% weight into the composite lambda for each team. This provides match-"
+        "specific market intelligence at the team level, beyond just the match total.")
+
+    add_h3(doc, "pts_diff / gd_diff: Group Standings Adjustments")
+    add_body(doc,
+        "In the group stage, each team's current points and goal differential in the "
+        "group standings are used to apply a small attack multiplier. A team top of "
+        "their group with a +5 goal differential enters the match with a demonstrated "
+        "recent form advantage that may not yet be fully reflected in the composite "
+        "rating. The multiplier is applied as:")
+    add_formula(doc,
+        "attack_mult = 1.0 + (pts_diff / max_pts_diff) * 0.08\n"
+        "             + (gd_diff / max_gd_diff) * 0.08\n"
+        "\n"
+        "Where diffs are computed as (team value - opponent value)")
+
+    add_h3(doc, "WDL Form String")
+    add_body(doc,
+        "Each team's recent Win/Draw/Loss sequence is parsed and converted to a form "
+        "score. This form score is blended 50/50 with the rating z-score to produce "
+        "a final momentum-adjusted attack rating. A team on a W-W-W-W run receives "
+        "a meaningful uplift even if their underlying rating has not yet updated.")
+
+    add_h3(doc, "confederation_diff: Cross-Confederation Adjustment")
+    add_body(doc,
+        "When two teams from different confederations meet, a confederation strength "
+        "differential is computed using historical World Cup attack averages. The "
+        "stronger confederation's team receives a small attack multiplier:")
+    add_formula(doc, "attack_mult = 1.0 +/- confederation_strength_diff * [0.02 to 0.05]")
+
+    add_h3(doc, "venue_lambda_adj: Travel, Rest, and Stadium Capacity")
+    add_body(doc,
+        "Three venue-specific factors are combined into a single lambda adjustment "
+        "(promoted from shadow mode to full production):")
+    add_bullet(doc, "Haversine travel distance from each team's base camp to the match venue -- longer travel applies a small downward adjustment to the traveling team's attack lambda")
+    add_bullet(doc, "Rest days since each team's last match -- fewer rest days reduces expected output")
+    add_bullet(doc, "Stadium capacity as a proxy for home-crowd atmosphere effects")
+    add_body(doc,
+        "The three factors are combined multiplicatively and applied to each team's "
+        "attack and defense lambdas independently.")
+
+    add_h3(doc, "Bayesian Blend: HierarchicalBayesianGoalModel at 20%")
+    add_body(doc,
+        "After the parametric PMF is generated, a HierarchicalBayesianGoalModel "
+        "(implemented via penaltyblog) is computed for each match and blended at 20% "
+        "weight into the final PMF. This Bayesian model uses partial pooling across "
+        "all teams in the tournament -- a team with few completed matches borrows "
+        "strength from teams with similar rating profiles. The blend is:")
+    add_formula(doc,
+        "final_PMF = 0.80 * parametric_PMF + 0.20 * bayesian_PMF")
+
+    add_h3(doc, "Adaptive Temperature: Dynamic Calibration Weighting")
+    add_body(doc,
+        "The calibration temperature T shifts adaptively based on the number of "
+        "completed WC2026 matches:")
+    add_formula(doc,
+        "If completed_matches >= 24:\n"
+        "    weight = 60% WC2026 data / 40% historical (2018+2022)\n"
+        "\n"
+        "If completed_matches < 24:\n"
+        "    weight = 30% WC2026 data / 70% historical")
+    add_body(doc,
+        "This prevents the calibration from over-weighting a small 2026 sample early "
+        "in the tournament while ensuring the model transitions to current-tournament "
+        "calibration as data accumulates.")
+
+    add_h3(doc, "xGOT: Shot Quality Correction")
+    add_body(doc,
+        "When BallDontLie shot quality data is available, each team's mean xGOT/xG "
+        "ratio (expected goals on target divided by expected goals) is computed as a "
+        "measure of shot quality. A team generating more dangerous shot locations "
+        "receives a multiplicative upward correction to their attack lambda:")
+    add_formula(doc,
+        "attack_lambda *= (team_mean_xGOT / team_mean_xG) / league_average_ratio")
+
+    add_h3(doc, "calib_rho: Dixon-Coles Correlation Parameter")
+    add_body(doc,
+        "The Dixon-Coles low-score correlation parameter rho is calibrated from "
+        "WC2026 data and blended with a market-derived prior:")
+    add_formula(doc,
+        "calib_rho = 0.60 * prior_rho + 0.40 * market_implied_rho\n"
+        "\n"
+        "Current calibrated value: rho = -0.042\n"
+        "(Negative rho slightly reduces the probability of 0-0 and 1-1 draws\n"
+        " relative to independent Poisson)")
+
+    # ── Step 3: Bivariate Poisson ─────────────────────────────────────────────
+    add_h2(doc, "Step 3: How P(Home=h, Away=a) Is Calculated -- The Bivariate Poisson")
     add_body(doc,
         "This is the most technically interesting stage of the model -- the one that "
         "separates it from the standard approach found in most public football forecasters.")
@@ -525,13 +704,9 @@ def build_article1():
     add_body(doc,
         "Z3 is the key innovation. It creates positive correlation between home and away "
         "goals through a shared latent process. A match with high Z3 is one where both "
-        "teams are pushed into an open, attacking game -- think a Champions League quarter "
-        "final at 2-1 in the 70th minute with both teams going for it.")
+        "teams are pushed into an open, attacking game.")
 
     add_h3(doc, "The Joint Probability Formula")
-    add_body(doc,
-        "The joint probability of observing exactly h home goals and a away goals under "
-        "the Bivariate Poisson model is:")
     add_formula(doc,
         "P(H=h, A=a) = e^(-(lam_1 + lam_2 + lam_3))\n"
         "              * SUM_{k=0}^{min(h,a)}\n"
@@ -539,21 +714,19 @@ def build_article1():
         "                * [lam_2^(a-k) / (a-k)!]\n"
         "                * [lam_3^k     / k!    ]")
     add_body(doc,
-        "When lambda_3 = 0, the sum has only one term (k=0) and the formula reduces "
-        "exactly to the independent Poisson product. The Bivariate Poisson IS the "
-        "independent Poisson when the data does not support correlation -- it never "
-        "breaks, it only adds information when it is there.")
+        "When lambda_3 = 0, the formula reduces exactly to the independent Poisson product. "
+        "The Bivariate Poisson IS the independent Poisson when the data does not support "
+        "correlation -- it never breaks, it only adds information when it is there.")
     add_callout(doc, "Current Calibrated Value",
-        "lambda_3 = 0.170, calibrated from 11 completed WC2026 matches. "
+        "lambda_3 = 0.170, calibrated from completed WC2026 matches. "
         "Positive and meaningful -- this World Cup is showing exactly the mutual intensity "
         "correlation the model was built to capture. Cov(H, A) = lambda_3 = 0.170.")
 
     add_h3(doc, "The Six Parametric Competitors")
     add_body(doc,
-        "The model does not simply use the Bivariate Poisson. It runs six competing "
-        "parametric models daily, selects the winner by negative log-likelihood on "
-        "held-out WC2026 data, and uses the champion for all predictions. The winner "
-        "is reselected daily as more matches accumulate:", space_after=Pt(4))
+        "The model runs six competing parametric models daily, selects the winner by "
+        "negative log-likelihood on held-out WC2026 data, and uses the champion for all "
+        "predictions. The winner is reselected daily as more matches accumulate:", space_after=Pt(4))
 
     tbl3 = doc.add_table(rows=7, cols=3)
     tbl3.style = 'Table Grid'
@@ -563,7 +736,7 @@ def build_article1():
     dark_table_header(tbl3, ["#", "Model", "What It Captures"])
     models = [
         ("1", "Independent Poisson",   "Classical baseline. Goals independent. Useful benchmark."),
-        ("2", "Dixon-Coles",           "Low-score correction via rho parameter. Currently rho ~ 0."),
+        ("2", "Dixon-Coles",           "Low-score correction via rho = -0.042. Currently calibrated from WC2026 data."),
         ("3", "Bivariate Poisson",     "Shared intensity lambda_3 = 0.170. Current log-loss champion."),
         ("4", "Weibull Copula",        "Heavier tails than Poisson. More high-scoring outliers."),
         ("5", "Negative Binomial",     "Overdispersion: variance > mean. Common in real football data."),
@@ -577,8 +750,8 @@ def build_article1():
         style_data_row(tbl3, i, alt=(i % 2 == 0))
     add_spacer(doc, 8)
 
-    # ── Step 3: Market Reconciliation ────────────────────────────────────────
-    add_h2(doc, "Step 3: Market Reconciliation (SLSQP Optimization)")
+    # ── Step 4: Market Reconciliation ────────────────────────────────────────
+    add_h2(doc, "Step 4: Market Reconciliation (SLSQP Optimization)")
     add_body(doc,
         "Even the Bivariate Poisson cannot know about a goalkeeper injury announced 90 "
         "minutes before kickoff. Market reconciliation solves this. For each match, the "
@@ -593,22 +766,22 @@ def build_article1():
         "point, ensuring the optimizer only moves as far as the market evidence requires. "
         "Constraints are hard: all cell values must be non-negative and sum to 1.0.")
     add_body(doc,
-        "When SLSQP converges to a better solution than a simple weighted-average blend, "
-        "SLSQP is used. In practice, SLSQP dominates for virtually all matches -- currently "
-        "only 1 non-convergence out of 63 matches, and even that case passes the "
-        "plausibility check.")
+        "After SLSQP convergence, the HierarchicalBayesianGoalModel is blended at 20% "
+        "weight into the final PMF (see Step 2). When SLSQP converges, it dominates for "
+        "virtually all matches -- currently only 1 non-convergence out of 63 matches.")
 
-    # ── Step 4: Calibration ────────────────────────────────────────────────
-    add_h2(doc, "Step 4: Calibration (Temperature Scaling)")
+    # ── Step 5: Calibration ────────────────────────────────────────────────
+    add_h2(doc, "Step 5: Calibration (Adaptive Temperature Scaling)")
     add_body(doc,
         "A model is calibrated when the probabilities it outputs match observed frequencies. "
         "When it says 30%, outcomes should occur 30% of the time. Calibration is distinct "
         "from accuracy -- an overconfident model assigns 80% to outcomes that only occur "
         "65% of the time.")
     add_body(doc,
-        "The model uses temperature scaling: a single parameter T fitted by minimizing "
-        "exact-score log loss on out-of-sample predictions from the 2018 and 2022 World "
-        "Cups. The calibrated probability for each cell is:")
+        "The model uses adaptive temperature scaling: a single parameter T fitted by "
+        "minimizing exact-score log loss on out-of-sample predictions. Weighting shifts "
+        "from 30/70 (WC2026/historical) to 60/40 once 24 or more matches complete. "
+        "The calibrated probability for each cell is:")
     add_formula(doc,
         "p_calibrated[h,a]  proportional to  p_raw[h,a] ^ (1/T)\n"
         "\n"
@@ -618,14 +791,12 @@ def build_article1():
         "(T > 1 flattens the distribution, correcting for mild overconfidence)")
     add_body(doc,
         "Five calibration metrics are evaluated on out-of-sample predictions only: "
-        "exact-score negative log-likelihood (primary metric), Ranked Probability Score "
+        "exact-score negative log-likelihood (primary), Ranked Probability Score "
         "for 1X2, multiclass Brier score, Expected Calibration Error, and the ignorance "
-        "score. T = 1.089 indicates the model is mildly overconfident -- a common pattern "
-        "in football models trained on limited data -- and the temperature correction is "
-        "a modest fine-tuning rather than a major revision.")
+        "score.")
 
-    # ── Step 5: Edge Screening ─────────────────────────────────────────────
-    add_h2(doc, "Step 5: Edge Screening and Kelly Sizing")
+    # ── Step 6: Edge Screening ─────────────────────────────────────────────
+    add_h2(doc, "Step 6: Edge Screening and Kelly Sizing")
     add_body(doc,
         "With a calibrated PMF for each match, the model compares its probability "
         "estimates against the bookmaker's no-vig prices. An edge exists when the model's "
@@ -644,8 +815,8 @@ def build_article1():
         "Half Kelly:   f* / 2    [default -- recommended]\n"
         "Hard cap:     5% of bankroll regardless of computed value")
 
-    # ── Step 6: CLV ───────────────────────────────────────────────────────
-    add_h2(doc, "Step 6: Closing Line Value (CLV) -- The Edge Litmus Test")
+    # ── Step 7: CLV ───────────────────────────────────────────────────────
+    add_h2(doc, "Step 7: Closing Line Value (CLV) -- The Edge Litmus Test")
     add_body(doc,
         "Counting wins and losses is a poor way to evaluate a prediction model. The "
         "industry-standard measure that strips luck away from skill is Closing Line "
@@ -664,35 +835,76 @@ def build_article1():
         "For every scheduled match the model tracks 15 markets: the three 1X2 outcomes, "
         "BTTS Yes and No, Over/Under at 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, and 6.5 goals. "
         "Closing odds are captured automatically at T-3 minutes before each kickoff via "
-        "a dedicated pre-match pipeline.")
+        "a dedicated pre-match pipeline. The Market X-Ray page surfaces CLV tracking "
+        "alongside real-time edge analysis for all active matches.")
+
+    # ── Live Model ────────────────────────────────────────────────────────
+    add_h2(doc, "The Live In-Play Model")
+    add_body(doc,
+        "During a live match, the model runs a non-homogeneous hazard model where "
+        "goal-scoring rate varies by match minute. Goal rates are below average in the "
+        "opening minutes, rise through the mid-half, spike just after half-time, and "
+        "peak in the final ten minutes. On top of this temporal baseline, several "
+        "live enhancements are active:")
+
+    add_h3(doc, "Score-State Multipliers")
+    tbl4 = doc.add_table(rows=6, cols=3)
+    tbl4.style = 'Table Grid'
+    for cell in tbl4.columns[0].cells: cell.width = Inches(2.3)
+    for cell in tbl4.columns[1].cells: cell.width = Inches(1.5)
+    for cell in tbl4.columns[2].cells: cell.width = Inches(1.5)
+    dark_table_header(tbl4, ["Score State", "Home Rate", "Away Rate"])
+    mult_data = [
+        ("Draw at minute 60+",          "x1.10",  "x1.10"),
+        ("Home team losing by 1",        "x1.25",  "x1.05"),
+        ("Home team losing by 2+",       "x1.40",  "x1.10"),
+        ("Home team winning by 1",       "x0.90",  "x1.10"),
+        ("Home team winning by 2+",      "x0.80",  "x1.15"),
+    ]
+    for i, (state, hm, aw) in enumerate(mult_data, 1):
+        row = tbl4.rows[i]
+        row.cells[0].text = state
+        row.cells[1].text = hm
+        row.cells[2].text = aw
+        style_data_row(tbl4, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
+
+    add_h3(doc, "xG Blend (Active When BDL xG Available)")
+    add_body(doc,
+        "When live expected goals data is available from BallDontLie, the model blends "
+        "the live xG rate (60% weight) with the pre-game prior (40% weight) starting from "
+        "minute 15. Before minute 15, live xG from a small number of shots is too noisy "
+        "to be useful.")
+
+    add_h3(doc, "Momentum Scaling: passes_final_third")
+    add_body(doc,
+        "Live stats from BallDontLie include passes_final_third -- the number of passes "
+        "each team has completed into the opponent's final third of the pitch. This is "
+        "wired directly into the live hazard model as a momentum signal:")
+    add_formula(doc,
+        "hazard_mult = 1.0 + (team_passes_final_third - opponent_passes_final_third)\n"
+        "              / normalizer * 0.03\n"
+        "\n"
+        "Range: approximately +/-3% attack rate adjustment")
+
+    add_h3(doc, "momentum_df: BDL Match Momentum API")
+    add_body(doc,
+        "The BallDontLie match momentum API provides a real-time momentum score for each "
+        "team. This momentum signal is active in the live hazard model:")
+    add_formula(doc,
+        "Home team momentum advantage: +8% hazard scaling\n"
+        "Away team momentum advantage: +5% hazard scaling\n"
+        "(Asymmetric -- home advantage amplifies momentum effect)")
 
     # ── Pipeline ──────────────────────────────────────────────────────────
     add_h2(doc, "The Automated Pipeline: A Living System")
     add_body(doc,
         "Every stage described above runs automatically, without human intervention, "
-        "around the clock:")
-    add_bullet(doc, "8:00 AM UTC -- Daily retraining", bold_prefix=None)
-    add_body(doc,
-        "Full data fetch from BallDontLie API: match results, bookmaker odds from up to "
-        "6 vendors, team statistics, expected goals, shot data, match events, and group "
-        "standings. All six parametric models retrained. Composite prior rebuilt. "
-        "Predictions regenerated for every upcoming fixture. Calibration metrics logged. "
-        "Updated JSONs deployed to the WizardOfOdds server.", space_after=Pt(4))
-    add_bullet(doc, "Hourly -- Odds refresh and CLV tracking", bold_prefix=None)
-    add_body(doc,
-        "Lighter refresh capturing odds movements, updating CLV records, and re-running "
-        "predictions if newly completed matches have appeared since the daily run.", space_after=Pt(4))
-    add_bullet(doc, "Every 2 minutes during match hours (9 AM - 3 AM ET) -- Live snapshots", bold_prefix=None)
-    add_body(doc,
-        "During match hours a live snapshot pipeline runs every 2 minutes. When a match "
-        "is detected in progress, the pipeline self-chains -- each completed run immediately "
-        "triggers the next -- ensuring near-continuous updates.", space_after=Pt(4))
-    add_bullet(doc, "T-3 minutes before kickoff -- Closing odds capture", bold_prefix=None)
-    add_body(doc,
-        "A dedicated watcher checks the schedule every 15 minutes. When a match is within "
-        "15 minutes, it sleeps until exactly 3 minutes before kickoff, fetches final market "
-        "odds across all 15 tracked markets, applies SHIN normalization, records closing "
-        "probabilities, and commits updated CLV records.")
+        "around the clock. After every run, results are FTP-uploaded to WizardOfOdds.com:")
+    add_bullet(doc, "Daily at 8:00 AM UTC (4:00 AM ET): Full retraining. All 12 signals refreshed, all six parametric models retrained, composite prior rebuilt, per-match adjustments applied, predictions regenerated for all upcoming fixtures, calibration metrics logged. Updated JSONs deployed.")
+    add_bullet(doc, "Hourly: Pre-match odds refresh. Lighter refresh capturing odds movements, updating CLV records, re-running predictions if newly completed matches appeared since the daily run.")
+    add_bullet(doc, "Every 2 minutes during match hours: Live snapshot. During active match windows the pipeline self-chains -- each completed run immediately triggers the next. Current score, minute, xG, momentum, and passes_final_third wired into the live hazard model.")
+    add_bullet(doc, "T-3 minutes before kickoff: Closing odds capture. A dedicated watcher checks the schedule every 15 minutes, sleeps until exactly 3 minutes before kickoff, fetches final market odds across all 15 tracked markets, records closing probabilities for CLV tracking.")
 
     # ── Limitations ────────────────────────────────────────────────────────
     add_h2(doc, "Honest Limitations")
@@ -705,9 +917,9 @@ def build_article1():
         "a settled 3-0. The pre-game model uses a global calibrated value; the live model "
         "accounts for this via score-state multipliers.")
     add_bullet(doc,
-        "11 completed WC2026 matches is still a small sample. lambda_3, the calibration "
-        "temperature T, and the dynamic WC_AVG scaling factor will all stabilize as the "
-        "tournament progresses.")
+        "The calibration temperature T and dynamic WC_AVG scaling factor will stabilize "
+        "as the tournament progresses. Any parameter estimated from a small sample carries "
+        "meaningful uncertainty.")
     add_bullet(doc,
         "Lambda uncertainty is fixed at +/- 12% for all teams. Per-team confidence "
         "intervals would require a fully Bayesian treatment.")
@@ -737,17 +949,17 @@ def build_article2():
     add_subtitle(doc, "What every number, chart, and indicator means -- WizardOfOdds.com -- June 2026")
 
     add_body(doc,
-        "There are three pages in the WC 2026 prediction section. Each draws from the same "
-        "underlying joint score PMF engine. The PMF is a two-dimensional grid where each "
-        "cell (h, a) holds P(Home = h, Away = a) -- the probability that the home team "
-        "scores exactly h goals and the away team scores exactly a goals in regulation time. "
-        "Every market on every page flows from this single grid. The numbers cannot "
-        "contradict each other by construction.")
+        "There are five pages in the WC 2026 prediction section. Each draws from the same "
+        "underlying joint score PMF engine and 12-signal composite rating system. The PMF "
+        "is a two-dimensional grid where each cell (h, a) holds P(Home = h, Away = a) -- "
+        "the probability that the home team scores exactly h goals and the away team scores "
+        "exactly a goals in regulation time. Every market on every page flows from this "
+        "single grid. The numbers cannot contradict each other by construction.")
 
     # ── Page 1 ────────────────────────────────────────────────────────────────
-    add_h2(doc, "Page 1 -- Pre-Game Predictions")
+    add_h2(doc, "Page 1 -- Pre-Match Predictions")
     add_body(doc,
-        "URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world%20cup/pre%20match.html",
+        "URL: pre-match.html",
         space_after=Pt(8))
     add_body(doc,
         "This is the command center. Every World Cup match scheduled for today appears in "
@@ -757,38 +969,38 @@ def build_article2():
 
     add_h3(doc, "The KPI Cards")
     add_bullet(doc, "The number of regulation kickoffs scheduled for today's date in Eastern Time.", bold_prefix="Matches Today")
-    add_bullet(doc, "Individual betting markets across all today's matches passing all three edge filters simultaneously: raw edge >= 4%, 90% CI lower bound above market no-vig price, and market implied > 2%. This is a strict filter -- the count is frequently zero or very small. That is correct behavior. A well-calibrated model should not find edge everywhere in a sharp market.", bold_prefix="Value Bets")
-    add_bullet(doc, "The single largest edge percentage found across all today's markets, with the specific market and match identified. An edge of +12% means the model estimates that outcome is 12% more likely than the bookmaker's no-vig price implies. It does not mean the bet will win -- it means the price is favorable at the time of prediction.", bold_prefix="Best Edge")
+    add_bullet(doc, "Individual betting markets across all today's matches passing all three edge filters simultaneously: raw edge >= 4%, 90% CI lower bound above market no-vig price, and market implied > 2%. This is a strict filter -- the count is frequently zero or very small. That is correct behavior.", bold_prefix="Value Bets")
+    add_bullet(doc, "The single largest edge percentage found across all today's markets, with the specific market and match identified. An edge of +12% means the model estimates that outcome is 12% more likely than the bookmaker's no-vig price implies.", bold_prefix="Best Edge")
     add_bullet(doc, "The average total expected goals across today's fixtures -- the model's best estimate of how many goals each match will produce under current conditions.", bold_prefix="Avg xG / Match")
 
     add_h3(doc, "The Bankroll Sizing Tool")
     add_body(doc,
         "Enter a bankroll amount and select a Kelly fraction. For every market passing all "
         "three edge filters, the tool computes a recommended dollar stake.")
-    add_bullet(doc, "Theoretically optimal under the Kelly criterion. Produces large drawdowns when edge estimates contain error. Not recommended unless confidence in the edge estimate is very high.", bold_prefix="Full Kelly")
-    add_bullet(doc, "Bet size divided by two. Substantially reduces variance while retaining most of the theoretical compounding advantage. The default and standard recommendation.", bold_prefix="Half Kelly")
-    add_bullet(doc, "Conservative setting. Appropriate when acknowledging significant uncertainty in the model's probability estimates.", bold_prefix="Quarter Kelly")
+    add_bullet(doc, "Theoretically optimal. Produces large drawdowns when edge estimates contain error. Not recommended unless confidence in the edge is very high.", bold_prefix="Full Kelly")
+    add_bullet(doc, "Bet size divided by two. Substantially reduces variance while retaining most compounding advantage. The default and standard recommendation.", bold_prefix="Half Kelly")
+    add_bullet(doc, "Conservative setting. Appropriate when acknowledging significant uncertainty in the model's estimates.", bold_prefix="Quarter Kelly")
     add_body(doc, "All three fractions are hard-capped at 5% of entered bankroll regardless of what the formula computes.")
 
     add_h3(doc, "The Match Table")
-    add_bullet(doc, "Home vs away. All matches treated as neutral venue except USA, Canada, and Mexico which carry a small host-advantage adjustment (+0.10 attack, -0.10 defense).", bold_prefix="Match")
+    add_bullet(doc, "Home vs away. All matches treated as neutral venue except USA, Canada, and Mexico which carry a co-host adjustment (+0.10 attack, -0.10 defense).", bold_prefix="Match")
     add_bullet(doc, "Three-segment bar showing Home Win (gold), Draw (gray), Away Win (blue) probabilities for regulation time. Derived by summing the appropriate cells of the joint PMF grid.", bold_prefix="1X2 Probability Bars")
-    add_bullet(doc, "Probability that total regulation goals exceed 2.5 -- i.e., three or more goals are scored. Sum of all PMF cells where home_goals + away_goals >= 3.", bold_prefix="O/U 2.5")
+    add_bullet(doc, "Probability that total regulation goals exceed 2.5 -- three or more goals scored. Sum of all PMF cells where home_goals + away_goals >= 3.", bold_prefix="O/U 2.5")
     add_bullet(doc, "Both Teams to Score. Sum of all cells where home_goals >= 1 AND away_goals >= 1.", bold_prefix="BTTS")
     add_bullet(doc, "The single most probable final scoreline and its probability -- the peak cell of the joint grid.", bold_prefix="Top Score")
-    add_bullet(doc, "The model's expected goals for home and away separately after market reconciliation -- the Poisson mean parameters lambda_home and lambda_away.", bold_prefix="xG (H-A)")
+    add_bullet(doc, "The model's expected goals for home and away separately after market reconciliation -- lambda_home and lambda_away.", bold_prefix="xG (H-A)")
     add_bullet(doc, "Highest-edge market for this match passing all three value filters. If no market passes, this cell is blank.", bold_prefix="Best Edge / Fair Odds")
 
     add_h3(doc, "The Expanded Row")
     add_body(doc, "Click any match row to reveal three additional panels:")
-    add_bullet(doc, "All non-trivial scorelines ranked from most to least likely, with proportion bars. These are raw joint grid values read directly from the PMF.", bold_prefix="Full Scoreline Distribution")
-    add_bullet(doc, "Every market the engine has priced from the joint grid: 1X2, BTTS, Over/Under at every standard line from 0.5 through 6.5, Draw No Bet, Double Chance, Win to Nil, Asian Handicap, and team-level totals. All from the same single distribution.", bold_prefix="All Markets")
+    add_bullet(doc, "All non-trivial scorelines ranked from most to least likely, with proportion bars. Raw joint PMF values read directly from the grid.", bold_prefix="Full Scoreline Distribution")
+    add_bullet(doc, "Every market the engine has priced: 1X2, BTTS, Over/Under at every standard line from 0.5 through 6.5, Draw No Bet, Double Chance, Win to Nil, Asian Handicap, and team-level totals.", bold_prefix="All Markets")
     add_bullet(doc, "For each market: model probability, market no-vig implied probability, edge %, fair odds, and current market odds. Rows highlighted in gold have passed all three value filters.", bold_prefix="Edge Report")
 
     # ── Page 2 ────────────────────────────────────────────────────────────────
-    add_h2(doc, "Page 2 -- Probability Distributions")
+    add_h2(doc, "Page 2 -- PMF Distributions")
     add_body(doc,
-        "URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/pre-match/Probability%20Distributions.html",
+        "URL: pmf-distributions.html",
         space_after=Pt(8))
     add_body(doc,
         "Where Page 1 compresses the model output into a single row per match, this page "
@@ -835,6 +1047,13 @@ def build_article2():
         "carries between 12% and 20% probability. If your sportsbook offers better odds "
         "than the fair odds shown, you may have found a value opportunity.")
 
+    add_h3(doc, "Model vs Market Comparison Panel")
+    add_body(doc,
+        "A side-by-side table comparing model probabilities to BDL market no-vig prices "
+        "for all standard markets: 1X2, BTTS, O/U lines from 0.5 through 6.5. Each row "
+        "shows the model probability, market-implied probability, edge, and fair odds. "
+        "This is the same data surfaced in more detail on the Market X-Ray page.")
+
     add_h3(doc, "O/U Lines Table")
     add_body(doc,
         "Over and Under probabilities for every standard total line from 0.5 through 6.5, "
@@ -844,11 +1063,12 @@ def build_article2():
     # ── Page 3 ────────────────────────────────────────────────────────────────
     add_h2(doc, "Page 3 -- Live In-Play PMF")
     add_body(doc,
-        "URL: sportsodds.wizardofodds.com/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html",
+        "URL: live-pmf.html",
         space_after=Pt(8))
     add_body(doc,
         "This page activates when a World Cup match is in progress. When no match is live, "
-        "it shows the next scheduled kickoff time. All probabilities are regulation time only.")
+        "it shows the next scheduled kickoff time. All probabilities are regulation time only. "
+        "Data updates every ~5 minutes during live matches.")
 
     add_h3(doc, "How the Live Model Differs From Pre-Game")
     add_body(doc,
@@ -859,38 +1079,35 @@ def build_article2():
         "The remaining probability redistributes entirely across reachable scores.")
     add_body(doc,
         "The live model uses a non-homogeneous hazard model -- goal-scoring rate varies "
-        "by match minute, calibrated from 2018 and 2022 World Cup data. Rates are below "
-        "average in the opening minutes, rise through the mid-half, spike just after "
-        "half-time, and peak in the final ten minutes. On top of this temporal baseline, "
-        "score-state multipliers adjust each team's rate based on the current scoreline:")
+        "by match minute, calibrated from 2018 and 2022 World Cup data. On top of this "
+        "temporal baseline, score-state multipliers adjust each team's rate, xG data from "
+        "BallDontLie is blended when available (60% live / 40% prior from minute 15), "
+        "passes_final_third wires momentum directly into the hazard (+-3% attack), and "
+        "the BDL match momentum API applies +-8/5% hazard scaling when available.")
 
-    # Score-state multipliers table
-    tbl4 = doc.add_table(rows=6, cols=2)
-    tbl4.style = 'Table Grid'
-    for cell in tbl4.columns[0].cells: cell.width = Inches(2.5)
-    for cell in tbl4.columns[1].cells: cell.width = Inches(3.75)
-    dark_table_header(tbl4, ["Score State", "Effect on Goal Rates"])
-    mult_data = [
+    add_h3(doc, "Score-State Multipliers")
+    tbl5 = doc.add_table(rows=6, cols=2)
+    tbl5.style = 'Table Grid'
+    for cell in tbl5.columns[0].cells: cell.width = Inches(2.5)
+    for cell in tbl5.columns[1].cells: cell.width = Inches(3.75)
+    dark_table_header(tbl5, ["Score State", "Effect on Goal Rates"])
+    mult_data2 = [
         ("Draw at minute 60+",         "Both teams x1.10 -- games open up in the final 30 minutes"),
         ("Home team losing by 1",       "Home x1.25, Away x1.05 -- counter-attack risk increases"),
         ("Home team losing by 2+",      "Home x1.40, Away x1.10"),
         ("Home team winning by 1",      "Home x0.90, Away x1.10 -- away team pushes forward"),
         ("Home team winning by 2+",     "Home x0.80, Away x1.15"),
     ]
-    for i, (state, effect) in enumerate(mult_data, 1):
-        row = tbl4.rows[i]
+    for i, (state, effect) in enumerate(mult_data2, 1):
+        row = tbl5.rows[i]
         row.cells[0].text = state
         row.cells[1].text = effect
-        style_data_row(tbl4, i, alt=(i % 2 == 0))
+        style_data_row(tbl5, i, alt=(i % 2 == 0))
     add_spacer(doc, 6)
-    add_body(doc,
-        "When live expected goals (xG) data is available from BallDontLie, the model blends "
-        "the live xG rate (60% weight) with the pre-game prior (40% weight) starting from "
-        "minute 15. Before minute 15, live xG is too noisy to be useful.")
 
     add_h3(doc, "Connection Badge")
     add_bullet(doc, "Active push connection. When a goal or status change is reported, the server recomputes the full conditional PMF and pushes it to connected browsers. Target latency: under 200 milliseconds.", bold_prefix="WebSocket (green)")
-    add_bullet(doc, "Push connection unavailable. The page fetches updated data from a static JSON file every 60 seconds. Updates arrive with up to a one-minute delay. Automatic fallback -- no user action needed.", bold_prefix="Polling (yellow)")
+    add_bullet(doc, "Push connection unavailable. The page fetches updated data from a static JSON file every 60 seconds. Automatic fallback -- no user action needed.", bold_prefix="Polling (yellow)")
 
     add_h3(doc, "Live KPI Cards")
     add_bullet(doc, "Number of World Cup matches currently in progress.", bold_prefix="Matches Live")
@@ -901,11 +1118,9 @@ def build_article2():
     add_h3(doc, "Win Probability Bar and Shift Table")
     add_body(doc,
         "The same three-segment bar as on Page 1 -- Home Win (gold), Draw (gray), Away Win "
-        "(blue) -- but now conditional on the current score and minute. These are not the "
-        "probabilities from kickoff. Directly below the bar, the Pre-Game to Live Shift "
-        "table shows, for each main market, the pre-game probability, the current live "
-        "probability, and the arithmetic difference. A large shift tells you how significantly "
-        "the match state has altered the distribution.")
+        "(blue) -- but now conditional on the current score and minute. Directly below the "
+        "bar, the Pre-Game to Live Shift table shows, for each main market, the pre-game "
+        "probability, current live probability, and arithmetic difference.")
 
     add_h3(doc, "Win Probability Sparkline")
     add_body(doc,
@@ -922,7 +1137,6 @@ def build_article2():
         "of a 1-0 match, the heatmap may assign 85-90% probability to the single 1-0 cell.")
 
     add_h3(doc, "Next Goal Probabilities")
-    add_body(doc, "Three numbers derived from remaining expected goals lambda_h_rem and lambda_a_rem:")
     add_formula(doc,
         "Home scores next: lambda_h_rem / (lambda_h_rem + lambda_a_rem)\n"
         "Away scores next: lambda_a_rem / (lambda_h_rem + lambda_a_rem)\n"
@@ -935,16 +1149,127 @@ def build_article2():
     add_body(doc,
         "Same ranked list as Page 2, restricted to reachable outcomes only. The current "
         "live score is marked. As the match approaches the final whistle, the probability "
-        "on the leading score climbs rapidly -- in an 88th-minute 1-0 match, the 1-0 cell "
-        "may carry 8 or 9 times the probability it held before kickoff.")
+        "on the leading score climbs rapidly.")
+
+    # ── Page 4 ────────────────────────────────────────────────────────────────
+    add_h2(doc, "Page 4 -- Live Pitch")
+    add_body(doc,
+        "URL: live-pitch.html",
+        space_after=Pt(8))
+    add_body(doc,
+        "The Live Pitch page provides a real-time animated shot map for any match currently "
+        "in progress, rendered using BallDontLie player coordinate data. It is the most "
+        "visually intensive page in the suite and is designed for in-play monitoring.")
+
+    add_h3(doc, "Animated Shot Map")
+    add_body(doc,
+        "Each shot attempt in the live match is plotted on a scaled pitch diagram using "
+        "the player_x and player_y coordinates from the BallDontLie live player data feed. "
+        "Shot markers are color-coded by outcome:")
+    add_bullet(doc, "Gold filled circle: goal scored")
+    add_bullet(doc, "White open circle: shot on target, saved")
+    add_bullet(doc, "Gray X: shot off target or blocked")
+    add_body(doc,
+        "Markers animate onto the pitch at the minute they occurred, allowing you to "
+        "reconstruct the attacking flow of the match visually. Older shots fade slightly "
+        "to help distinguish recent activity from early match shots.")
+
+    add_h3(doc, "Momentum KPIs")
+    add_body(doc,
+        "Below the pitch, a row of key performance indicators derived from the live stats "
+        "feed shows each team's current in-match momentum. These same KPIs feed directly "
+        "into the live hazard model:")
+    add_bullet(doc, "Passes into the final third, updated each snapshot. The ratio between teams wires into the +/-3% attack hazard adjustment.", bold_prefix="Passes Final Third")
+    add_bullet(doc, "The BDL match momentum score for each team, displayed as a bar. When one team's momentum score exceeds the threshold, the +8% (home) or +5% (away) hazard scaling activates.", bold_prefix="Match Momentum")
+    add_bullet(doc, "Running xG for each team accumulated during the match, blended at 60% into the live hazard from minute 15 onward.", bold_prefix="Live xG")
+    add_bullet(doc, "Total shots attempted by each team in the match.", bold_prefix="Shots")
+    add_bullet(doc, "Shots on target for each team -- the most predictive single stat for in-play goal likelihood.", bold_prefix="Shots on Target")
+
+    add_h3(doc, "Data Freshness")
+    add_body(doc,
+        "The Live Pitch updates on the same 2-minute snapshot cycle as the Live PMF page. "
+        "A timestamp shows the age of the current coordinate data. Because BDL player "
+        "coordinate data has slightly higher latency than score/clock data, the shot map "
+        "may lag the Live PMF page by one snapshot cycle during fast-moving moments.")
+
+    # ── Page 5 ────────────────────────────────────────────────────────────────
+    add_h2(doc, "Page 5 -- Market X-Ray")
+    add_body(doc,
+        "URL: market-xray/index.html",
+        space_after=Pt(8))
+    add_body(doc,
+        "The Market X-Ray is a trader-grade analysis tool providing the deepest level of "
+        "model-vs-market comparison available on the site. It is designed for users who "
+        "want to go beyond edge percentages and understand the full picture of value, "
+        "confidence, and market movement for every active match.")
+
+    add_h3(doc, "Fair Odds vs Market Comparison")
+    add_body(doc,
+        "For each match and each market, the X-Ray shows the model's fair (no-vig) odds "
+        "alongside the current market odds from all available BDL bookmakers. The "
+        "comparison is presented as both American odds and implied probability, making "
+        "it easy to identify where the model and market diverge significantly.")
+
+    add_h3(doc, "Edge, EV, and Confidence Grades")
+    add_bullet(doc, "The percentage by which the model's probability exceeds the market's no-vig probability. Computed identically to the edge on Page 1 -- same formula, same source.", bold_prefix="Edge")
+    add_bullet(doc, "Expected Value: the dollar return per $100 wagered assuming the model's probability is the true probability. EV = (model_prob x net_payout) - (1 - model_prob) x 100.", bold_prefix="EV")
+    add_bullet(doc, "A letter grade (A through F) reflecting the combined strength of the edge, the CI lower bound check, and the number of bookmakers confirming the price. An A grade means the edge is large, robust to lambda uncertainty, and confirmed across multiple books.", bold_prefix="Confidence Grade")
+
+    add_h3(doc, "Trader Action Notes")
+    add_body(doc,
+        "Each market receives one of six action labels derived from the edge and "
+        "confidence grade:")
+    tbl6 = doc.add_table(rows=7, cols=2)
+    tbl6.style = 'Table Grid'
+    for cell in tbl6.columns[0].cells: cell.width = Inches(1.4)
+    for cell in tbl6.columns[1].cells: cell.width = Inches(4.8)
+    dark_table_header(tbl6, ["Action", "Meaning"])
+    actions = [
+        ("BET",           "Edge >= 8%, Confidence A or B, CI lower bound clears market. Full signal -- act at current price."),
+        ("SMALL BET",     "Edge 4-8%, Confidence B or C. Positive signal but uncertainty warrants reduced size."),
+        ("LEAN",          "Edge 2-4%, not quite threshold. Monitor -- may develop into a BET as odds move."),
+        ("WAIT",          "Edge present but line moving unfavorably. Do not act until line stabilizes."),
+        ("PASS",          "Edge below threshold or CI check fails. No actionable value at current price."),
+        ("DO NOT CHASE",  "Line has already moved significantly toward model fair value. CLV has been consumed."),
+    ]
+    for i, (act, meaning) in enumerate(actions, 1):
+        row = tbl6.rows[i]
+        row.cells[0].text = act
+        row.cells[1].text = meaning
+        style_data_row(tbl6, i, alt=(i % 2 == 0))
+    add_spacer(doc, 6)
+
+    add_h3(doc, "Line Movement Tracking")
+    add_body(doc,
+        "The X-Ray records the opening line, the current line, and the direction and "
+        "magnitude of movement for each market. A sparkline shows the price history "
+        "from the model's first prediction through the current moment. Markets moving "
+        "toward the model's fair value confirm the signal; markets moving away suggest "
+        "new information the model has not yet incorporated.")
+
+    add_h3(doc, "CLV Tracker")
+    add_body(doc,
+        "For matches that have already kicked off, the CLV Tracker shows the model's "
+        "opening prediction probability versus the closing no-vig probability for all "
+        "15 tracked markets. Positive CLV (model was ahead of where the market closed) "
+        "is highlighted in gold. Negative CLV is shown in muted gray. The aggregate "
+        "CLV across all markets and all completed matches is displayed as the primary "
+        "performance metric at the top of the tracker panel.")
+    add_callout(doc, "How to Use the Market X-Ray",
+        "Start with the Trader Action Notes. BET and SMALL BET are the only actionable "
+        "signals. LEAN is worth monitoring. WAIT means check back after the next pipeline "
+        "run. PASS and DO NOT CHASE mean no action at this price. The CLV Tracker "
+        "accumulates over the tournament and is the fairest measure of whether the model's "
+        "edges have been genuine.")
 
     # ── Limitations ────────────────────────────────────────────────────────
     add_h2(doc, "Scope and Limitations -- All Pages")
     add_bullet(doc, "All probabilities represent regulation time (90 minutes plus stoppage time) only. Extra time and penalty shootouts are not modeled.")
-    add_bullet(doc, "The Bivariate Poisson substantially reduces the independence assumption (lambda_3 = 0.170 captures positive correlation), but it remains an approximation. Score-state multipliers in the live model provide additional correction.")
-    add_bullet(doc, "Calibration rests on 128 World Cup matches from 2018 and 2022, growing as 2026 results accumulate. Metrics carry meaningful statistical uncertainty at this sample size.")
+    add_bullet(doc, "The Bivariate Poisson substantially reduces the independence assumption (lambda_3 = 0.170), but it remains an average across match types. Score-state multipliers in the live model provide additional correction.")
+    add_bullet(doc, "Calibration rests on 2018 and 2022 World Cup data augmented by completed 2026 matches. The adaptive temperature weighting (30/70 vs 60/40) shifts automatically as 2026 data accumulates.")
     add_bullet(doc, "Edge estimates are outputs of a probabilistic model. Market odds move between prediction time and kickoff. Always verify current prices at your book before acting.")
     add_bullet(doc, "WebSocket update speed is subject to network latency and server load. The stated target of under 200 milliseconds applies under normal conditions.")
+    add_bullet(doc, "Live Pitch coordinate data (player_x/player_y) may lag the Live PMF score data by one snapshot cycle during fast-moving moments.")
 
     add_spacer(doc, 12)
     add_disclaimer(doc)
