@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-06-21T02:13:57Z
+**Generated**: 2026-06-21T02:50:06Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -48,7 +48,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Iraq | ❌ | ❌ | AFC | 1 | 1510 | -0.115 | 0.536 | 3.161 | 3 | **1.194** | **2.528** | MEDIUM | market_implied+futures_implied+best_player_form |
 | Czechia | ❌ | ❌ | UEFA | 2 | 1510 | -0.082 | 0.485 | 1.439 | 3 | **1.166** | **1.651** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | Jordan | ❌ | ❌ | AFC | 1 | 1510 | -0.100 | 0.507 | 2.477 | 3 | **1.158** | **2.210** | MEDIUM | market_implied+futures_implied+best_player_form |
-| Tunisia | ✅ | ✅ | CAF | 7 | 1516 | -0.202 | 0.577 | 2.739 | 3 | **1.151** | **2.411** | LOW | market_implied+futures_implied+best_player_form |
+| Tunisia | ✅ | ✅ | CAF | 7 | 1516 | -0.202 | 0.577 | 2.740 | 3 | **1.151** | **2.411** | LOW | market_implied+futures_implied+best_player_form |
 | Australia | ✅ | ✅ | AFC | 9 | 1515 | -0.164 | 1.117 | 1.200 | 3 | **1.087** | **1.343** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Algeria | ❌ | ❌ | CAF | 1 | 1509 | -0.112 | 1.047 | 1.524 | 3 | **1.086** | **2.068** | MEDIUM | market_implied+futures_implied+best_player_form |
 | Panama | ✅ | ❌ | CONCACAF | 4 | 1539 | -0.378 | 0.526 | 1.731 | 3 | **1.081** | **1.564** | LOW | market_implied+futures_implied+best_player_form |
