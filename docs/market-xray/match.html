@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match X-Ray · World Cup 2026 · Wizard of Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="xray.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Fraunces', Georgia, serif; min-height: 100vh; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .logo { display: flex; align-items: baseline; gap: 12px; }
+  .logo-mark { font-size: 28px; font-weight: 700; color: var(--gold); font-style: italic; letter-spacing: -0.02em; }
+  .logo-name { font-size: 20px; font-weight: 500; font-style: italic; }
+  .logo-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; padding-left: 12px; border-left: 1px solid var(--border); }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav a {
+    color: var(--text-dim); text-decoration: none; padding: 7px 16px; border-radius: 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.12em; border: 1px solid var(--border); transition: all 0.15s;
+  }
+  .nav a:hover { color: var(--text); border-color: var(--border-2); }
+  .nav a.active { background: rgba(212,175,55,0.1); border-color: var(--gold); color: var(--gold); }
+
+  footer { text-align: center; padding: 32px 28px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; border-top: 1px solid var(--border); }
+
+  /* PMF heatmap */
+  .pmf-heatmap-wrap { overflow-x: auto; }
+  svg.pmf-heatmap { display: block; font-family: 'JetBrains Mono', monospace; }
+  .pmf-cell { stroke: var(--border); stroke-width: 0.5; rx: 1; }
+
+  @media (max-width: 768px) {
+    header { padding: 14px 16px; }
+    .section-wrap { padding: 12px 14px 32px; }
+  }
+</style>
+</head>
+<body>
+<div id="app-root">
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">WC 2026</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/worldcup/pre-match.html">Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html">PMF Dist.</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/live-pitch.html">Live Pitch</a>
+    <a href="/tools/odds-scanner/predictions/worldcup/market-xray/index.html" class="active">Market X-Ray</a>
+  </nav>
+</header>
+
+<div class="disclaimer">
+  <div class="disclaimer-inner">
+    All probabilities are for regulation time only (90 min + stoppage). Extra time and penalties are excluded.
+    This is analytical/educational content only, not financial advice.
+  </div>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Loading state -->
+  <div id="loading-state" class="loading-state">
+    <div class="spinner"></div><br>Loading match X-Ray…
+  </div>
+
+  <!-- Main content (hidden until loaded) -->
+  <div id="match-content" style="display:none">
+
+    <!-- Section 1: Match State -->
+    <section class="card" id="section-match-state">
+      <div class="card-title">Match State</div>
+      <div class="match-state-card" id="match-state-body"></div>
+    </section>
+
+    <!-- Section 2: X-Ray Summary -->
+    <section class="card" id="section-xray-summary">
+      <div class="card-title">X-Ray Summary</div>
+      <div class="xray-summary-card" id="xray-summary-body"></div>
+    </section>
+
+    <!-- Section 3: Fair Odds Board -->
+    <section class="card">
+      <div class="card-title">Fair Odds Board</div>
+      <div id="markets-table-wrap"></div>
+    </section>
+
+    <!-- Section 4: PMF Grid -->
+    <section class="card" id="section-pmf" style="display:none">
+      <div class="card-title">Score Probability Matrix (Regulation)</div>
+      <div class="pmf-heatmap-wrap" id="pmf-heatmap-wrap"></div>
+      <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)">
+        Rows = home goals · Columns = away goals · Color intensity = probability
+      </div>
+    </section>
+
+    <!-- Section 5: Line Movement -->
+    <section class="card">
+      <div class="card-title">Line Movement</div>
+      <div id="line-movement-wrap"></div>
+    </section>
+
+    <!-- Section 6: What Changed -->
+    <section class="card">
+      <div class="card-title">What Changed?</div>
+      <div id="what-changed-wrap"></div>
+    </section>
+
+    <!-- Section 7: CLV Tracker -->
+    <section class="card">
+      <div class="card-title">CLV Tracker</div>
+      <div id="clv-wrap"></div>
+    </section>
+
+    <!-- Section 8: Related -->
+    <section class="card">
+      <div class="card-title">Related</div>
+      <div id="related-wrap"></div>
+    </section>
+
+  </div><!-- /match-content -->
+</div><!-- /section-wrap -->
+
+<footer>
+  PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
+  Not financial advice · <span id="footer-date"></span>
+</footer>
+
+<script src="xray.js"></script>
+<script>
+// ── URL param ─────────────────────────────────────────────────────────────────
+function getMatchId() {
+  var params = new URLSearchParams(window.location.search);
+  return params.get('id');
+}
+
+// ── Fetch wc-predictions.json (for PMF grid) ──────────────────────────────────
+async function loadPredictionsData() {
+  var urls = [
+    '../wc-predictions.json',
+    '../../worldcup/wc-predictions.json',
+    '/tools/odds-scanner/predictions/worldcup/wc-predictions.json',
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    var d = await fetchWithTimeout(urls[i]);
+    if (d) return d;
+  }
+  return null;
+}
+
+// ── PMF Heatmap ───────────────────────────────────────────────────────────────
+function renderPMFHeatmap(grid, homeTeam, awayTeam, container) {
+  if (!grid || !grid.length) return;
+  var rows = grid.length;
+  var cols = grid[0].length;
+
+  // Find max for color scaling
+  var maxVal = 0;
+  for (var r = 0; r < rows; r++)
+    for (var c = 0; c < cols; c++)
+      if (grid[r][c] > maxVal) maxVal = grid[r][c];
+
+  var cellSize = 38;
+  var labelW = 32;
+  var labelH = 32;
+  var W = labelW + cols * cellSize;
+  var H = labelH + rows * cellSize;
+
+  var svgParts = ['<svg class="pmf-heatmap" width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'];
+
+  // Column headers (away goals)
+  for (var c2 = 0; c2 < cols; c2++) {
+    var cx = labelW + c2 * cellSize + cellSize / 2;
+    svgParts.push('<text x="'+cx+'" y="22" text-anchor="middle" fill="#5a6378" font-size="10" font-family="JetBrains Mono,monospace">'+c2+'</text>');
+  }
+
+  // Row headers (home goals) and cells
+  for (var r2 = 0; r2 < rows; r2++) {
+    var cy = labelH + r2 * cellSize + cellSize / 2;
+    svgParts.push('<text x="22" y="'+(cy+4)+'" text-anchor="middle" fill="#5a6378" font-size="10" font-family="JetBrains Mono,monospace">'+r2+'</text>');
+    for (var c3 = 0; c3 < cols; c3++) {
+      var val = grid[r2][c3] || 0;
+      var alpha = maxVal > 0 ? val / maxVal : 0;
+      var x = labelW + c3 * cellSize;
+      var y = labelH + r2 * cellSize;
+      // Interpolate: low=dark blue, high=gold
+      var r3 = Math.round(212 * alpha + 20 * (1 - alpha));
+      var g3 = Math.round(175 * alpha + 20 * (1 - alpha));
+      var b3 = Math.round(55  * alpha + 40 * (1 - alpha));
+      var fillColor = 'rgb('+r3+','+g3+','+b3+')';
+      var textColor = alpha > 0.5 ? '#000' : (alpha > 0.2 ? '#8892a8' : '#5a6378');
+      svgParts.push(
+        '<rect x="'+x+'" y="'+y+'" width="'+cellSize+'" height="'+cellSize+'" fill="'+fillColor+'" stroke="#232a3d" stroke-width="0.5" rx="1"/>',
+        '<text x="'+(x+cellSize/2)+'" y="'+(y+cellSize/2+4)+'" text-anchor="middle" fill="'+textColor+'" font-size="9" font-family="JetBrains Mono,monospace">'+
+          (val > 0.001 ? (val * 100).toFixed(1)+'%' : '') +
+        '</text>'
+      );
+    }
+  }
+
+  // Axis labels
+  svgParts.push(
+    '<text x="'+(labelW + cols*cellSize/2)+'" y="'+(H-2)+'" text-anchor="middle" fill="#8892a8" font-size="9" font-family="JetBrains Mono,monospace">'+esc(awayTeam)+' Goals →</text>',
+    '<text transform="rotate(-90,'+(labelW-10)+','+(labelH+rows*cellSize/2)+')" x="'+(labelW-10)+'" y="'+(labelH+rows*cellSize/2)+'" text-anchor="middle" fill="#8892a8" font-size="9" font-family="JetBrains Mono,monospace">'+esc(homeTeam)+' Goals ↓</text>'
+  );
+
+  svgParts.push('</svg>');
+  container.innerHTML = svgParts.join('');
+}
+
+// ── Market group ordering for Fair Odds Board ─────────────────────────────────
+var GROUP_ORDER = ['1X2','DNB','Double Chance','BTTS','Clean Sheet','Totals','Team Totals','Asian Handicap','Other'];
+
+// ── Render match ──────────────────────────────────────────────────────────────
+function renderMatch(matchObj, predMatch) {
+  var home = matchObj.home_team || '';
+  var away = matchObj.away_team || '';
+  document.title = home + ' vs ' + away + ' X-Ray · Wizard of Odds';
+  document.getElementById('footer-date').textContent = matchObj.kickoff_utc
+    ? new Date(matchObj.kickoff_utc).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+
+  // Section 1: Match state
+  var stateEl = document.getElementById('match-state-body');
+  var kickoffStr = matchObj.kickoff_utc
+    ? new Date(matchObj.kickoff_utc).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' ET'
+    : '';
+  var scoreHtml = matchObj.score
+    ? '<div class="score-display">' + esc(matchObj.score) + '</div>' + (matchObj.minute ? '<div class="match-meta-inline" style="margin-left:8px">'+esc(String(matchObj.minute))+'\''+'</div>' : '')
+    : '';
+  stateEl.innerHTML = '<div class="matchup">'
+    + '<span class="team-name">'+esc(home)+'</span>'
+    + '<span class="vs-sep" style="margin:0 8px">vs</span>'
+    + '<span class="team-name">'+esc(away)+'</span>'
+    + '</div>'
+    + (scoreHtml ? '<div style="display:flex;align-items:center">'+scoreHtml+'</div>' : '')
+    + '<div class="match-meta-inline" style="margin-left:auto">'
+    + (kickoffStr ? '<div>'+esc(kickoffStr)+'</div>' : '')
+    + (matchObj.status ? '<div>Status: '+esc(matchObj.status)+'</div>' : '')
+    + '</div>';
+
+  // Section 2: X-Ray summary
+  var summaryEl = document.getElementById('xray-summary-body');
+  var bestLabel = matchObj.best_edge_market ? matchObj.best_edge_market.replace(/_/g,' ') : '—';
+  var bestEdge = matchObj.best_edge_pct != null ? ('+'+matchObj.best_edge_pct.toFixed(1)+' pp') : '—';
+  summaryEl.innerHTML = '<div class="xray-summary-action">'
+    + actionBadge(matchObj.top_action, true)
+    + '</div>'
+    + '<div class="xray-summary-details">'
+    + '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:8px">'
+    + '<div><div class="filter-label">Best Market</div><div style="font-family:\'JetBrains Mono\',monospace;font-weight:600;color:var(--text)">'+esc(bestLabel)+'</div></div>'
+    + '<div><div class="filter-label">Best Edge</div><div class="edge-pos" style="font-family:\'JetBrains Mono\',monospace;font-size:18px;font-weight:700">'+esc(bestEdge)+'</div></div>'
+    + '<div><div class="filter-label">Confidence</div><div>'+confidenceBadge(matchObj.confidence)+'</div></div>'
+    + '</div>'
+    + '<div class="xray-summary-note">'+esc(matchObj.summary_note||'')+'</div>'
+    + '</div>';
+
+  // Section 3: Fair odds board (grouped)
+  var marketsWrap = document.getElementById('markets-table-wrap');
+  var groups = {};
+  (matchObj.markets || []).forEach(function(m) {
+    var g = marketGroup(m.market_id);
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(m);
+  });
+  var tableHtml = '<table class="xray-table" style="width:100%"><thead><tr>'
+    + '<th>Market</th><th>Selection</th><th>Model%</th><th>Mkt%</th>'
+    + '<th>Fair</th><th>Best Mkt</th><th>Edge</th><th>EV/100</th><th>Conf</th><th>Action</th><th></th>'
+    + '</tr></thead><tbody>';
+
+  var rowIdx = 0;
+  GROUP_ORDER.forEach(function(gName) {
+    var gRows = groups[gName];
+    if (!gRows || !gRows.length) return;
+    tableHtml += '<tr><td colspan="11" class="market-group-header">'+esc(gName)+'</td></tr>';
+    gRows.forEach(function(m) {
+      var edgeCls = m.edge_pp > 0 ? 'edge-pos' : (m.edge_pp < 0 ? 'edge-neg' : 'edge-zero');
+      var rid = 'mr-'+rowIdx, did = 'md-'+rowIdx;
+      rowIdx++;
+      tableHtml += '<tr class="market-row" id="'+rid+'" onclick="toggleDetailRow(\''+rid+'\',\''+did+'\',this)">'
+        + '<td style="color:var(--text);font-weight:500">'+esc(m.market_label||'')+'</td>'
+        + '<td style="color:var(--text-dim)">'+esc(m.selection_label||'')+'</td>'
+        + '<td>'+formatPct(m.model_probability)+'</td>'
+        + '<td style="color:var(--text-dim)">'+formatPct(m.market_no_vig_probability)+'</td>'
+        + '<td style="font-weight:600">'+formatAmericanOdds(m.model_fair_american)+'</td>'
+        + '<td style="color:var(--blue)">'+formatAmericanOdds(m.market_odds_american)+'</td>'
+        + '<td class="'+edgeCls+'">'+formatEdgePP(m.edge_pp)+'</td>'
+        + '<td>'+(m.ev_per_100 != null ? formatEV(m.ev_per_100) : '—')+'</td>'
+        + '<td>'+confidenceBadge(m.confidence)+'</td>'
+        + '<td>'+actionBadge(m.action)+'</td>'
+        + '<td><span class="expand-arrow">▶</span></td>'
+        + '</tr>';
+      tableHtml += '<tr class="detail-row" id="'+did+'"><td colspan="11">'
+        + '<div class="detail-panel">'
+        + '<div class="detail-note">'+esc(m.trader_note||'')+'</div>'
+        + probBarHTML(m.model_probability, m.market_no_vig_probability)
+        + '</div></td></tr>';
+    });
+  });
+  tableHtml += '</tbody></table>';
+  marketsWrap.innerHTML = tableHtml;
+
+  // Section 4: PMF grid (from wc-predictions.json if available)
+  if (predMatch) {
+    var grid = (predMatch.prediction || {}).regulation_score_pmf_grid;
+    if (grid && grid.length) {
+      document.getElementById('section-pmf').style.display = '';
+      renderPMFHeatmap(grid, home, away, document.getElementById('pmf-heatmap-wrap'));
+    }
+  }
+
+  // Section 5: Line movement
+  renderLineMovement(matchObj.line_movement, document.getElementById('line-movement-wrap'));
+
+  // Section 6: What changed
+  renderWhatChanged(matchObj.what_changed, document.getElementById('what-changed-wrap'));
+
+  // Section 7: CLV
+  renderCLVSignals(matchObj.clv_signals, document.getElementById('clv-wrap'));
+
+  // Section 8: Related
+  var matchId = matchObj.match_id;
+  var relEl = document.getElementById('related-wrap');
+  relEl.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;font-family:\'JetBrains Mono\',monospace;font-size:12px">'
+    + '<a class="detail-link" href="index.html">← All Markets (X-Ray)</a>'
+    + '<a class="detail-link" href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html?id='+esc(String(matchId))+'">PMF Distributions →</a>'
+    + '</div>';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  var matchId = getMatchId();
+  if (!matchId) {
+    document.getElementById('loading-state').innerHTML =
+      '<div style="padding:40px;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace">No match ID provided. <a href="index.html" style="color:var(--gold)">← Return to X-Ray</a></div>';
+    return;
+  }
+
+  var xrayData = await loadXrayData();
+  var predData = await loadPredictionsData();
+
+  if (!xrayData) {
+    document.getElementById('loading-state').innerHTML =
+      '<div style="padding:40px;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace">X-Ray data unavailable.</div>';
+    return;
+  }
+
+  var allMatches = (xrayData.pregame_matches || []).concat(xrayData.live_matches || []);
+  var matchObj = allMatches.find(function(m) { return String(m.match_id) === String(matchId); });
+
+  if (!matchObj) {
+    document.getElementById('loading-state').innerHTML =
+      '<div style="padding:40px;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace">Match '+esc(matchId)+' not found in today\'s X-Ray. <a href="index.html" style="color:var(--gold)">← Return</a></div>';
+    return;
+  }
+
+  var predMatch = null;
+  if (predData && predData.matches) {
+    predMatch = predData.matches.find(function(m) { return String(m.match_id) === String(matchId); });
+  }
+
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('match-content').style.display = '';
+  renderMatch(matchObj, predMatch);
+}
+
+init();
+</script>
+</div>
+</body>
+</html>

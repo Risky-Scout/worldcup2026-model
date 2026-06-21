@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market X-Ray · World Cup 2026 · Wizard of Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="xray.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Fraunces', Georgia, serif; min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .logo { display: flex; align-items: baseline; gap: 12px; }
+  .logo-mark { font-size: 28px; font-weight: 700; color: var(--gold); font-style: italic; letter-spacing: -0.02em; }
+  .logo-name { font-size: 20px; font-weight: 500; font-style: italic; }
+  .logo-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; padding-left: 12px; border-left: 1px solid var(--border); }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav a {
+    color: var(--text-dim); text-decoration: none; padding: 7px 16px; border-radius: 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.12em; border: 1px solid var(--border); transition: all 0.15s;
+  }
+  .nav a:hover { color: var(--text); border-color: var(--border-2); }
+  .nav a.active { background: rgba(212,175,55,0.1); border-color: var(--gold); color: var(--gold); }
+
+  .hero { padding: 28px 28px 0; max-width: 1700px; margin: 0 auto; }
+  .hero h1 { font-size: 32px; font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .hero h1 em { color: var(--gold); font-style: italic; font-weight: 500; }
+  .hero p { color: var(--text-dim); font-size: 13px; line-height: 1.6; max-width: 700px; }
+  .updated-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; margin-top: 8px; }
+  .updated-tag span { color: var(--text-dim); }
+
+  .edge-range-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    min-width: 30px;
+  }
+
+  footer { text-align: center; padding: 32px 28px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; border-top: 1px solid var(--border); }
+
+  @media (max-width: 768px) {
+    header { padding: 14px 16px; }
+    .hero, .filters-bar, .table-wrap, .disclaimer { padding-left: 14px; padding-right: 14px; }
+    .hero h1 { font-size: 22px; }
+    .kpis { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="app-root">
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">W</span>
+    <span class="logo-name">Wizard of Odds</span>
+    <span class="logo-tag">WC 2026</span>
+  </div>
+  <nav class="nav">
+    <a href="/tools/odds-scanner/predictions/worldcup/pre-match.html">Pre-Match</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/Probability%20Distributions.html">PMF Dist.</a>
+    <a href="/tools/odds-scanner/predictions/world-cup/live/live-pitch.html">Live Pitch</a>
+    <a href="/tools/odds-scanner/predictions/worldcup/market-xray/index.html" class="active">Market X-Ray</a>
+  </nav>
+</header>
+
+<div class="disclaimer">
+  <div class="disclaimer-inner">
+    All probabilities are for regulation time only (90 min + stoppage). Extra time and penalties are excluded.
+    This is analytical/educational content only, not financial advice.
+  </div>
+</div>
+
+<section class="hero">
+  <div class="updated-tag" id="updated-tag">Updated &mdash;</div>
+  <h1><em>Market X-Ray</em> — Edge Scanner</h1>
+  <p>Model-derived fair odds vs. market prices across all match markets. Filter by edge, confidence, and action to surface the highest-conviction plays.</p>
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="kpi-label">Markets Analyzed</div><div class="kpi-val" id="kpi-total-markets">—</div><div class="kpi-sub">all markets today</div></div>
+    <div class="kpi"><div class="kpi-label">Actionable Markets</div><div class="kpi-val gold" id="kpi-value-markets">—</div><div class="kpi-sub">LEAN or better</div></div>
+    <div class="kpi"><div class="kpi-label">Best Edge</div><div class="kpi-val green" id="kpi-best-edge">—</div><div class="kpi-sub" id="kpi-best-edge-sub">top market</div></div>
+    <div class="kpi"><div class="kpi-label">Rolling CLV</div><div class="kpi-val" id="kpi-avg-clv">—</div><div class="kpi-sub">avg closing line value</div></div>
+  </div>
+</section>
+
+<div class="filters-bar">
+  <div class="filter-group">
+    <span class="filter-label">Mode</span>
+    <select class="filter-select" id="filter-mode" onchange="applyAndRender()">
+      <option value="all">All</option>
+      <option value="pregame">Pre-Game</option>
+      <option value="live">Live</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Market Type</span>
+    <select class="filter-select" id="filter-market-type" onchange="applyAndRender()">
+      <option value="all">All Markets</option>
+      <option value="home_win,draw,away_win">1X2</option>
+      <option value="over_,under_">Totals</option>
+      <option value="asian_handicap">Handicaps</option>
+      <option value="btts">BTTS</option>
+      <option value="draw_no_bet">DNB</option>
+      <option value="double_chance">Double Chance</option>
+      <option value="home_over,home_under,away_over,away_under">Team Totals</option>
+      <option value="clean_sheet">Clean Sheet</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Min Edge</span>
+    <input type="range" class="filter-range" id="filter-min-edge" min="0" max="10" step="0.5" value="0" oninput="updateEdgeLabel();applyAndRender()">
+    <span class="edge-range-label" id="edge-range-val">0 pp</span>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Min Conf</span>
+    <select class="filter-select" id="filter-min-conf" onchange="applyAndRender()">
+      <option value="D">Any</option>
+      <option value="C">C+</option>
+      <option value="B">B+</option>
+      <option value="A">A</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <input type="checkbox" class="filter-checkbox" id="filter-actionable" onchange="applyAndRender()">
+      <span class="filter-label">Actionable Only</span>
+    </label>
+  </div>
+  <div class="filter-group" style="margin-left:auto;">
+    <span class="filter-label" id="result-count" style="color:var(--text-dim)"></span>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="xray-table" id="xray-table">
+    <thead>
+      <tr>
+        <th onclick="sortBy('match')"   data-col="match">Match</th>
+        <th onclick="sortBy('mode')"    data-col="mode">Mode</th>
+        <th onclick="sortBy('market_label')" data-col="market_label">Market</th>
+        <th onclick="sortBy('selection_label')" data-col="selection_label">Sel.</th>
+        <th onclick="sortBy('model_probability')" data-col="model_probability">Model%</th>
+        <th onclick="sortBy('market_no_vig_probability')" data-col="market_no_vig_probability">Mkt%</th>
+        <th onclick="sortBy('model_fair_american')" data-col="model_fair_american">Fair</th>
+        <th onclick="sortBy('market_odds_american')" data-col="market_odds_american">Best Mkt</th>
+        <th onclick="sortBy('edge_pp')" data-col="edge_pp" class="sorted">Edge ▾</th>
+        <th onclick="sortBy('ev_per_100')" data-col="ev_per_100">EV/100</th>
+        <th onclick="sortBy('confidence')" data-col="confidence">Conf</th>
+        <th onclick="sortBy('action')" data-col="action">Action</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="13" class="loading-state"><div class="spinner"></div><br>Loading X-Ray data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
+  Not financial advice · <span id="footer-date"></span> · Auto-refreshes every 5 min
+</footer>
+
+<script src="xray.js"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+var allMatches = [];
+var allMarketRows = [];  // flat: [{...mkt, match: matchObj}]
+var sortCol = 'edge_pp';
+var sortDir = -1;  // -1 = desc
+var REFRESH_TIMER = null;
+
+// ── Flatten ───────────────────────────────────────────────────────────────────
+function flattenMarkets(data) {
+  var rows = [];
+  var allM = (data.pregame_matches || []).concat(data.live_matches || []);
+  for (var i = 0; i < allM.length; i++) {
+    var match = allM[i];
+    var mkts = match.markets || [];
+    for (var j = 0; j < mkts.length; j++) {
+      var row = Object.assign({}, mkts[j]);
+      row._match = match;
+      row._mode = match.mode;
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function updateEdgeLabel() {
+  var v = document.getElementById('filter-min-edge').value;
+  document.getElementById('edge-range-val').textContent = v + ' pp';
+}
+
+function matchesMarketType(marketId, typeVal) {
+  if (typeVal === 'all') return true;
+  var parts = typeVal.split(',');
+  return parts.some(function(p) { return marketId.indexOf(p) === 0 || marketId === p; });
+}
+
+function applyFilters(rows) {
+  var mode    = document.getElementById('filter-mode').value;
+  var mktType = document.getElementById('filter-market-type').value;
+  var minEdge = parseFloat(document.getElementById('filter-min-edge').value) || 0;
+  var minConf = document.getElementById('filter-min-conf').value || 'D';
+  var actionOnly = document.getElementById('filter-actionable').checked;
+
+  return rows.filter(function(r) {
+    if (mode !== 'all' && r._mode !== mode) return false;
+    if (!matchesMarketType(r.market_id, mktType)) return false;
+    if ((r.edge_pp || 0) < minEdge) return false;
+    if (confidenceOrder(r.confidence) > confidenceOrder(minConf)) return false;
+    if (actionOnly && (r.action === 'PASS' || r.action === 'DO NOT CHASE')) return false;
+    return true;
+  });
+}
+
+// ── Sort ──────────────────────────────────────────────────────────────────────
+function sortBy(col) {
+  if (sortCol === col) { sortDir *= -1; }
+  else { sortCol = col; sortDir = -1; }
+  document.querySelectorAll('th[data-col]').forEach(function(th) {
+    th.classList.toggle('sorted', th.dataset.col === col);
+  });
+  applyAndRender();
+}
+
+function sortRows(rows) {
+  var col = sortCol;
+  var dir = sortDir;
+  return rows.slice().sort(function(a, b) {
+    var av = a[col], bv = b[col];
+    if (col === 'match') {
+      av = (a._match.home_team || '') + (a._match.away_team || '');
+      bv = (b._match.home_team || '') + (b._match.away_team || '');
+    }
+    if (col === 'confidence') { av = confidenceOrder(a.confidence); bv = confidenceOrder(b.confidence); }
+    if (col === 'action') { av = actionSortOrder(a.action); bv = actionSortOrder(b.action); }
+    if (av == null) av = dir === -1 ? -Infinity : Infinity;
+    if (bv == null) bv = dir === -1 ? -Infinity : Infinity;
+    if (typeof av === 'string') return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+}
+
+function actionSortOrder(a) {
+  var o = { 'BET': 0, 'SMALL BET': 1, 'LEAN': 2, 'WAIT': 3, 'DO NOT CHASE': 4, 'PASS': 5 };
+  return o[a] != null ? o[a] : 6;
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable(rows) {
+  var tbody = document.getElementById('table-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="13" class="loading-state">No markets match current filters.</td></tr>';
+    document.getElementById('result-count').textContent = '0 markets';
+    return;
+  }
+  document.getElementById('result-count').textContent = rows.length + ' market' + (rows.length !== 1 ? 's' : '');
+
+  var html = '';
+  rows.forEach(function(r, idx) {
+    var match = r._match;
+    var matchLabel = esc((match.home_abbr || match.home_team || '') + ' v ' + (match.away_abbr || match.away_team || ''));
+    var modePill = r._mode === 'live'
+      ? '<span class="mode-pill live">Live</span>'
+      : '<span class="mode-pill pre">Pre</span>';
+    var edgeCls = r.edge_pp > 0 ? 'edge-pos' : (r.edge_pp < 0 ? 'edge-neg' : 'edge-zero');
+    var matchLink = 'match.html?id=' + esc(String(match.match_id));
+
+    html += '<tr class="market-row" id="xr-row-'+idx+'" onclick="toggleXRDetail('+idx+',this)">'
+      + '<td class="match-cell"><div class="teams">'
+        + '<a href="'+matchLink+'" onclick="event.stopPropagation()" style="color:var(--gold);text-decoration:none;font-size:11px">'+matchLabel+'</a>'
+        + '</div>'
+        + (match.score ? '<div class="match-meta">'+esc(match.score)+' · '+esc(match.minute||'')+'\'</div>' : '')
+        + modePill
+      + '</td>'
+      + '<td>'+modePill+'</td>'
+      + '<td style="color:var(--text);font-weight:500">'+esc(r.market_label||'')+'</td>'
+      + '<td style="color:var(--text-dim)">'+esc(r.selection_label||'')+'</td>'
+      + '<td>'+formatPct(r.model_probability)+'</td>'
+      + '<td style="color:var(--text-dim)">'+formatPct(r.market_no_vig_probability)+'</td>'
+      + '<td style="font-weight:600">'+formatAmericanOdds(r.model_fair_american)+'</td>'
+      + '<td style="color:var(--blue)">'+formatAmericanOdds(r.market_odds_american)+'</td>'
+      + '<td class="'+edgeCls+'">'+formatEdgePP(r.edge_pp)+'</td>'
+      + '<td>'+(r.ev_per_100 != null ? formatEV(r.ev_per_100) : '—')+'</td>'
+      + '<td>'+confidenceBadge(r.confidence)+'</td>'
+      + '<td>'+actionBadge(r.action)+'</td>'
+      + '<td><span class="expand-arrow">▶</span></td>'
+      + '</tr>';
+
+    html += '<tr class="detail-row" id="xr-detail-'+idx+'">'
+      + '<td colspan="13"><div class="detail-panel">'
+      + '<div class="detail-note">'+esc(r.trader_note||'')+'</div>'
+      + probBarHTML(r.model_probability, r.market_no_vig_probability)
+      + '<div style="margin-top:10px">'
+      + '<a class="detail-link" href="'+matchLink+'">View Full Match Detail →</a>'
+      + '</div>'
+      + '</div></td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function toggleXRDetail(idx, rowEl) {
+  var detail = document.getElementById('xr-detail-' + idx);
+  if (!detail) return;
+  var isOpen = detail.classList.contains('open');
+  document.querySelectorAll('.detail-row.open').forEach(function(r) {
+    r.classList.remove('open');
+    var prev = document.getElementById(r.id.replace('detail', 'row'));
+    if (prev) prev.classList.remove('expanded');
+  });
+  if (!isOpen) {
+    detail.classList.add('open');
+    rowEl.classList.add('expanded');
+    rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function updateKPIs(rows) {
+  document.getElementById('kpi-total-markets').textContent = rows.length;
+  var actionable = rows.filter(function(r) { return r.action !== 'PASS' && r.action !== 'DO NOT CHASE'; });
+  document.getElementById('kpi-value-markets').textContent = actionable.length;
+
+  var bestRow = rows.slice().sort(function(a,b) { return (b.edge_pp||0) - (a.edge_pp||0); })[0];
+  if (bestRow && bestRow.edge_pp > 0) {
+    document.getElementById('kpi-best-edge').textContent = '+' + bestRow.edge_pp.toFixed(1) + ' pp';
+    document.getElementById('kpi-best-edge-sub').textContent = bestRow.market_label;
+  } else {
+    document.getElementById('kpi-best-edge').textContent = '—';
+  }
+
+  document.getElementById('kpi-avg-clv').textContent = '—';
+}
+
+// ── Apply + render ────────────────────────────────────────────────────────────
+function applyAndRender() {
+  var filtered = applyFilters(allMarketRows);
+  var sorted   = sortRows(filtered);
+  renderTable(sorted);
+  updateKPIs(filtered);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  var data = await loadXrayData();
+  if (!data) {
+    document.getElementById('table-body').innerHTML =
+      '<tr><td colspan="13" class="loading-state">X-Ray data unavailable. Check back soon.</td></tr>';
+    return;
+  }
+
+  allMatches = (data.pregame_matches || []).concat(data.live_matches || []);
+  allMarketRows = flattenMarkets(data);
+
+  applyAndRender();
+
+  var tag = document.getElementById('updated-tag');
+  if (data.generated_at) {
+    var d = new Date(data.generated_at);
+    tag.innerHTML = 'Updated <span>' + d.toLocaleString('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    }) + ' ET</span> · auto-refreshes every 5 min';
+  }
+  document.getElementById('footer-date').textContent = data.date || '';
+  document.title = 'Market X-Ray ' + (data.date || '') + ' · Wizard of Odds';
+
+  clearTimeout(REFRESH_TIMER);
+  REFRESH_TIMER = setTimeout(init, 5 * 60 * 1000);
+}
+
+updateEdgeLabel();
+init();
+</script>
+</div>
+</body>
+</html>

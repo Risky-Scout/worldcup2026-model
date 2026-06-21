@@ -134,6 +134,20 @@ jobs:
         run: python scripts/upload_predictions.py --date $DATE
         continue-on-error: true
 
+      - name: Generate Market X-Ray
+        if: steps.freshness.outputs.skip != 'true'
+        run: source .env 2>/dev/null || true; python3.10 scripts/generate_xray.py
+        continue-on-error: true
+
+      - name: Upload Market X-Ray (FTP)
+        if: steps.freshness.outputs.skip != 'true'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        run: python3.10 scripts/upload_xray.py
+        continue-on-error: true
+
       - name: Deploy HTML pages (FTP)
         if: steps.freshness.outputs.skip != 'true'
         env:

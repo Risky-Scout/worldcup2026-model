@@ -1,0 +1,496 @@
+/* Market X-Ray — WoO dark theme extensions */
+:root {
+  --bg: #0a0e1a;
+  --panel: #131826;
+  --panel-2: #1a2030;
+  --panel-3: #222a40;
+  --border: #232a3d;
+  --border-2: #2d3650;
+  --surface: #12121a;
+  --text: #e8ecf5;
+  --text-dim: #8892a8;
+  --text-muted: #5a6378;
+  --muted: #6b6b7a;
+  --gold: #d4af37;
+  --gold-soft: #b89a30;
+  --green: #4ade80;
+  --green-deep: #16a34a;
+  --red: #f87171;
+  --live: #e53e3e;
+  --blue: #60a5fa;
+}
+
+/* ── Action badges ─────────────────────────────────────────────────────── */
+.action-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.action-badge.lg {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 4px;
+}
+
+.action-bet         { background: var(--gold);    color: #000; }
+.action-small-bet   { background: #b7791f;         color: #fff; }
+.action-lean        { background: var(--blue);     color: #000; }
+.action-wait        { background: #d69e2e;          color: #000; }
+.action-pass        { background: var(--border);   color: var(--muted); }
+.action-do-not-chase{ background: var(--live);     color: #fff; }
+.action-hedge       { background: #805ad5;          color: #fff; }
+
+/* ── Confidence badges ─────────────────────────────────────────────────── */
+.conf-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+.conf-A { color: #68d391; }
+.conf-B { color: var(--gold); }
+.conf-C { color: var(--red); }
+.conf-D { color: var(--muted); }
+
+/* ── Probability comparison bar ─────────────────────────────────────────── */
+.prob-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.prob-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--panel-3);
+  width: 100%;
+}
+.prob-bar-model  { background: var(--gold); }
+.prob-bar-market { background: var(--blue); opacity: 0.6; }
+.prob-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ── Filters bar ────────────────────────────────────────────────────────── */
+.filters-bar {
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 14px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.filter-select {
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+}
+.filter-select:focus { border-color: var(--gold); }
+.filter-range {
+  accent-color: var(--gold);
+  width: 100px;
+  cursor: pointer;
+}
+.filter-checkbox {
+  accent-color: var(--gold);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+/* ── KPI row ────────────────────────────────────────────────────────────── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 22px 0 0;
+}
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 18px;
+}
+.kpi-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+.kpi-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+}
+.kpi-val.gold  { color: var(--gold); }
+.kpi-val.green { color: var(--green); }
+.kpi-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Main X-Ray table ───────────────────────────────────────────────────── */
+.table-wrap {
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 16px 28px 40px;
+  overflow-x: auto;
+}
+table.xray-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1200px;
+}
+.xray-table th {
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  color: var(--text-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.xray-table th:hover { color: var(--text); }
+.xray-table th.sorted { color: var(--gold); }
+.xray-table td {
+  padding: 11px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(35,42,61,0.6);
+}
+.xray-table tbody tr.market-row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.xray-table tbody tr.market-row:hover {
+  background: rgba(212,175,55,0.03);
+}
+.xray-table tbody tr.market-row.expanded {
+  background: rgba(212,175,55,0.04);
+}
+.xray-table tbody tr.detail-row { display: none; }
+.xray-table tbody tr.detail-row.open { display: table-row; }
+.xray-table tbody tr.detail-row td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Match cell ─────────────────────────────────────────────────────────── */
+.match-cell .teams {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: 'Fraunces', Georgia, serif;
+}
+.match-cell .match-meta {
+  display: block;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
+.mode-pill {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+.mode-pill.live  { background: rgba(229,62,62,0.15); color: var(--live); }
+.mode-pill.pre   { background: rgba(212,175,55,0.12); color: var(--gold); }
+
+/* ── Expand arrow ───────────────────────────────────────────────────────── */
+.expand-arrow {
+  color: var(--text-muted);
+  font-size: 11px;
+  transition: transform 0.18s;
+  display: inline-block;
+}
+.market-row.expanded .expand-arrow { transform: rotate(90deg); }
+
+/* ── Inline detail panel ────────────────────────────────────────────────── */
+.detail-panel {
+  background: var(--panel);
+  padding: 18px 24px 20px;
+  border-top: 1px solid var(--border);
+}
+.detail-note {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 14px;
+  max-width: 800px;
+}
+.detail-link {
+  color: var(--gold);
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(212,175,55,0.3);
+}
+.detail-link:hover { border-bottom-color: var(--gold); }
+
+/* ── Empty/loading ─────────────────────────────────────────────────────── */
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: xray-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes xray-spin { to { transform: rotate(360deg); } }
+
+/* ── Disclaimer banner ─────────────────────────────────────────────────── */
+.disclaimer {
+  max-width: 1700px;
+  margin: 12px auto 0;
+  padding: 0 28px;
+}
+.disclaimer-inner {
+  background: rgba(96,165,250,0.06);
+  border: 1px solid rgba(96,165,250,0.2);
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Per-match detail sections (match.html) ─────────────────────────────── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.section-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 28px 40px;
+}
+
+/* ── Match state card ───────────────────────────────────────────────────── */
+.match-state-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.matchup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.team-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vs-sep {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.score-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel-2);
+  padding: 4px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border-2);
+}
+.match-meta-inline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Xray summary big card ───────────────────────────────────────────────── */
+.xray-summary-card {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.xray-summary-action {
+  flex-shrink: 0;
+}
+.xray-summary-details {
+  flex: 1;
+  min-width: 200px;
+}
+.xray-summary-note {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
+/* ── Fair Odds Board ─────────────────────────────────────────────────────── */
+.market-group-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+/* ── Line movement timeline ─────────────────────────────────────────────── */
+.line-timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.line-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.line-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-2);
+  position: relative;
+}
+
+/* ── What changed list ───────────────────────────────────────────────────── */
+.change-item {
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.change-field {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.change-arrow { color: var(--text-muted); margin: 0 4px; }
+.change-prev { color: var(--red); }
+.change-curr { color: var(--green); }
+
+/* ── CLV tracker table ───────────────────────────────────────────────────── */
+.clv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.clv-table th {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border);
+}
+.clv-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(35,42,61,0.4);
+  color: var(--text-dim);
+}
+.clv-pending {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Edge value cell coloring ────────────────────────────────────────────── */
+.edge-pos  { color: var(--green); font-weight: 600; }
+.edge-neg  { color: var(--red);   font-weight: 600; }
+.edge-zero { color: var(--text-muted); }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .filters-bar, .table-wrap, .section-wrap, .disclaimer { padding-left: 14px; padding-right: 14px; }
+  .xray-summary-card { flex-direction: column; }
+  .match-state-card { flex-direction: column; align-items: flex-start; }
+}
