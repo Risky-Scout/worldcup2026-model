@@ -1594,6 +1594,32 @@
               "value_reason": "edge -3.9% below threshold 4%"
             },
             {
+              "market": "5-0",
+              "model_prob": 0.01551,
+              "market_prob": 0.01569,
+              "edge_pct": -1.11,
+              "fair_odds": 64.454,
+              "market_odds": 63.737,
+              "ci_90_lower": 0.00808,
+              "ci_90_upper": 0.02069,
+              "half_kelly_pct": 0.0,
+              "value_flag": false,
+              "value_reason": "edge -1.1% below threshold 4%"
+            },
+            {
+              "market": "1-3",
+              "model_prob": 0.00948,
+              "market_prob": 0.00988,
+              "edge_pct": -4.06,
+              "fair_odds": 105.513,
+              "market_odds": 101.23,
+              "ci_90_lower": 0.00626,
+              "ci_90_upper": 0.01322,
+              "half_kelly_pct": 0.0,
+              "value_flag": false,
+              "value_reason": "edge -4.1% below threshold 4%"
+            },
+            {
               "market": "1-0",
               "model_prob": 0.12771,
               "market_prob": 0.13336,
@@ -1695,7 +1721,7 @@
               "ci_90_upper": 0.00816,
               "half_kelly_pct": 0.0,
               "value_flag": false,
-              "value_reason": "edge -20.5% below threshold 4%"
+              "value_reason": "edge -19.4% below threshold 4%"
             },
             {
               "market": "6-0",
@@ -2395,12 +2421,17 @@
           {
             "home_goals": 5,
             "away_goals": 1,
-            "probability": 0.022836
+            "probability": 0.022835
           },
           {
             "home_goals": 6,
             "away_goals": 0,
-            "probability": 0.022836
+            "probability": 0.022835
+          },
+          {
+            "home_goals": 0,
+            "away_goals": 0,
+            "probability": 0.022257
           },
           {
             "home_goals": 0,
@@ -7089,6 +7120,19 @@
               "half_kelly_pct": 0.0,
               "value_flag": false,
               "value_reason": "edge -32.1% below threshold 4%"
+            },
+            {
+              "market": "4-1",
+              "model_prob": 0.00241,
+              "market_prob": 0.00354,
+              "edge_pct": -31.96,
+              "fair_odds": 415.67,
+              "market_odds": 282.812,
+              "ci_90_lower": 0.00132,
+              "ci_90_upper": 0.00347,
+              "half_kelly_pct": 0.0,
+              "value_flag": false,
+              "value_reason": "edge -32.0% below threshold 4%"
             },
             {
               "market": "0-6",
