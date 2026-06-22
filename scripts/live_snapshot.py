@@ -700,8 +700,10 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
                 mins_since_ko = (now_utc - ko_dt).total_seconds() / 60.0
             except Exception:
                 mins_since_ko = -999.0
-            if mins_since_ko >= 3.0:
-                # Kickoff passed ≥3 min ago and BDL still says scheduled → treat as live
+            if 3.0 <= mins_since_ko <= 105.0:
+                # Kickoff passed 3–105 min ago and BDL still says scheduled → treat as live.
+                # Upper bound of 105 min = 90 min regulation + ~15 min max injury time.
+                # Beyond that the game is almost certainly over; BDL just hasn't updated.
                 home_name = (m.get("home_team") or {}).get("name") or "?"
                 away_name = (m.get("away_team") or {}).get("name") or "?"
                 log.warning(
@@ -710,6 +712,15 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
                     m.get("id"), mins_since_ko, home_name, away_name,
                 )
                 live.append(m)
+            elif mins_since_ko > 105.0:
+                # BDL still says 'scheduled' >105 min after kickoff — game is finished.
+                home_name = (m.get("home_team") or {}).get("name") or "?"
+                away_name = (m.get("away_team") or {}).get("name") or "?"
+                log.warning(
+                    "BDL lag: '%s' 'scheduled' %.1f min post-KO — treating as finished: %s vs %s",
+                    m.get("id"), mins_since_ko, home_name, away_name,
+                )
+                finished.append(m)
             else:
                 upcoming.append(m)
         elif clock_seconds > 60:

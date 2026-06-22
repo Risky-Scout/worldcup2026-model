@@ -967,7 +967,7 @@ def generate(date: str | None = None) -> None:
             ko_dt = datetime.fromisoformat(str(ko).replace("Z", "+00:00"))
             if ko_dt.tzinfo is None:
                 ko_dt = ko_dt.replace(tzinfo=timezone.utc)
-            return (now_utc - ko_dt).total_seconds() > 180 * 60
+            return (now_utc - ko_dt).total_seconds() > 105 * 60
         except Exception:
             return False
 
@@ -1005,17 +1005,19 @@ def generate(date: str | None = None) -> None:
                 ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
                 if ko_dt.tzinfo is None:
                     ko_dt = ko_dt.replace(tzinfo=timezone.utc)
-                return (now_utc - ko_dt).total_seconds() > 180 * 60
+                return (now_utc - ko_dt).total_seconds() > 105 * 60
             except Exception:
                 pass
-        # Fallback: if regulation_minute >= 90 and live doc is >20 min old, treat as done
+        # Fallback: if regulation_minute >= 90 and live doc is >5 min old, treat as done.
+        # The live workflow runs every ~2 min so a 5-min gap means multiple cycles passed
+        # without BDL clearing the match — almost certainly finished.
         minute = lm.get("regulation_minute") or 0
         if minute >= 90 and live_generated_at:
             try:
                 gen_dt = datetime.fromisoformat(live_generated_at.replace("Z", "+00:00"))
                 if gen_dt.tzinfo is None:
                     gen_dt = gen_dt.replace(tzinfo=timezone.utc)
-                if (now_utc - gen_dt).total_seconds() > 20 * 60:
+                if (now_utc - gen_dt).total_seconds() > 5 * 60:
                     return True
             except Exception:
                 pass
