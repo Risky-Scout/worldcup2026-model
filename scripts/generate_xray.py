@@ -458,7 +458,7 @@ def build_markets(
         # not a real "market knows better" signal.  Hide them to keep the table
         # clean.  -30pp threshold: safely above any realistic live edge, well below
         # the 50-80pp gaps produced by stale pregame totals mid/late game.
-        if mode == "live" and key in TOTAL_GOALS_LINES and edge_pp < -30.0:
+        if mode == "live" and key in TOTAL_GOALS_LINES and edge_pp < -25.0:
             # #region agent log H-3
             try:
                 import json as _jl, time as _tl, os as _ol
