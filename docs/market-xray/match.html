@@ -259,7 +259,8 @@ function renderMatch(matchObj, predMatch) {
   // Section 2: X-Ray summary
   var summaryEl = document.getElementById('xray-summary-body');
   var bestLabel = matchObj.best_edge_market ? matchObj.best_edge_market.replace(/_/g,' ') : '—';
-  var bestEdge = matchObj.best_edge_pct != null ? ('+'+matchObj.best_edge_pct.toFixed(1)+' pp') : '—';
+  var bestEdge = (matchObj.best_edge_pct != null && matchObj.best_edge_pct > 0)
+    ? ('+' + matchObj.best_edge_pct.toFixed(1) + ' pp') : '—';
   summaryEl.innerHTML = '<div class="xray-summary-action">'
     + actionBadge(matchObj.top_action, true)
     + '</div>'

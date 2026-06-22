@@ -288,10 +288,12 @@ class OddsSnapshotStore:
             return hashes
         for f in sorted(season_dir.glob("*.parquet")):
             try:
-                df = pq.read_table(f, columns=["raw_payload_hash"]).to_pandas()
-                hashes.update(df["raw_payload_hash"].dropna().tolist())
+                # Use to_pylist() to get native Python strings, bypassing pandas
+                # type-inference changes (e.g. StringDtype in pandas 2.3+).
+                raw_list = pq.read_table(f, columns=["raw_payload_hash"]).column(0).to_pylist()
+                hashes.update(h for h in raw_list if h is not None)
             except Exception as e:
-                log.debug("Could not read hashes from %s: %s", f, e)
+                log.warning("Could not read hashes from %s: %s", f, e)
         return hashes
 
     def _cast_types(self, df: pd.DataFrame) -> pd.DataFrame:

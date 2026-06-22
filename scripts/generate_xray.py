@@ -695,15 +695,15 @@ def _top_action_and_confidence(markets: list[dict]) -> tuple[str, str, str | Non
             top_action = priority_action
             break
 
-    # Best edge market (positive edge only)
+    # Best edge market — only positive-edge markets; never fall back to negatives
     positive = [m for m in markets if m["edge_pp"] > 0]
     if positive:
         best = positive[0]
         best_edge_market = best["market_id"]
         best_edge_pct = best["edge_pp"]
     else:
-        best_edge_market = markets[0]["market_id"] if markets else None
-        best_edge_pct = markets[0]["edge_pp"] if markets else None
+        best_edge_market = None
+        best_edge_pct = None
 
     # Overall confidence
     confs = [m["confidence"] for m in markets]
