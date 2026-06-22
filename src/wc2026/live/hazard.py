@@ -227,8 +227,10 @@ def momentum_scaling(
     Returns
     -------
     (home_scale, away_scale)
-        1.08/0.95 if home dominant (avg > +20),
-        0.95/1.08 if away dominant (avg < -20),
+        1.08/0.95 if home highly dominant  (avg > +20),
+        1.05/0.97 if home moderately dominant (avg +10 to +20),
+        0.95/1.08 if away highly dominant  (avg < -20),
+        0.97/1.05 if away moderately dominant (avg -10 to -20),
         1.0/1.0   otherwise or if no data.
     """
     if momentum_df is None or len(momentum_df) == 0:
@@ -257,17 +259,35 @@ def momentum_scaling(
 
         _NEUTRAL_LO = -20.0
         _NEUTRAL_HI = 20.0
+        _MODERATE_LO = -10.0
+        _MODERATE_HI = 10.0
 
         if ratio > _NEUTRAL_HI:
+            # High home momentum → +8% home attack, -5% away attack
             h_scale, a_scale = 1.08, 0.95
             log.info(
                 "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
                 match_id, int(minute), ratio, h_scale, a_scale,
             )
+        elif ratio > _MODERATE_HI:
+            # Moderate home momentum → +5% home attack, -3% away attack
+            h_scale, a_scale = 1.05, 0.97
+            log.info(
+                "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f (moderate)",
+                match_id, int(minute), ratio, h_scale, a_scale,
+            )
         elif ratio < _NEUTRAL_LO:
+            # High away momentum → -5% home attack, +8% away attack
             h_scale, a_scale = 0.95, 1.08
             log.info(
                 "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f",
+                match_id, int(minute), ratio, h_scale, a_scale,
+            )
+        elif ratio < _MODERATE_LO:
+            # Moderate away momentum → -3% home attack, +5% away attack
+            h_scale, a_scale = 0.97, 1.05
+            log.info(
+                "momentum_scaling: match=%s min=%d ratio=%.2f h_scale=%.2f a_scale=%.2f (moderate)",
                 match_id, int(minute), ratio, h_scale, a_scale,
             )
         else:
@@ -279,24 +299,26 @@ def momentum_scaling(
         return 1.0, 1.0
 
 
+_LEAGUE_AVG_PASSES_FT = 35.0  # WC-level league average passes into final third per team
+
+
 def passes_ft_scaling(
     home_passes_ft: float,
     away_passes_ft: float,
 ) -> tuple[float, float]:
-    """Scale hazard based on passes into final third dominance.
+    """Scale hazard based on passes into final third vs league average.
 
-    If home has >60% of final-third passes, +3% attack; if <40%, -3%.
-    Returns (home_scale, away_scale).
+    Each team is scaled independently: ±3% based on deviation from the
+    WC-level league average of 35 passes per team per match.
+    Returns (home_scale, away_scale), each clamped to [0.97, 1.03].
+
+    Falls back to neutral (1.0, 1.0) when no data is available (both = 0).
     """
-    total = home_passes_ft + away_passes_ft
-    if total < 5:
+    if home_passes_ft == 0.0 and away_passes_ft == 0.0:
         return 1.0, 1.0
-    home_share = home_passes_ft / total
-    if home_share > 0.60:
-        return 1.03, 0.97
-    elif home_share < 0.40:
-        return 0.97, 1.03
-    return 1.0, 1.0
+    h = 1.0 + 0.03 * (home_passes_ft - _LEAGUE_AVG_PASSES_FT) / _LEAGUE_AVG_PASSES_FT
+    a = 1.0 + 0.03 * (away_passes_ft - _LEAGUE_AVG_PASSES_FT) / _LEAGUE_AVG_PASSES_FT
+    return float(np.clip(h, 0.97, 1.03)), float(np.clip(a, 0.97, 1.03))
 
 
 def compute_live_rates(

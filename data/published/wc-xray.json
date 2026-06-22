@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-22T02:41:11.752615+00:00",
+  "generated_at": "2026-06-22T03:02:53.149532+00:00",
   "date": "2026-06-21",
   "pregame_matches": [],
   "live_matches": [
@@ -13,175 +13,115 @@
       "kickoff_utc": null,
       "status": "live",
       "mode": "live",
-      "minute": 45.0,
-      "score": "1–0",
+      "minute": 90.0,
+      "score": "1–3",
       "odds_timestamp": null,
       "top_action": "WAIT",
       "best_edge_market": "btts_yes",
-      "best_edge_pct": 6.77,
+      "best_edge_pct": 56.37,
       "confidence": "B",
-      "summary_note": "WAIT signal on Total Over 2.5 (-11.9 pp edge). 8 actionable markets total.",
+      "summary_note": "WAIT signal on BTTS No (-56.4 pp edge). 6 actionable markets total.",
       "live_market_odds_stale": false,
       "markets": [
-        {
-          "market_id": "over_2_5",
-          "market_label": "Total Over 2.5",
-          "selection_label": "Total Over 2.5",
-          "model_probability": 0.3684,
-          "model_fair_american": 171,
-          "market_odds_american": 105,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.4875,
-          "edge_pp": -11.91,
-          "ev_per_100": -24.42,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: +171. Best market: +105. Edge: -11.9 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "over_1_5",
-          "market_label": "Total Over 1.5",
-          "selection_label": "Total Over 1.5",
-          "model_probability": 0.7238,
-          "model_fair_american": -262,
-          "market_odds_american": -471,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.8248,
-          "edge_pp": -10.1,
-          "ev_per_100": -12.25,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: -262. Best market: -471. Edge: -10.1 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "selection_label": "Total Over 3.5",
-          "model_probability": 0.1398,
-          "model_fair_american": 615,
-          "market_odds_american": 348,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.223,
-          "edge_pp": -8.32,
-          "ev_per_100": -37.32,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: +615. Best market: +348. Edge: -8.3 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
         {
           "market_id": "btts_no",
           "market_label": "BTTS No",
           "selection_label": "BTTS No",
-          "model_probability": 0.4199,
-          "model_fair_american": 138,
-          "market_odds_american": 105,
+          "model_probability": 0.001,
+          "model_fair_american": 99900,
+          "market_odds_american": -130,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.4876,
-          "edge_pp": -6.77,
-          "ev_per_100": -13.89,
+          "market_no_vig_probability": 0.5647,
+          "edge_pp": -56.37,
+          "ev_per_100": -99.82,
           "confidence": "D",
           "action": "WAIT",
-          "trader_note": "Model fair: +138. Best market: +105. Edge: -6.8 pp. Price is close but not yet sufficient. Wait for improvement."
+          "trader_note": "Model fair: +99900. Best market: -130. Edge: -56.4 pp. Price is close but not yet sufficient. Wait for improvement."
         },
         {
           "market_id": "btts_yes",
           "market_label": "BTTS Yes",
           "selection_label": "BTTS Yes",
-          "model_probability": 0.5801,
-          "model_fair_american": -138,
-          "market_odds_american": -105,
+          "model_probability": 0.999,
+          "model_fair_american": -99900,
+          "market_odds_american": 130,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5124,
-          "edge_pp": 6.77,
-          "ev_per_100": 13.22,
+          "market_no_vig_probability": 0.4353,
+          "edge_pp": 56.37,
+          "ev_per_100": 129.52,
           "confidence": "B",
           "action": "WAIT",
-          "trader_note": "Model fair: -138. Best market: -105. Edge: +6.8 pp. Price is close but not yet sufficient. Wait for improvement."
+          "trader_note": "Model fair: -99900. Best market: +130. Edge: +56.4 pp. Price is close but not yet sufficient. Wait for improvement."
         },
         {
-          "market_id": "home_win",
-          "market_label": "Home Win (1X2)",
-          "selection_label": "New Zealand ML",
-          "model_probability": 0.5555,
-          "model_fair_american": -125,
-          "market_odds_american": -101,
+          "market_id": "over_0_5",
+          "market_label": "Total Over 0.5",
+          "selection_label": "Total Over 0.5",
+          "model_probability": 0.999,
+          "model_fair_american": -99900,
+          "market_odds_american": -118,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5013,
-          "edge_pp": 5.42,
-          "ev_per_100": 10.81,
+          "market_no_vig_probability": 0.5412,
+          "edge_pp": 45.78,
+          "ev_per_100": 84.58,
           "confidence": "B",
           "action": "WAIT",
-          "trader_note": "Model fair: -125. Best market: -101. Edge: +5.4 pp. Price is close but not yet sufficient. Wait for improvement."
+          "trader_note": "Model fair: -99900. Best market: -118. Edge: +45.8 pp. Price is close but not yet sufficient. Wait for improvement."
         },
         {
           "market_id": "away_win",
           "market_label": "Away Win (1X2)",
           "selection_label": "Egypt ML",
-          "model_probability": 0.1585,
-          "model_fair_american": 531,
-          "market_odds_american": 381,
+          "model_probability": 0.999,
+          "model_fair_american": -99900,
+          "market_odds_american": -1143,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.208,
-          "edge_pp": -4.95,
-          "ev_per_100": -23.81,
-          "confidence": "D",
+          "market_no_vig_probability": 0.9196,
+          "edge_pp": 7.94,
+          "ev_per_100": 8.64,
+          "confidence": "B",
           "action": "WAIT",
-          "trader_note": "Model fair: +531. Best market: +381. Edge: -5.0 pp. Price is close but not yet sufficient. Wait for improvement."
+          "trader_note": "Model fair: -99900. Best market: -1143. Edge: +7.9 pp. Price is close but not yet sufficient. Wait for improvement."
         },
         {
           "market_id": "draw",
           "market_label": "Draw (1X2)",
           "selection_label": "Draw",
-          "model_probability": 0.286,
-          "model_fair_american": 250,
-          "market_odds_american": 244,
+          "model_probability": 0.001,
+          "model_fair_american": 99900,
+          "market_odds_american": 1261,
           "market_odds_estimated": true,
-          "market_no_vig_probability": 0.2907,
-          "edge_pp": -0.47,
-          "ev_per_100": -1.61,
+          "market_no_vig_probability": 0.0735,
+          "edge_pp": -7.25,
+          "ev_per_100": -98.64,
           "confidence": "D",
           "action": "WAIT",
-          "trader_note": "Model fair: +250. Best market: +244. Edge: -0.5 pp. Price is close but not yet sufficient. Wait for improvement."
+          "trader_note": "Model fair: +99900. Best market: +1261. Edge: -7.2 pp. Price is close but not yet sufficient. Wait for improvement."
+        },
+        {
+          "market_id": "home_win",
+          "market_label": "Home Win (1X2)",
+          "selection_label": "New Zealand ML",
+          "model_probability": 0.001,
+          "model_fair_american": 99900,
+          "market_odds_american": null,
+          "market_odds_estimated": false,
+          "market_no_vig_probability": 0.007,
+          "edge_pp": -0.6,
+          "ev_per_100": null,
+          "confidence": "D",
+          "action": "WAIT",
+          "trader_note": "Model fair: +99900. Best market: N/A. Edge: -0.6 pp. Price is close but not yet sufficient. Wait for improvement."
         }
       ],
       "line_movement": {
-        "snapshots_available": 10,
-        "open_edge_pp": 0.08,
-        "current_edge_pp": -11.91,
-        "edge_change": -11.99,
+        "snapshots_available": 12,
+        "open_edge_pp": 0.52,
+        "current_edge_pp": -56.37,
+        "edge_change": -56.89,
         "note": "Edge decreased from open; market may have adjusted."
       },
       "what_changed": [
-        {
-          "market_id": "over_2_5",
-          "market_label": "Total Over 2.5",
-          "changes": {
-            "action": {
-              "prev": "PASS",
-              "curr": "WAIT"
-            }
-          }
-        },
-        {
-          "market_id": "over_1_5",
-          "market_label": "Total Over 1.5",
-          "changes": {
-            "action": {
-              "prev": "PASS",
-              "curr": "WAIT"
-            }
-          }
-        },
-        {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "changes": {
-            "action": {
-              "prev": "PASS",
-              "curr": "WAIT"
-            }
-          }
-        },
         {
           "market_id": "btts_no",
           "market_label": "BTTS No",
@@ -203,11 +143,11 @@
           }
         },
         {
-          "market_id": "home_win",
-          "market_label": "Home Win (1X2)",
+          "market_id": "over_0_5",
+          "market_label": "Total Over 0.5",
           "changes": {
             "action": {
-              "prev": "DO NOT CHASE",
+              "prev": "BET",
               "curr": "WAIT"
             }
           }
@@ -217,7 +157,7 @@
           "market_label": "Away Win (1X2)",
           "changes": {
             "action": {
-              "prev": "PASS",
+              "prev": "BET",
               "curr": "WAIT"
             }
           }
@@ -227,43 +167,23 @@
           "market_label": "Draw (1X2)",
           "changes": {
             "action": {
-              "prev": "PASS",
+              "prev": "DO NOT CHASE",
+              "curr": "WAIT"
+            }
+          }
+        },
+        {
+          "market_id": "home_win",
+          "market_label": "Home Win (1X2)",
+          "changes": {
+            "action": {
+              "prev": "DO NOT CHASE",
               "curr": "WAIT"
             }
           }
         }
       ],
       "clv_signals": [
-        {
-          "market_id": "over_2_5",
-          "market_label": "Total Over 2.5",
-          "model_prob": 0.75445,
-          "model_fair_odds": 1.3255,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "over_1_5",
-          "market_label": "Total Over 1.5",
-          "model_prob": 0.89501,
-          "model_fair_odds": 1.1173,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "over_3_5",
-          "market_label": "Total Over 3.5",
-          "model_prob": 0.57848,
-          "model_fair_odds": 1.7287,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
         {
           "market_id": "btts_no",
           "market_label": "BTTS No",
@@ -285,10 +205,10 @@
           "beat_close": null
         },
         {
-          "market_id": "home_win",
-          "market_label": "Home Win (1X2)",
-          "model_prob": 0.32017,
-          "model_fair_odds": 3.1233,
+          "market_id": "over_0_5",
+          "market_label": "Total Over 0.5",
+          "model_prob": 0.97514,
+          "model_fair_odds": 1.0255,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
           "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
           "closing_source": "live_capture",
@@ -309,6 +229,16 @@
           "market_label": "Draw (1X2)",
           "model_prob": 0.19574,
           "model_fair_odds": 5.1088,
+          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
+          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
+          "closing_source": "live_capture",
+          "beat_close": null
+        },
+        {
+          "market_id": "home_win",
+          "market_label": "Home Win (1X2)",
+          "model_prob": 0.32017,
+          "model_fair_odds": 3.1233,
           "prediction_timestamp": "2026-06-19T02:56:03.312Z",
           "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
           "closing_source": "live_capture",

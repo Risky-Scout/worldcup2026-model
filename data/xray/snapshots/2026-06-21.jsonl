@@ -855,3 +855,24 @@
 {"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.5555, "market_odds_american": -101, "edge_pp": 5.42, "action": "DO NOT CHASE"}
 {"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.1585, "market_odds_american": 381, "edge_pp": -4.95, "action": "PASS"}
 {"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.286, "market_odds_american": 244, "edge_pp": -0.47, "action": "PASS"}
+{"match_id": "40", "market_id": "over_0_5", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.999, "market_odds_american": -118, "edge_pp": 45.78, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.3684, "market_odds_american": 105, "edge_pp": -11.91, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.7238, "market_odds_american": -471, "edge_pp": -10.1, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.1398, "market_odds_american": 348, "edge_pp": -8.32, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.4199, "market_odds_american": 105, "edge_pp": -6.77, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.5801, "market_odds_american": -105, "edge_pp": 6.77, "action": "WAIT"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.5555, "market_odds_american": -101, "edge_pp": 5.42, "action": "WAIT"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.1585, "market_odds_american": 381, "edge_pp": -4.95, "action": "WAIT"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T03:00:35.364937+00:00", "model_probability": 0.286, "market_odds_american": 244, "edge_pp": -0.47, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.001, "market_odds_american": -130, "edge_pp": -56.37, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.999, "market_odds_american": 130, "edge_pp": 56.37, "action": "BET"}
+{"match_id": "40", "market_id": "over_0_5", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.999, "market_odds_american": -118, "edge_pp": 45.78, "action": "BET"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.999, "market_odds_american": -1143, "edge_pp": 7.94, "action": "BET"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.001, "market_odds_american": 1261, "edge_pp": -7.25, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T03:01:38.089865+00:00", "model_probability": 0.001, "market_odds_american": null, "edge_pp": -0.6, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.001, "market_odds_american": -130, "edge_pp": -56.37, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.999, "market_odds_american": 130, "edge_pp": 56.37, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_0_5", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.999, "market_odds_american": -118, "edge_pp": 45.78, "action": "WAIT"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.999, "market_odds_american": -1143, "edge_pp": 7.94, "action": "WAIT"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.001, "market_odds_american": 1261, "edge_pp": -7.25, "action": "WAIT"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T03:02:53.149532+00:00", "model_probability": 0.001, "market_odds_american": null, "edge_pp": -0.6, "action": "WAIT"}
