@@ -852,6 +852,119 @@ def _compute_live_edge(
                 "error": str(exc)}
 
 
+def _build_live_market_implied(odds_rows: list[dict]) -> dict[str, float]:
+    """Convert BDL odds rows for one match into market_implied_markets with no-vig probabilities.
+
+    Uses SHIN devigging for 1X2, simple proportional no-vig for totals and BTTS.
+    Returns {} when no usable odds rows are provided.
+    """
+    if not odds_rows:
+        return {}
+
+    from wc2026.markets.no_vig import strip_vig_1x2, strip_vig_total
+    import statistics as _stats
+    from collections import defaultdict
+
+    result: dict[str, float] = {}
+
+    # 1X2 moneyline
+    ml_probs: list[list[float]] = []
+    for row in odds_rows:
+        h = row.get("moneyline_home_odds")
+        d = row.get("moneyline_draw_odds")
+        a = row.get("moneyline_away_odds")
+        if all(v is not None for v in (h, d, a)):
+            try:
+                nv = strip_vig_1x2(int(h), int(d), int(a), method="shin")
+                if nv.method != "naive_fallback":
+                    ml_probs.append(nv.probabilities)
+            except Exception:
+                pass
+    if ml_probs:
+        result["home_win"] = round(_stats.mean(p[0] for p in ml_probs), 6)
+        result["draw"]     = round(_stats.mean(p[1] for p in ml_probs), 6)
+        result["away_win"] = round(_stats.mean(p[2] for p in ml_probs), 6)
+        log.info("  Live 1X2: H=%.3f D=%.3f A=%.3f (%d vendors)",
+                 result["home_win"], result["draw"], result["away_win"], len(ml_probs))
+
+    # Totals (over/under X.5 goals)
+    def _dec_to_amer(dec: float) -> int:
+        if dec >= 2.0:
+            return int((dec - 1) * 100)
+        return int(-100 / (dec - 1))
+
+    totals_by_line: dict[float, list[tuple[int, int]]] = defaultdict(list)
+    for row in odds_rows:
+        for mkt in row.get("markets", []):
+            if mkt.get("type") != "total":
+                continue
+            if mkt.get("period") != "match" or mkt.get("scope") != "match":
+                continue
+            line = mkt.get("line_value")
+            if line is None:
+                continue
+            try:
+                line = float(line)
+            except (TypeError, ValueError):
+                continue
+            if line not in {0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5}:
+                continue
+            over_dec = under_dec = None
+            for outcome in mkt.get("outcomes", []):
+                if outcome.get("type") == "over":
+                    over_dec = outcome.get("decimal_odds")
+                elif outcome.get("type") == "under":
+                    under_dec = outcome.get("decimal_odds")
+            if over_dec and under_dec:
+                totals_by_line[line].append(
+                    (_dec_to_amer(float(over_dec)), _dec_to_amer(float(under_dec)))
+                )
+    for line, pairs in sorted(totals_by_line.items()):
+        over_probs, under_probs = [], []
+        for ov_a, un_a in pairs:
+            try:
+                op, up = strip_vig_total(ov_a, un_a, method="shin")
+                over_probs.append(op)
+                under_probs.append(up)
+            except Exception:
+                pass
+        if over_probs:
+            line_key = str(line).replace(".", "_")
+            result[f"over_{line_key}"]  = round(_stats.mean(over_probs), 6)
+            result[f"under_{line_key}"] = round(_stats.mean(under_probs), 6)
+
+    # BTTS
+    btts_yes_dec: list[float] = []
+    btts_no_dec:  list[float] = []
+    for row in odds_rows:
+        for mkt in row.get("markets", []):
+            if mkt.get("type") != "both_teams_to_score":
+                continue
+            if mkt.get("period") != "match" or mkt.get("scope") != "both_teams":
+                continue
+            name = (mkt.get("name") or "").lower()
+            if any(x in name for x in ["corner", "first half", "2nd", "combo", "/"]):
+                continue
+            outcomes = mkt.get("outcomes", [])
+            if len(outcomes) != 2:
+                continue
+            for outcome in outcomes:
+                otype = (outcome.get("type") or "").lower()
+                dec = outcome.get("decimal_odds")
+                if dec and float(dec) > 1.0:
+                    if otype in ("yes", "true", "btts", "both_teams"):
+                        btts_yes_dec.append(float(dec))
+                    elif otype in ("no", "false"):
+                        btts_no_dec.append(float(dec))
+    if btts_yes_dec and btts_no_dec:
+        raw_y, raw_n = 1 / _stats.mean(btts_yes_dec), 1 / _stats.mean(btts_no_dec)
+        total = raw_y + raw_n
+        result["btts_yes"] = round(raw_y / total, 6)
+        result["btts_no"]  = round(raw_n / total, 6)
+
+    return result
+
+
 def run_live_snapshot() -> dict:
     """Main: fetch live matches, run PMF engine, return snapshot dict."""
     from wc2026.live.predictor import LivePMFPredictor
@@ -877,6 +990,7 @@ def run_live_snapshot() -> dict:
     live_shots: dict[str, list] = {}         # match_id → [match_shots rows]
     live_events: dict[str, list] = {}        # match_id → [match_events rows]
     live_player_stats: dict[str, list] = {}  # match_id → [player_match_stats rows]
+    live_odds: dict[str, list] = {}          # match_id → [odds rows]
     if live_ids:
         try:
             from wc2026.data.providers.bdl import BDLProvider
@@ -907,6 +1021,15 @@ def run_live_snapshot() -> dict:
                          len(pstats_rows), len(live_ids))
             except Exception as exc:
                 log.warning("Could not fetch live player stats: %s", exc)
+            # Fetch current live odds for X-Ray market comparison
+            try:
+                odds_rows = _stats_provider.fetch_odds(match_ids=live_ids)
+                for row in odds_rows:
+                    key = str(row.get("match_id", ""))
+                    live_odds.setdefault(key, []).append(row)
+                log.info("Live odds fetched: %d rows for %d matches", len(odds_rows), len(live_ids))
+            except Exception as exc:
+                log.warning("Could not fetch live odds: %s", exc)
             log.info("Live stats fetched: %d team-stat rows, %d shot rows for %d matches",
                      len(stats_rows), len(shots_rows), len(live_ids))
         except Exception as exc:
@@ -1036,6 +1159,15 @@ def run_live_snapshot() -> dict:
                     _pregame_fallback, home, away,
                 )
                 d["live_edge"] = live_edge
+
+                # Build market_implied_markets from live BDL odds for the X-Ray page
+                live_mim = _build_live_market_implied(live_odds.get(mid, []))
+                if live_mim:
+                    d["market_implied_markets"] = live_mim
+                    log.info("Live market_implied_markets built: %d markets for match %s",
+                             len(live_mim), mid)
+                else:
+                    log.warning("No live odds available for match %s — X-Ray will use pregame fallback", mid)
 
                 # Pitch visualization enrichment — shots, events, player stats, lineup
                 try:
