@@ -16,6 +16,75 @@ import pandas as pd
 from src.wc2026.features.player_strength import PlayerEfficiencyRating, _POSITION_GROUPS
 
 
+def injury_impact_score(players: list[dict]) -> float:
+    """
+    Compute injury impact score from a list of player injury dicts.
+
+    players: list of {avg_rating: float, status: 'OUT' | 'GTD' | 'AVAILABLE'}
+      OUT  → full weight (1.0)
+      GTD  → half weight (0.5)
+    """
+    score = 0.0
+    for p in players:
+        status = str(p.get("status", "")).upper()
+        if status == "OUT":
+            score += float(p.get("avg_rating", 7.0)) * 1.0
+        elif status == "GTD":
+            score += float(p.get("avg_rating", 7.0)) * 0.5
+    return score
+
+
+def compute_injury_lambda_factor(
+    team_name: str,
+    injuries_df: "pd.DataFrame | None",
+    rosters_df: "pd.DataFrame | None" = None,
+) -> float:
+    """
+    Compute multiplicative injury penalty for a team's attack lambda.
+
+    Formula:
+      score = injury_impact_score(players)         # sum of rating × multiplier
+      normalized = score / 10.0
+      factor = max(0.80, 1.0 - normalized × 0.15)  # cap penalty at −20%
+
+    Returns 1.0 when no injury data is available (neutral / pipeline-safe).
+    """
+    if injuries_df is None or (hasattr(injuries_df, "empty") and injuries_df.empty):
+        return 1.0
+
+    # Filter to this team
+    if "team_name" in injuries_df.columns:
+        team_inj = injuries_df[injuries_df["team_name"] == team_name]
+    elif "team_id" in injuries_df.columns:
+        # fall back to filtering impossible without team_id mapping
+        team_inj = pd.DataFrame()
+    else:
+        team_inj = pd.DataFrame()
+
+    if team_inj.empty:
+        return 1.0
+
+    players = []
+    for _, row in team_inj.iterrows():
+        status = str(row.get("status", "")).upper()
+        if status not in ("OUT", "GTD"):
+            continue
+
+        avg_rating = 7.0
+        if rosters_df is not None and not (hasattr(rosters_df, "empty") and rosters_df.empty):
+            pid = row.get("player_id")
+            if pid is not None and "player_id" in rosters_df.columns and "avg_rating" in rosters_df.columns:
+                p_rows = rosters_df[rosters_df["player_id"] == pid]
+                if not p_rows.empty:
+                    avg_rating = float(p_rows["avg_rating"].dropna().mean() or 7.0)
+
+        players.append({"avg_rating": avg_rating, "status": status})
+
+    score = injury_impact_score(players)
+    normalized = score / 10.0
+    return max(0.80, 1.0 - normalized * 0.15)
+
+
 @dataclass
 class LineupStrengthState:
     match_id: int

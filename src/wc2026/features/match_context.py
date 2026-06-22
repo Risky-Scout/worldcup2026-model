@@ -17,6 +17,55 @@ HOST_COUNTRIES_2026 = {"USA", "CAN", "MEX", "US", "CA", "MX"}
 # Rough stadium home locations (fallback if lat/lon missing)
 _KNOWN_HOST_COUNTRY_CODES = HOST_COUNTRIES_2026
 
+# WC 2026 stadiums: name → (lat, lon, capacity)
+_WC2026_STADIUMS: dict[str, tuple[float, float, int]] = {
+    "MetLife Stadium":         (40.8135,  -74.0745,  82500),
+    "AT&T Stadium":            (32.7473,  -97.0945,  80000),
+    "SoFi Stadium":            (33.9534, -118.3387,  70240),
+    "Levi's Stadium":          (37.4033, -121.9694,  68500),
+    "Gillette Stadium":        (42.0909,  -71.2643,  65878),
+    "NRG Stadium":             (29.6847,  -95.4107,  72220),
+    "Lincoln Financial Field": (39.9007,  -75.1675,  69796),
+    "BC Place":                (49.2768, -123.1118,  54500),
+    "Mercedes-Benz Stadium":   (33.7554,  -84.4010,  71000),
+    "Lumen Field":             (47.5952, -122.3316,  69000),
+    "Hard Rock Stadium":       (25.9580,  -80.2389,  64767),
+    "Arrowhead Stadium":       (39.0489,  -94.4839,  76416),
+    "Estadio Azteca":          (19.3029,  -99.1506,  87500),
+    "Estadio Akron":           (20.6861, -103.4668,  49850),
+    "Estadio BBVA":            (25.6698, -100.3166,  51350),
+    "BMO Field":               (43.6326,  -79.4183,  30000),
+}
+
+# WC 2026 team name → ISO country code (for haversine lookup)
+_TEAM_NAME_TO_CODE: dict[str, str] = {
+    "United States": "USA", "USA": "USA", "United States of America": "USA",
+    "Canada": "CAN", "Mexico": "MEX",
+    "Brazil": "BRA", "Argentina": "ARG", "France": "FRA",
+    "England": "ENG", "Germany": "GER", "Spain": "ESP",
+    "Portugal": "POR", "Netherlands": "NED", "Belgium": "BEL",
+    "Italy": "ITA", "Uruguay": "URU", "Colombia": "COL",
+    "Chile": "CHI", "Ecuador": "ECU", "Peru": "PER",
+    "Morocco": "MAR", "Senegal": "SEN", "Ghana": "GHA",
+    "Cameroon": "CMR", "Nigeria": "NGA",
+    "Ivory Coast": "CIV", "Côte d'Ivoire": "CIV",
+    "Egypt": "EGY", "Algeria": "ALG", "Tunisia": "TUN",
+    "Japan": "JPN", "South Korea": "KOR", "Korea Republic": "KOR",
+    "Saudi Arabia": "SAU", "Iran": "IRN", "Australia": "AUS",
+    "Qatar": "QAT", "Croatia": "CRO", "Serbia": "SRB",
+    "Switzerland": "SUI", "Austria": "AUT", "Denmark": "DEN",
+    "Poland": "POL", "Wales": "WAL", "Czechia": "CZE",
+    "Czech Republic": "CZE", "Hungary": "HUN", "Slovakia": "SVK",
+    "Slovenia": "SVN", "Panama": "PAN", "Costa Rica": "CRC",
+    "Honduras": "HON", "El Salvador": "SLV", "Jamaica": "JAM",
+    "Haiti": "HAI", "Curaçao": "CUW", "Curacao": "CUW",
+    "Guatemala": "GUA", "Trinidad and Tobago": "TTO",
+    "Venezuela": "VEN", "Bolivia": "BOL", "Paraguay": "PAR",
+    "New Zealand": "NZL", "Indonesia": "IDN", "Iraq": "IRQ",
+    "Uzbekistan": "UZB", "South Africa": "RSA",
+    "Democratic Republic of Congo": "COD", "DR Congo": "COD",
+}
+
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371.0
@@ -104,6 +153,70 @@ class MatchContextAdjustmentFull:
             total_intensity_adj_log=self.total_intensity_adj_log,
             rho_adj=self.rho_adj,
         )
+
+
+def compute_context_factors(
+    home_team: str,
+    away_team: str,
+    stadium_name: str,
+    home_rest_days: float = 7.0,
+    away_rest_days: float = 7.0,
+) -> tuple[float, float]:
+    """
+    Compute (home_factor, away_factor) multiplicative lambda adjustments.
+
+    Implements the Phase-3 3-tier adjustments:
+      Travel (haversine distance to stadium):
+        > 5000 km → 0.970 penalty
+        2000–5000 km → 0.985 penalty
+        ≤ 2000 km → 1.0  (no penalty)
+      Rest days:
+        < 4 days → 0.96
+        > 6 days → 1.02 (freshness bonus)
+        4–6 days → 1.0
+      Stadium capacity (home team only):
+        > 70 000 → 1.02 crowd boost
+        else → 1.0
+
+    Returns factors to multiply directly into lambda_home and lambda_away.
+    """
+    h_code = _TEAM_NAME_TO_CODE.get(home_team, home_team[:3].upper() if home_team else "")
+    a_code = _TEAM_NAME_TO_CODE.get(away_team, away_team[:3].upper() if away_team else "")
+
+    stadium_info = _WC2026_STADIUMS.get(stadium_name)
+
+    def _travel_factor(team_code: str) -> float:
+        if stadium_info is None:
+            return 1.0
+        team_coords = _TEAM_HOME_COORDS.get(team_code)
+        if team_coords is None:
+            return 1.0
+        dist = _haversine_km(team_coords[0], team_coords[1], stadium_info[0], stadium_info[1])
+        if dist > 5000:
+            return 0.970
+        elif dist > 2000:
+            return 0.985
+        return 1.0
+
+    def _rest_factor(rest_days: float) -> float:
+        if rest_days < 4:
+            return 0.96
+        elif rest_days > 6:
+            return 1.02
+        return 1.0
+
+    travel_h = _travel_factor(h_code)
+    travel_a = _travel_factor(a_code)
+    rest_h = _rest_factor(home_rest_days)
+    rest_a = _rest_factor(away_rest_days)
+
+    # Crowd boost applies to the home team only
+    crowd_h = 1.02 if (stadium_info is not None and stadium_info[2] > 70_000) else 1.0
+
+    home_factor = travel_h * rest_h * crowd_h
+    away_factor = travel_a * rest_a
+
+    return home_factor, away_factor
 
 
 def compute_match_context(

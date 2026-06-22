@@ -1780,6 +1780,25 @@ def predict_all_2026(
         except Exception as _tt_exc:
             log.warning("team_total_anchor build failed (%s) — skipping", _tt_exc)
 
+    # ── Pre-compute most-recent completed-match date per team (for rest days) ─
+    _team_last_played: dict[str, pd.Timestamp] = {}
+    try:
+        _completed_for_rest = matches_df[
+            matches_df["status"].isin(["completed", "final"])
+        ].copy()
+        _completed_for_rest["_mdt"] = pd.to_datetime(
+            _completed_for_rest["match_datetime"], utc=True, errors="coerce"
+        )
+        for _, _r in _completed_for_rest.sort_values("_mdt").iterrows():
+            if pd.notna(_r["_mdt"]):
+                ht, at = str(_r.get("home_team", "")), str(_r.get("away_team", ""))
+                if ht:
+                    _team_last_played[ht] = _r["_mdt"]
+                if at:
+                    _team_last_played[at] = _r["_mdt"]
+    except Exception as _rest_exc:
+        log.debug("team_last_played pre-compute failed: %s", _rest_exc)
+
     for _, row in sched_2026.iterrows():
         home = row["home_team"]
         away = row["away_team"]
@@ -1795,6 +1814,18 @@ def predict_all_2026(
 
         _total_anchor_for_match = _per_match_total.get(mid, _fallback_total)
 
+        # Compute rest days for each team (days since last match)
+        _match_ts = pd.to_datetime(match_dt, utc=True, errors="coerce")
+        _home_rest_d = 7.0
+        _away_rest_d = 7.0
+        if pd.notna(_match_ts):
+            _h_last = _team_last_played.get(home)
+            _a_last = _team_last_played.get(away)
+            if _h_last is not None:
+                _home_rest_d = float(max(0, (_match_ts - _h_last).days))
+            if _a_last is not None:
+                _away_rest_d = float(max(0, (_match_ts - _a_last).days))
+
         pred = _predict_one_match(
             home, away, mid, stage, stadium, match_dt,
             odds_df, markets_df, ladder, parametric_champ,
@@ -1807,6 +1838,10 @@ def predict_all_2026(
             home_team_total=_per_match_home_total.get(mid),
             away_team_total=_per_match_away_total.get(mid),
             standings_dict=_group_standings,
+            home_rest_days=_home_rest_d,
+            away_rest_days=_away_rest_d,
+            injuries_df=injuries_df,
+            rosters_df=rosters_df,
         )
         if pred:
             # Apply group-stage draw probability boost at PMF level so that
@@ -1996,6 +2031,10 @@ def _predict_one_match(
     home_team_total: "float | None" = None,
     away_team_total: "float | None" = None,
     standings_dict: "dict | None" = None,
+    home_rest_days: float = 7.0,
+    away_rest_days: float = 7.0,
+    injuries_df: "pd.DataFrame | None" = None,
+    rosters_df: "pd.DataFrame | None" = None,
 ) -> dict | None:
     """
     Produce a full multi-mode prediction for one match.
@@ -2034,46 +2073,24 @@ def _predict_one_match(
         _pts_diff = float(_home_std.get("pts", 0)) - float(_away_std.get("pts", 0))
         _gd_diff  = float(_home_std.get("gd", 0))  - float(_away_std.get("gd", 0))
 
-    # ── Compute venue context adjustment (match_context.py features) ──────────
+    # ── Compute venue/travel/rest context adjustment (Phase-3 promoted) ────────
+    # Uses compute_context_factors: 3-tier haversine travel, rest days, capacity.
     _venue_lambda_adj = None
     try:
-        from wc2026.features.match_context import compute_match_context as _cmc
-        import datetime as _dt
-        _home_std_ctx = standings_dict.get(home, {}) if standings_dict else {}
-        _away_std_ctx = standings_dict.get(away, {}) if standings_dict else {}
-        _mc_home_std = (
-            {"points": _home_std_ctx.get("pts", 0), "played": _home_std_ctx.get("gp", 0),
-             "goal_difference": _home_std_ctx.get("gd", 0)} if _home_std_ctx else None
+        from wc2026.features.match_context import compute_context_factors as _ccf
+        _ctx_h, _ctx_a = _ccf(
+            home_team=home,
+            away_team=away,
+            stadium_name=stadium,
+            home_rest_days=home_rest_days,
+            away_rest_days=away_rest_days,
         )
-        _mc_away_std = (
-            {"points": _away_std_ctx.get("pts", 0), "played": _away_std_ctx.get("gp", 0),
-             "goal_difference": _away_std_ctx.get("gd", 0)} if _away_std_ctx else None
-        )
-        _mc_result = _cmc(
-            match_row={"id": match_id, "stage": {"name": stage, "order": 0}},
-            home_team_country_code="",
-            away_team_country_code="",
-            stadium_row=None,
-            home_standing=_mc_home_std,
-            away_standing=_mc_away_std,
-            home_match_dates=[],
-            away_match_dates=[],
-            prediction_timestamp=_dt.datetime.utcnow(),
-        )
-        _total_h_log = (
-            _mc_result.host_home_adj_log
-            + _mc_result.venue_home_adj_log
-            + _mc_result.rest_travel_home_adj_log
-        )
-        _total_a_log = (
-            _mc_result.host_away_adj_log
-            + _mc_result.venue_away_adj_log
-            + _mc_result.rest_travel_away_adj_log
-        )
-        if abs(_total_h_log) > 0.005 or abs(_total_a_log) > 0.005:
-            _venue_lambda_adj = (
-                float(np.exp(_total_h_log)),
-                float(np.exp(_total_a_log)),
+        # Only apply if factors are non-trivial
+        if abs(_ctx_h - 1.0) > 0.001 or abs(_ctx_a - 1.0) > 0.001:
+            _venue_lambda_adj = (_ctx_h, _ctx_a)
+            log.debug(
+                "context_factors: %s v %s  home=%.4f  away=%.4f  rest=%.1fd/%.1fd  stadium=%s",
+                home, away, _ctx_h, _ctx_a, home_rest_days, away_rest_days, stadium,
             )
     except Exception as _ctx_exc:
         log.debug("venue_context skipped for %s v %s: %s", home, away, _ctx_exc)
@@ -2106,6 +2123,23 @@ def _predict_one_match(
         model_warnings.append(f"composite_prior_failed: {exc}")
         home_prior = composite_prior.get_prior(home)
         away_prior = composite_prior.get_prior(away)
+
+    # ── 1a.5. Injury impact score adjustment (Phase-3 promoted) ───────────────
+    # formula: score = sum(avg_rating × multiplier)  OUT=1.0  GTD=0.5
+    # lambda *= max(0.80, 1.0 − (score/10) × 0.15)   cap = −20%
+    try:
+        from wc2026.features.lineup_strength import compute_injury_lambda_factor as _cilf
+        _inj_h = _cilf(home, injuries_df, rosters_df)
+        _inj_a = _cilf(away, injuries_df, rosters_df)
+        if _inj_h != 1.0 or _inj_a != 1.0:
+            comp_lh = float(np.clip(comp_lh * _inj_h, 0.05, 8.0))
+            comp_la = float(np.clip(comp_la * _inj_a, 0.05, 8.0))
+            log.debug(
+                "injury_factor: %s v %s  home_factor=%.4f  away_factor=%.4f",
+                home, away, _inj_h, _inj_a,
+            )
+    except Exception as _inj_exc:
+        log.debug("injury_factor skipped for %s v %s: %s", home, away, _inj_exc)
 
     # ── 1b. Altitude venue adjustment ─────────────────────────────────────
     # Scale both teams' expected goals down for high-elevation venues.
