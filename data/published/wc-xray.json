@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-22T14:53:09.352176+00:00",
+  "generated_at": "2026-06-22T16:00:50.686310+00:00",
   "date": "2026-06-22",
   "pregame_matches": [
     {
@@ -1350,7 +1350,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -2.92,
-          "ev_per_100": -3.31,
+          "ev_per_100": -3.3,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -584. Edge existed earlier but has decreased to -2.9 pp. Do not chase a deteriorating edge."
@@ -1365,7 +1365,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -2.92,
-          "ev_per_100": -3.31,
+          "ev_per_100": -3.3,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -584. Edge existed earlier but has decreased to -2.9 pp. Do not chase a deteriorating edge."
@@ -1380,7 +1380,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -2.92,
-          "ev_per_100": -3.31,
+          "ev_per_100": -3.3,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -584. Edge existed earlier but has decreased to -2.9 pp. Do not chase a deteriorating edge."
@@ -1395,10 +1395,10 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.117,
           "edge_pp": 2.92,
-          "ev_per_100": 25.0,
+          "ev_per_100": 24.94,
           "confidence": "C",
           "action": "SMALL BET",
-          "trader_note": "Model fair: +584. Best market: +755. Edge: +2.9 pp, EV: +25.0% per $100. Edge clears threshold; reduced sizing recommended."
+          "trader_note": "Model fair: +584. Best market: +755. Edge: +2.9 pp, EV: +24.9% per $100. Edge clears threshold; reduced sizing recommended."
         },
         {
           "market_id": "home_win",
@@ -1420,21 +1420,21 @@
           "market_label": "Away Team Over 2.5",
           "selection_label": "Iraq Over 2.5",
           "model_probability": 0.0499,
-          "model_fair_american": 1903,
+          "model_fair_american": 1904,
           "market_odds_american": 4486,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.0218,
           "edge_pp": 2.81,
-          "ev_per_100": 128.98,
+          "ev_per_100": 128.83,
           "confidence": "C",
           "action": "SMALL BET",
-          "trader_note": "Model fair: +1903. Best market: +4486. Edge: +2.8 pp, EV: +129.0% per $100. Edge clears threshold; reduced sizing recommended."
+          "trader_note": "Model fair: +1904. Best market: +4486. Edge: +2.8 pp, EV: +128.8% per $100. Edge clears threshold; reduced sizing recommended."
         },
         {
           "market_id": "btts_no",
           "market_label": "BTTS No",
           "selection_label": "BTTS No",
-          "model_probability": 0.5972,
+          "model_probability": 0.5973,
           "model_fair_american": -148,
           "market_odds_american": -134,
           "market_odds_estimated": true,
@@ -1449,13 +1449,13 @@
           "market_id": "btts_yes",
           "market_label": "BTTS Yes",
           "selection_label": "BTTS Yes",
-          "model_probability": 0.4028,
+          "model_probability": 0.4027,
           "model_fair_american": 148,
           "market_odds_american": 134,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.4279,
           "edge_pp": -2.52,
-          "ev_per_100": -5.88,
+          "ev_per_100": -5.89,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +148. No material edge on this market at current prices."
@@ -1464,13 +1464,13 @@
           "market_id": "away_over_0_5",
           "market_label": "Away Team Over 0.5",
           "selection_label": "Iraq Over 0.5",
-          "model_probability": 0.4192,
+          "model_probability": 0.4191,
           "model_fair_american": 139,
           "market_odds_american": 125,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.4437,
           "edge_pp": -2.46,
-          "ev_per_100": -5.54,
+          "ev_per_100": -5.55,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +139. No material edge on this market at current prices."
@@ -1479,13 +1479,13 @@
           "market_id": "clean_sheet_home",
           "market_label": "Home Clean Sheet",
           "selection_label": "Home Clean Sheet",
-          "model_probability": 0.5808,
+          "model_probability": 0.5809,
           "model_fair_american": -139,
           "market_odds_american": -125,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.5563,
           "edge_pp": 2.46,
-          "ev_per_100": 4.42,
+          "ev_per_100": 4.43,
           "confidence": "C",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -139. Edge existed earlier but has decreased to +2.5 pp. Do not chase a deteriorating edge."
@@ -1499,8 +1499,8 @@
           "market_odds_american": -111,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.5254,
-          "edge_pp": -2.28,
-          "ev_per_100": -4.33,
+          "edge_pp": -2.27,
+          "ev_per_100": -4.32,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -101. No material edge on this market at current prices."
@@ -1509,13 +1509,13 @@
           "market_id": "asian_handicap_home_neg1",
           "market_label": "AH Home -1",
           "selection_label": "France -1",
-          "model_probability": 0.7049,
+          "model_probability": 0.705,
           "model_fair_american": -239,
           "market_odds_american": -267,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.7275,
           "edge_pp": -2.25,
-          "ev_per_100": -3.1,
+          "ev_per_100": -3.09,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -239. No material edge on this market at current prices."
@@ -1524,13 +1524,13 @@
           "market_id": "asian_handicap_home_neg1_5",
           "market_label": "AH Home -1.5",
           "selection_label": "France -1.5",
-          "model_probability": 0.7049,
+          "model_probability": 0.705,
           "model_fair_american": -239,
           "market_odds_american": -267,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.7275,
           "edge_pp": -2.25,
-          "ev_per_100": -3.1,
+          "ev_per_100": -3.09,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -239. No material edge on this market at current prices."
@@ -1544,8 +1544,8 @@
           "market_odds_american": 751,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.1175,
-          "edge_pp": 1.99,
-          "ev_per_100": 16.91,
+          "edge_pp": 1.98,
+          "ev_per_100": 16.87,
           "confidence": "C",
           "action": "LEAN",
           "trader_note": "Model fair: +628. Best market: +751. Edge: +2.0 pp. Positive edge, but below the pregame execution threshold. Monitor for a better price."
@@ -1554,13 +1554,13 @@
           "market_id": "double_chance_12",
           "market_label": "Double Chance 12",
           "selection_label": "Double Chance 12",
-          "model_probability": 0.8983,
+          "model_probability": 0.8984,
           "model_fair_american": -884,
           "market_odds_american": -1117,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9178,
-          "edge_pp": -1.95,
-          "ev_per_100": -2.12,
+          "edge_pp": -1.94,
+          "ev_per_100": -2.11,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -884. Edge existed earlier but has decreased to -1.9 pp. Do not chase a deteriorating edge."
@@ -1569,13 +1569,13 @@
           "market_id": "draw",
           "market_label": "Draw (1X2)",
           "selection_label": "Draw",
-          "model_probability": 0.1017,
+          "model_probability": 0.1016,
           "model_fair_american": 884,
           "market_odds_american": 1118,
           "market_odds_estimated": false,
           "market_no_vig_probability": 0.0822,
-          "edge_pp": 1.95,
-          "ev_per_100": 23.84,
+          "edge_pp": 1.94,
+          "ev_per_100": 23.74,
           "confidence": "C",
           "action": "LEAN",
           "trader_note": "Model fair: +884. Best market: +1118. Edge: +1.9 pp. Positive edge, but below the pregame execution threshold. Monitor for a better price."
@@ -1665,7 +1665,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.0379,
           "edge_pp": 1.17,
-          "ev_per_100": 30.77,
+          "ev_per_100": 30.8,
           "confidence": "D",
           "action": "LEAN",
           "trader_note": "Model fair: +1915. Best market: +2535. Edge: +1.2 pp. Positive edge, but below the pregame execution threshold. Monitor for a better price."
@@ -1695,7 +1695,7 @@
           "market_odds_estimated": false,
           "market_no_vig_probability": 0.5511,
           "edge_pp": -1.12,
-          "ev_per_100": 2.8,
+          "ev_per_100": 2.79,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: -117. No material edge on this market at current prices."
@@ -1720,60 +1720,60 @@
           "market_label": "AH Home +0.5",
           "selection_label": "France +0.5",
           "model_probability": 0.9554,
-          "model_fair_american": -2144,
+          "model_fair_american": -2143,
           "market_odds_american": -2771,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9652,
-          "edge_pp": -0.97,
+          "edge_pp": -0.98,
           "ev_per_100": -1.01,
           "confidence": "D",
           "action": "DO NOT CHASE",
-          "trader_note": "Model fair: -2144. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
+          "trader_note": "Model fair: -2143. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
         },
         {
           "market_id": "asian_handicap_home_1",
           "market_label": "AH Home +1",
           "selection_label": "France +1",
           "model_probability": 0.9554,
-          "model_fair_american": -2144,
+          "model_fair_american": -2143,
           "market_odds_american": -2771,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9652,
-          "edge_pp": -0.97,
+          "edge_pp": -0.98,
           "ev_per_100": -1.01,
           "confidence": "D",
           "action": "DO NOT CHASE",
-          "trader_note": "Model fair: -2144. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
+          "trader_note": "Model fair: -2143. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
         },
         {
           "market_id": "away_win",
           "market_label": "Away Win (1X2)",
           "selection_label": "Iraq ML",
           "model_probability": 0.0446,
-          "model_fair_american": 2144,
+          "model_fair_american": 2143,
           "market_odds_american": 2768,
           "market_odds_estimated": false,
           "market_no_vig_probability": 0.0348,
-          "edge_pp": 0.97,
-          "ev_per_100": 27.84,
+          "edge_pp": 0.98,
+          "ev_per_100": 27.89,
           "confidence": "D",
           "action": "PASS",
-          "trader_note": "Model fair: +2144. No material edge on this market at current prices."
+          "trader_note": "Model fair: +2143. No material edge on this market at current prices."
         },
         {
           "market_id": "double_chance_1x",
           "market_label": "Double Chance 1X",
           "selection_label": "Double Chance 1X",
           "model_probability": 0.9554,
-          "model_fair_american": -2144,
+          "model_fair_american": -2143,
           "market_odds_american": -2771,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9652,
-          "edge_pp": -0.97,
+          "edge_pp": -0.98,
           "ev_per_100": -1.01,
           "confidence": "D",
           "action": "DO NOT CHASE",
-          "trader_note": "Model fair: -2144. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
+          "trader_note": "Model fair: -2143. Edge existed earlier but has decreased to -1.0 pp. Do not chase a deteriorating edge."
         },
         {
           "market_id": "home_over_1_5",
@@ -1795,30 +1795,30 @@
           "market_label": "AH Home +1.5",
           "selection_label": "France +1.5",
           "model_probability": 0.9855,
-          "model_fair_american": -6787,
+          "model_fair_american": -6783,
           "market_odds_american": -13283,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9925,
-          "edge_pp": -0.7,
+          "edge_pp": -0.71,
           "ev_per_100": -0.71,
           "confidence": "D",
           "action": "DO NOT CHASE",
-          "trader_note": "Model fair: -6787. Edge existed earlier but has decreased to -0.7 pp. Do not chase a deteriorating edge."
+          "trader_note": "Model fair: -6783. Edge existed earlier but has decreased to -0.7 pp. Do not chase a deteriorating edge."
         },
         {
           "market_id": "asian_handicap_home_2",
           "market_label": "AH Home +2",
           "selection_label": "France +2",
           "model_probability": 0.9855,
-          "model_fair_american": -6787,
+          "model_fair_american": -6783,
           "market_odds_american": -13283,
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.9925,
-          "edge_pp": -0.7,
+          "edge_pp": -0.71,
           "ev_per_100": -0.71,
           "confidence": "D",
           "action": "DO NOT CHASE",
-          "trader_note": "Model fair: -6787. Edge existed earlier but has decreased to -0.7 pp. Do not chase a deteriorating edge."
+          "trader_note": "Model fair: -6783. Edge existed earlier but has decreased to -0.7 pp. Do not chase a deteriorating edge."
         },
         {
           "market_id": "over_1_5",
@@ -1845,7 +1845,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.0975,
           "edge_pp": 0.63,
-          "ev_per_100": 6.46,
+          "ev_per_100": 6.47,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: +863. Edge existed earlier but has decreased to +0.6 pp. Do not chase a deteriorating edge."
@@ -1905,7 +1905,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.0198,
           "edge_pp": 0.33,
-          "ev_per_100": 16.78,
+          "ev_per_100": 16.76,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +4223. No material edge on this market at current prices."
@@ -2057,7 +2057,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.6246,
-              "curr": 0.5972
+              "curr": 0.5973
             },
             "market_odds_american": {
               "prev": -140,
@@ -2079,7 +2079,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.3754,
-              "curr": 0.4028
+              "curr": 0.4027
             },
             "market_odds_american": {
               "prev": 140,
@@ -2097,7 +2097,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.3921,
-              "curr": 0.4192
+              "curr": 0.4191
             },
             "market_odds_american": {
               "prev": 132,
@@ -2115,7 +2115,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.6079,
-              "curr": 0.5808
+              "curr": 0.5809
             },
             "market_odds_american": {
               "prev": -132,
@@ -2141,7 +2141,7 @@
             },
             "edge_pp": {
               "prev": -6.36,
-              "curr": -2.28
+              "curr": -2.27
             }
           }
         },
@@ -2187,7 +2187,7 @@
             },
             "edge_pp": {
               "prev": -1.66,
-              "curr": 1.99
+              "curr": 1.98
             },
             "action": {
               "prev": "PASS",
@@ -2201,7 +2201,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.9143,
-              "curr": 0.8983
+              "curr": 0.8984
             },
             "market_odds_american": {
               "prev": -1132,
@@ -2209,7 +2209,7 @@
             },
             "edge_pp": {
               "prev": -0.46,
-              "curr": -1.95
+              "curr": -1.94
             },
             "action": {
               "prev": "PASS",
@@ -2223,7 +2223,7 @@
           "changes": {
             "model_probability": {
               "prev": 0.0857,
-              "curr": 0.1017
+              "curr": 0.1016
             },
             "market_odds_american": {
               "prev": 1133,
@@ -2231,7 +2231,7 @@
             },
             "edge_pp": {
               "prev": 0.46,
-              "curr": 1.95
+              "curr": 1.94
             },
             "action": {
               "prev": "PASS",
@@ -2435,7 +2435,7 @@
             },
             "edge_pp": {
               "prev": -0.21,
-              "curr": -0.97
+              "curr": -0.98
             },
             "action": {
               "prev": "PASS",
@@ -2457,7 +2457,7 @@
             },
             "edge_pp": {
               "prev": -0.21,
-              "curr": -0.97
+              "curr": -0.98
             },
             "action": {
               "prev": "PASS",
@@ -2479,7 +2479,7 @@
             },
             "edge_pp": {
               "prev": 0.21,
-              "curr": 0.97
+              "curr": 0.98
             }
           }
         },
@@ -2497,7 +2497,7 @@
             },
             "edge_pp": {
               "prev": -0.21,
-              "curr": -0.97
+              "curr": -0.98
             },
             "action": {
               "prev": "PASS",
@@ -2537,7 +2537,7 @@
             },
             "edge_pp": {
               "prev": -0.06,
-              "curr": -0.7
+              "curr": -0.71
             },
             "action": {
               "prev": "PASS",
@@ -2559,7 +2559,7 @@
             },
             "edge_pp": {
               "prev": -0.06,
-              "curr": -0.7
+              "curr": -0.71
             },
             "action": {
               "prev": "PASS",
