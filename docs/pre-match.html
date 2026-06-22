@@ -351,8 +351,10 @@ function updateKPIs(matches) {
     const pred = m.prediction || {};
     const edges = (pred.edge_report || {}).edges || [];
     for (const e of edges) {
-      if (e.value_flag) valueBets++;
-      if (e.edge_pct > bestEdge) { bestEdge = e.edge_pct; bestEdgeMarket = e.market; }
+      if (e.value_flag) {
+        valueBets++;
+        if (e.edge_pct > bestEdge) { bestEdge = e.edge_pct; bestEdgeMarket = e.market; }
+      }
     }
     totalXG += (pred.expected_home_goals || 0) + (pred.expected_away_goals || 0);
   }
@@ -450,9 +452,9 @@ function renderMatchRow(m, idx) {
     </div>
     <div class="prob-labels"><span>H</span><span>D</span><span>A</span></div>`;
 
-  // Best value edge
+  // Best value edge — only show value_flag markets; never fall back to non-value edges
   const valueEdges = edges.filter(e => e.value_flag).sort((a,b) => b.edge_pct - a.edge_pct);
-  const topEdge = valueEdges[0] || edges.sort((a,b) => b.edge_pct - a.edge_pct)[0] || null;
+  const topEdge = valueEdges[0] || null;
   let edgeHtml = '<span class="edge-none">—</span>';
   let kellyHtml = '';
   if (topEdge) {
