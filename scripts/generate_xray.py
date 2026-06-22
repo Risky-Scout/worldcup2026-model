@@ -427,16 +427,6 @@ def build_markets(
         # when the score is already 1-0 — the line hasn't moved and the model
         # is trivially at 99.9%, manufacturing a phantom +28pp edge).
         if mode == "live" and _is_market_decided(key, home_goals, away_goals):
-            # #region agent log
-            try:
-                import json as _json, time as _time, os as _os
-                _log_path = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
-                _os.makedirs(_os.path.dirname(_log_path), exist_ok=True)
-                with open(_log_path, "a") as _lf:
-                    _lf.write(_json.dumps({"sessionId":"3f8dcc","hypothesisId":"H-2","location":"generate_xray.py:build_markets","message":"decided_market_skipped","data":{"match_id":match_id,"key":key,"home_goals":home_goals,"away_goals":away_goals},"timestamp":int(_time.time()*1000)}) + "\n")
-            except Exception:
-                pass
-            # #endregion
             continue
 
         model_prob = derived_markets.get(key)
@@ -835,17 +825,6 @@ def process_live_match(
 
     h_goals = lm.get("current_home_goals", 0) or 0
     a_goals = lm.get("current_away_goals", 0) or 0
-
-    # #region agent log
-    try:
-        import json as _json_lv, time as _time_lv, os as _os_lv
-        _log_path_lv = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
-        _os_lv.makedirs(_os_lv.path.dirname(_log_path_lv), exist_ok=True)
-        with open(_log_path_lv, "a") as _lf_lv:
-            _lf_lv.write(_json_lv.dumps({"sessionId":"3f8dcc","hypothesisId":"H-2","location":"generate_xray.py:live_match","message":"live_match_score","data":{"match_id":match_id,"home":home,"away":away,"h_goals":h_goals,"a_goals":a_goals,"regulation_minute":lm.get("regulation_minute")},"timestamp":int(_time_lv.time()*1000)}) + "\n")
-    except Exception:
-        pass
-    # #endregion
 
     markets = build_markets(
         match_id=match_id,
