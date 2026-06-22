@@ -46,9 +46,10 @@
 
 | Model | N | Exact-Score NLL |
 |-------|---|----------------|
+| pi_rating | 113 | 3.3367 |
 | equal_probability | 113 | 3.3452 |
 | elo | 113 | 3.4529 |
 | historical_base_rate | 113 | 4.3856 |
 | negative_binomial | 102 | 4.5707 |
-| dixon_coles | 60 | 4.8106 |
+| dixon_coles | 102 | 4.8664 |
 | poisson | 102 | 5.2046 |

@@ -902,8 +902,41 @@ def generate(date: str | None = None) -> None:
     pregame_results: list[dict] = []
     live_results: list[dict] = []
 
-    # Process live matches first
+    # Build a full match kickoff lookup (live matches have kickoff_utc: null,
+    # so pull it from the published predictions).
+    all_pub_lookup: dict[str, dict] = {str(m.get("match_id", "")): m for m in pub_matches}
+
+    # Process live matches first — skip any that kicked off >3h ago (game over,
+    # BDL just hasn't marked them completed yet).
+    def _live_match_stale(lm: dict) -> bool:
+        mid = str(lm.get("match_id", ""))
+        pub = all_pub_lookup.get(mid, {})
+        ko_str = pub.get("match_datetime_utc") or pub.get("kickoff_utc") or ""
+        if ko_str:
+            try:
+                ko_dt = datetime.fromisoformat(str(ko_str).replace("Z", "+00:00"))
+                if ko_dt.tzinfo is None:
+                    ko_dt = ko_dt.replace(tzinfo=timezone.utc)
+                return (now_utc - ko_dt).total_seconds() > 180 * 60
+            except Exception:
+                pass
+        # Fallback: if regulation_minute >= 90 and live doc is >20 min old, treat as done
+        minute = lm.get("regulation_minute") or 0
+        if minute >= 90 and live_generated_at:
+            try:
+                gen_dt = datetime.fromisoformat(live_generated_at.replace("Z", "+00:00"))
+                if gen_dt.tzinfo is None:
+                    gen_dt = gen_dt.replace(tzinfo=timezone.utc)
+                if (now_utc - gen_dt).total_seconds() > 20 * 60:
+                    return True
+            except Exception:
+                pass
+        return False
+
     for lm in live_doc.get("live_matches", []):
+        if _live_match_stale(lm):
+            print(f"  Skipped stale live match: {lm.get('home_team')} vs {lm.get('away_team')} (kickoff >3h ago or min>=90 and data >20min old)")
+            continue
         try:
             obj = process_live_match(lm, clv_index, prev_snapshots, now_utc, live_generated_at, pub_match_lookup)
             live_results.append(obj)

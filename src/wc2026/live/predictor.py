@@ -52,6 +52,31 @@ from scipy.stats import poisson
 from .state import MatchState
 from .hazard import expected_goals_remaining, compute_live_rates
 
+
+def _pregame_win_probs(lh: float, la: float, max_goals: int = 8) -> tuple[float, float, float]:
+    """
+    Compute pregame (home_win, draw, away_win) probabilities from a bivariate
+    independent Poisson model.  Used as the quality prior for anchoring.
+    """
+    from scipy.stats import poisson as _poisson
+    hw = dr = aw = 0.0
+    for h in range(max_goals):
+        ph = float(_poisson.pmf(h, max(lh, 1e-6)))
+        for a in range(max_goals):
+            pa = float(_poisson.pmf(a, max(la, 1e-6)))
+            mass = ph * pa
+            if h > a:
+                hw += mass
+            elif h == a:
+                dr += mass
+            else:
+                aw += mass
+    # Normalise for truncation
+    total = hw + dr + aw
+    if total > 1e-9:
+        hw, dr, aw = hw / total, dr / total, aw / total
+    return hw, dr, aw
+
 log = logging.getLogger(__name__)
 
 _EPS = 1e-12
@@ -102,6 +127,12 @@ class LivePMFResult:
     method: str = "live_hazard_poisson"
     warnings: list = field(default_factory=list)
 
+    # Pre-game quality prior (Poisson from pregame λ) — exposed for transparency
+    pregame_home_win_prob: float = 0.0
+    pregame_draw_prob: float = 0.0
+    pregame_away_win_prob: float = 0.0
+    prior_anchor_weight: float = 0.0   # how much the anchor pulled this snapshot
+
     def to_dict(self) -> dict:
         d = {
             "match_id": self.match_id,
@@ -126,6 +157,10 @@ class LivePMFResult:
             "calibration_temperature": self.calibration_temperature,
             "method": self.method,
             "warnings": self.warnings,
+            "pregame_home_win_prob": round(self.pregame_home_win_prob, 4),
+            "pregame_draw_prob": round(self.pregame_draw_prob, 4),
+            "pregame_away_win_prob": round(self.pregame_away_win_prob, 4),
+            "prior_anchor_weight": round(self.prior_anchor_weight, 4),
         }
         # Add score PMF grid (capped at 8×8 for output compactness)
         n = min(self.final_score_pmf.shape[0], 8)
@@ -302,6 +337,59 @@ class LivePMFPredictor:
         dr = float(sum(final_pmf[h, a] for h in range(n) for a in range(n) if h == a))
         aw = float(sum(final_pmf[h, a] for h in range(n) for a in range(n) if h < a))
 
+        # ── 6b. Quality-weighted prior anchor ────────────────────────────
+        # Problem: naive Poisson PMF over-reacts to early goals against a
+        # dominant team.  When Egypt (70% pre-game) goes 0-1 down at min 20
+        # the score-state PMF mechanically shows ~25% — close to the market —
+        # because the model doesn't know the *true* probability is higher than
+        # the score state alone implies.
+        #
+        # Fix: blend the live probability toward the pre-game quality prior.
+        # Anchor weight formula:
+        #   α = base_anchor × quality_gap_boost × score_gap_dampen
+        # where
+        #   base_anchor         decays from ~0.35 at t=0 to 0.0 at t=90
+        #   quality_gap_boost   strengthens anchor when teams are mismatched
+        #   score_gap_dampen    weakens anchor when score is already lopsided
+        #                       (don't anchor a 4-0 back toward a 55% favourite)
+        #
+        # This ensures the model stays closer to true probability than the
+        # market, which is known to over-react to early goals.
+
+        p_pre_hw, p_pre_dr, p_pre_aw = _pregame_win_probs(lh, la)
+
+        elapsed = minute / 90.0
+        score_diff = abs(h0 - a0)
+
+        # quality_gap: normalised difference in pregame strength (0=even, 1=all-one-way)
+        total_lam = lh + la
+        quality_gap = abs(lh - la) / max(total_lam, 0.01)
+
+        # base anchor: decays linearly from 0.35 at kickoff to 0 at full-time
+        base_anchor = max(0.0, 0.35 * (1.0 - elapsed))
+
+        # quality_gap_boost: up to ×1.8 extra anchor when one team is dominant
+        quality_gap_boost = 1.0 + quality_gap * 1.6
+
+        # score_gap_dampen: 1.0 when tied, 0.0 when 3+ goal gap
+        # A 2-goal lead is already dominant; don't anchor back toward a pregame prior
+        score_gap_dampen = max(0.0, 1.0 - score_diff * 0.35)
+
+        anchor = float(np.clip(base_anchor * quality_gap_boost * score_gap_dampen, 0.0, 0.50))
+
+        if anchor > 0.001:
+            hw = (1.0 - anchor) * hw + anchor * p_pre_hw
+            dr = (1.0 - anchor) * dr + anchor * p_pre_dr
+            aw = (1.0 - anchor) * aw + anchor * p_pre_aw
+            log.debug(
+                "prior_anchor: match=%s min=%d score=%d-%d "
+                "anchor=%.3f q_gap=%.3f pre_hw=%.3f live_hw_pre=%.3f hw_final=%.3f",
+                state.match_id, int(minute), h0, a0,
+                anchor, quality_gap, p_pre_hw,
+                hw / max(1 - anchor, 1e-9),  # approx pre-anchor live hw
+                hw,
+            )
+
         # ── 7. Next-goal probabilities ────────────────────────────────────
         # P(next goal is home) ≈ λ_h_rem / (λ_h_rem + λ_a_rem)
         total_rate = lh_rem + la_rem
@@ -431,6 +519,10 @@ class LivePMFPredictor:
             first_half_markets=first_half_markets,
             calibration_temperature=self.temperature,
             warnings=warnings,
+            pregame_home_win_prob=round(p_pre_hw, 4),
+            pregame_draw_prob=round(p_pre_dr, 4),
+            pregame_away_win_prob=round(p_pre_aw, 4),
+            prior_anchor_weight=round(anchor, 4),
         )
 
     def predict_from_bdl(

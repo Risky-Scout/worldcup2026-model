@@ -116,24 +116,48 @@ def score_state_multipliers(
     home_goals: int,
     away_goals: int,
     minute: float,
+    pregame_lh: float = 1.35,
+    pregame_la: float = 1.00,
 ) -> tuple[float, float]:
     """
     Return (home_multiplier, away_multiplier) based on current score and minute.
-    
+
     These adjust the home/away goal rate relative to the match baseline.
     Values are Bayesian-blended from Dixon & Robinson (1998) and 2026 WC
-    empirical goal rates per score state.
+    empirical goal rates per score state, and further modulated by the
+    pre-game team-quality ratio.
+
+    Quality modulation
+    ------------------
+    When the trailing team is significantly stronger (higher pregame λ), they
+    can chase harder and the leading weaker team cannot hold as firmly.
+    Conversely, when the trailing team is weaker they can apply less pressure.
+    This prevents the model from over-reacting to early goals against a dominant
+    team, keeping the live probability closer to the pre-game quality signal.
+
+    quality_ratio = pregame_lh / (pregame_lh + pregame_la)
+      0.5  = evenly matched
+      0.64 = home team expected ~1.78× more goals than away  (e.g. Egypt vs NZ)
+      0.36 = away team dominant
+
+    quality_adj = (quality_ratio - 0.5) × 0.20
+      capped at ±0.10 — never overrides the base score-state direction.
     """
     diff = home_goals - away_goals
     late = minute >= 60.0
     very_late = minute >= 75.0
 
+    # Quality ratio: home team's share of total expected goals
+    total_lam = pregame_lh + pregame_la
+    quality_ratio = pregame_lh / max(total_lam, 0.01)
+    # Signed quality advantage for home: +0.10 when home is 3× stronger, −0.10 vice-versa
+    q_adj = float(np.clip((quality_ratio - 0.5) * 0.20, -0.10, 0.10))
+
     home_mult = 1.0
     away_mult = 1.0
 
     if diff == 0:
-        # Drawn: both teams open up late (Dixon & Robinson, unchanged — 467 drawn
-        # minutes in 2026 WC matches provide baseline; late breakdown not computed)
+        # Drawn: both teams open up late (Dixon & Robinson, unchanged)
         if late:
             home_mult = 1.08
             away_mult = 1.08
@@ -143,47 +167,45 @@ def score_state_multipliers(
 
     elif diff == 1:
         # Home winning by 1: Bayesian-calibrated (7 events, w=0.20)
-        # Observed: home_ratio=0.701, away_ratio=1.557
-        # new_h = 0.20*0.701 + 0.80*0.92 = 0.876 → 0.88
-        # new_a = 0.20*1.557 + 0.80*1.12 = 1.207 → 1.21
-        home_mult = 0.88
-        away_mult = 1.21
+        # Base: home=0.88, away=1.21
+        # Strong away team (q_adj < 0) chases harder, strong home team holds firmer.
+        home_mult = max(0.5, 0.88 - q_adj)   # strong home → less defending (0.78–0.88)
+        away_mult = max(0.5, 1.21 + q_adj)   # strong away → harder chase (1.21–1.31)
         if very_late:
-            away_mult = 1.28  # proportional scale from current 1.20
+            away_mult = max(0.5, away_mult + 0.07)
 
     elif diff >= 2:
         # Home comfortable: Bayesian-calibrated (4 events, w=0.20)
-        # Observed: home_ratio=2.172, away_ratio=0.000 (sparse — high home scoring)
-        # new_h = 0.20*2.172 + 0.80*0.85 = 1.114 → 1.11
-        # new_a = 0.20*0.000 + 0.80*1.20 = 0.960 → 0.96
+        # Base: home=1.11, away=0.96 — quality modulation minimal at 2+
         home_mult = 1.11
         away_mult = 0.96
         if very_late:
-            away_mult = 1.10  # proportional scale from current 1.35
+            away_mult = 1.10
 
     elif diff == -1:
         # Away winning by 1: Bayesian-calibrated (5 events, w=0.20)
-        # Observed: home_ratio=0.792, away_ratio=0.330
-        # new_h = 0.20*0.792 + 0.80*1.12 = 1.054 → 1.05
-        # new_a = 0.20*0.330 + 0.80*0.92 = 0.802 → 0.80
-        home_mult = 1.05
-        away_mult = 0.80
+        # Base: home=1.05, away=0.80
+        # Strong home team (q_adj > 0) chases harder; strong away team holds less.
+        home_mult = max(0.5, 1.05 + q_adj)   # strong home chases harder (1.05–1.15)
+        away_mult = max(0.5, 0.80 - q_adj)   # strong home → away holds less (0.70–0.80)
         if very_late:
-            home_mult = 1.15  # proportional scale from current 1.22
+            home_mult = max(0.5, home_mult + 0.10)
 
     else:  # diff <= -2
-        # Away comfortable: Bayesian-calibrated (0 events in 1 minute, w=0.20)
-        # new_h = 0.20*0.000 + 0.80*1.25 = 1.00
-        # new_a = 0.20*0.000 + 0.80*0.88 = 0.70
-        home_mult = 1.00
-        away_mult = 0.70
+        # Away comfortable: Bayesian-calibrated (0 events, w=0.20)
+        # Base: home=1.00, away=0.70 — quality modulation minimal at 2+
+        home_mult = max(0.5, 1.00 + q_adj)
+        away_mult = max(0.5, 0.70 - q_adj)
         if very_late:
-            home_mult = 1.15  # proportional scale from current 1.40
+            home_mult = max(0.5, home_mult + 0.15)
 
     _state_labels = {0: "drawn", 1: "hw1", 2: "hw2p", -1: "aw1"}
     state = _state_labels.get(diff, "aw2p" if diff < -1 else "hw2p")
     if state != "drawn":
-        log.info("score_state=%s h_mult=%.3f a_mult=%.3f min=%d", state, home_mult, away_mult, int(minute))
+        log.info(
+            "score_state=%s h_mult=%.3f a_mult=%.3f min=%d q_adj=%.3f",
+            state, home_mult, away_mult, int(minute), q_adj,
+        )
 
     return home_mult, away_mult
 
@@ -401,8 +423,12 @@ def compute_live_rates(
     base_h *= h_temp
     base_a *= h_temp
 
-    # Apply score-state multipliers
-    h_score, a_score = score_state_multipliers(home_goals, away_goals, minute)
+    # Apply score-state multipliers (quality-aware: uses pregame λ before xG blend)
+    h_score, a_score = score_state_multipliers(
+        home_goals, away_goals, minute,
+        pregame_lh=pregame_lh,
+        pregame_la=pregame_la,
+    )
 
     # Apply momentum scaling AFTER score-state, with hard cap on combined multiplier
     # Cap: score-state × momentum combined may not exceed 2.0 or go below 0.5
