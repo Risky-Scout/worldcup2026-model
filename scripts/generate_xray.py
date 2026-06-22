@@ -76,6 +76,54 @@ MARKET_LABELS: dict[str, str] = {
     "asian_handicap_home_-0.5": "AH Home -0.5",
 }
 
+# ── Decided-market detection ─────────────────────────────────────────────────
+def _is_market_decided(key: str, home_goals: int, away_goals: int) -> bool:
+    """Return True when a market outcome is already settled by the current score.
+    
+    Over/under total goal lines are trivially resolved once enough goals have
+    been scored; showing them as actionable creates fake edge from stale market
+    prices.  Clean sheet and BTTS markets settle similarly.
+    """
+    total = home_goals + away_goals
+    # Over N.5 goals: decided (TRUE) once total >= N+1
+    over_map = {
+        "over_0_5": 1, "over_1_5": 2, "over_2_5": 3,
+        "over_3_5": 4, "over_4_5": 5,
+    }
+    if key in over_map and total >= over_map[key]:
+        return True
+    # Under N.5 goals: decided (FALSE/impossible) once total > N
+    under_map = {
+        "under_0_5": 1, "under_1_5": 2, "under_2_5": 3,
+        "under_3_5": 4, "under_4_5": 5,
+    }
+    if key in under_map and total >= under_map[key]:
+        return True
+    # Home team total over lines
+    home_over_map = {
+        "home_over_0_5": 1, "home_over_1_5": 2, "home_over_2_5": 3,
+    }
+    if key in home_over_map and home_goals >= home_over_map[key]:
+        return True
+    # Away team total over lines
+    away_over_map = {
+        "away_over_0_5": 1, "away_over_1_5": 2, "away_over_2_5": 3,
+    }
+    if key in away_over_map and away_goals >= away_over_map[key]:
+        return True
+    # BTTS yes: decided once both teams have scored
+    if key == "btts_yes" and home_goals > 0 and away_goals > 0:
+        return True
+    # BTTS no / clean sheets: decided impossible once both teams scored or one concedes
+    if key == "btts_no" and home_goals > 0 and away_goals > 0:
+        return True
+    if key == "clean_sheet_home" and away_goals > 0:
+        return True
+    if key == "clean_sheet_away" and home_goals > 0:
+        return True
+    return False
+
+
 # Markets to expose (canonical set + any value_flag edge markets)
 CORE_MARKETS: set[str] = {
     "home_win", "draw", "away_win",
@@ -347,6 +395,8 @@ def build_markets(
     warnings: list[str] | None = None,
     market_odds_stale: bool = False,
     regulation_minute: float | None = None,
+    home_goals: int = 0,
+    away_goals: int = 0,
 ) -> list[dict]:
     warnings = warnings or []
     has_warnings = any(w for w in warnings if w)
@@ -372,6 +422,19 @@ def build_markets(
     market_rows: list[dict] = []
 
     for key in sorted(candidate_keys):
+        # Skip markets whose outcome is already settled by the current score.
+        # These create fake edge from stale market prices (e.g. over 0.5 at 72%
+        # when the score is already 1-0 — the line hasn't moved and the model
+        # is trivially at 99.9%, manufacturing a phantom +28pp edge).
+        if mode == "live" and _is_market_decided(key, home_goals, away_goals):
+            # #region agent log
+            import json as _json, time as _time
+            _log_path = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
+            with open(_log_path, "a") as _lf:
+                _lf.write(_json.dumps({"sessionId":"3f8dcc","hypothesisId":"H-2","location":"generate_xray.py:build_markets","message":"decided_market_skipped","data":{"match_id":match_id,"key":key,"home_goals":home_goals,"away_goals":away_goals},"timestamp":int(_time.time()*1000)}) + "\n")
+            # #endregion
+            continue
+
         model_prob = derived_markets.get(key)
         market_no_vig = market_implied_markets.get(key)
 
@@ -766,6 +829,16 @@ def process_live_match(
     warnings = lm.get("warnings", [])
     uncertainty = "MEDIUM"
 
+    h_goals = lm.get("current_home_goals", 0) or 0
+    a_goals = lm.get("current_away_goals", 0) or 0
+
+    # #region agent log
+    import json as _json_lv, time as _time_lv
+    _log_path_lv = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
+    with open(_log_path_lv, "a") as _lf_lv:
+        _lf_lv.write(_json_lv.dumps({"sessionId":"3f8dcc","hypothesisId":"H-2","location":"generate_xray.py:live_match","message":"live_match_score","data":{"match_id":match_id,"home":home,"away":away,"h_goals":h_goals,"a_goals":a_goals,"regulation_minute":lm.get("regulation_minute")},"timestamp":int(_time_lv.time()*1000)}) + "\n")
+    # #endregion
+
     markets = build_markets(
         match_id=match_id,
         derived_markets=dm,
@@ -780,6 +853,8 @@ def process_live_match(
         warnings=warnings,
         market_odds_stale=mim_is_stale,
         regulation_minute=lm.get("regulation_minute"),
+        home_goals=h_goals,
+        away_goals=a_goals,
     )
 
     top_action, confidence, best_edge_market, best_edge_pct = _top_action_and_confidence(markets)
@@ -787,8 +862,6 @@ def process_live_match(
     what_changed = build_what_changed(markets, prev_snapshots, match_id)
     clv_signals = build_clv_signals(match_id, markets, clv_index)
 
-    h_goals = lm.get("current_home_goals", 0)
-    a_goals = lm.get("current_away_goals", 0)
     minute = lm.get("regulation_minute") or lm.get("clock_display")
 
     actionable = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE")]
