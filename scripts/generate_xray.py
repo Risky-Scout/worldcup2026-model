@@ -183,12 +183,18 @@ def live_action(
     odds_age_sec: float = 0.0,
     price_moved_against: bool = False,
     market_odds_stale: bool = False,
+    regulation_minute: float | None = None,
 ) -> str:
     if market_odds_stale:
         return "WAIT"  # Cannot act when comparing live model to stale pregame odds
 
     if prev_edge_pp is not None and prev_edge_pp > edge_pp + 0.5:
         return "DO NOT CHASE"
+
+    # Cap action in final minutes — probabilities become extreme and PMF clamping
+    # creates artificial edge on essentially-decided outcomes.
+    if regulation_minute is not None and regulation_minute >= 85:
+        return "WAIT"
 
     # Staleness caps
     if pmf_age_min > 7 or odds_age_sec > 90:
@@ -340,6 +346,7 @@ def build_markets(
     match_uncertainty: str = "MEDIUM",
     warnings: list[str] | None = None,
     market_odds_stale: bool = False,
+    regulation_minute: float | None = None,
 ) -> list[dict]:
     warnings = warnings or []
     has_warnings = any(w for w in warnings if w)
@@ -374,8 +381,15 @@ def build_markets(
             continue
         if math.isnan(model_prob) or math.isnan(market_no_vig):
             continue
-        if model_prob <= 0 or model_prob >= 1:
-            continue
+        # Clamp instead of skip: late-game PMFs produce exact 0.0 or 1.0 (Poisson underflow).
+        # Clamping preserves market display (PASS/DO NOT CHASE) while keeping math valid.
+        orig_prob = model_prob
+        model_prob = max(0.001, min(0.999, float(model_prob)))
+        # #region agent log H-1
+        if orig_prob != model_prob:
+            import json as _jx, time as _tx
+            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_jx.dumps({"sessionId":"3f8dcc","hypothesisId":"H-1","location":"generate_xray.py:clamp","message":"clamped","data":{"key":key,"orig":orig_prob,"clamped":model_prob},"timestamp":int(_tx.time()*1000)})+"\n")
+        # #endregion
 
         edge_pp = (model_prob - market_no_vig) * 100
         model_fair_american = prob_to_american(model_prob)
@@ -416,6 +430,7 @@ def build_markets(
                 pmf_age_min=pmf_age_min,
                 odds_age_sec=odds_age_sec,
                 market_odds_stale=market_odds_stale,
+                regulation_minute=regulation_minute,
             )
         else:
             action = pregame_action(edge_pp, prev_edge_pp)
@@ -770,6 +785,7 @@ def process_live_match(
         match_uncertainty=uncertainty,
         warnings=warnings,
         market_odds_stale=mim_is_stale,
+        regulation_minute=lm.get("regulation_minute"),
     )
 
     top_action, confidence, best_edge_market, best_edge_pct = _top_action_and_confidence(markets)
