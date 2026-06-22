@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-22T17:48:58.287147+00:00",
+  "generated_at": "2026-06-22T18:24:49.331691+00:00",
   "date": "2026-06-22",
   "pregame_matches": [
     {
@@ -1350,7 +1350,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -3.05,
-          "ev_per_100": -3.45,
+          "ev_per_100": -3.46,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -578. Edge existed earlier but has decreased to -3.1 pp. Do not chase a deteriorating edge."
@@ -1365,7 +1365,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -3.05,
-          "ev_per_100": -3.45,
+          "ev_per_100": -3.46,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -578. Edge existed earlier but has decreased to -3.1 pp. Do not chase a deteriorating edge."
@@ -1380,7 +1380,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.883,
           "edge_pp": -3.05,
-          "ev_per_100": -3.45,
+          "ev_per_100": -3.46,
           "confidence": "D",
           "action": "DO NOT CHASE",
           "trader_note": "Model fair: -578. Edge existed earlier but has decreased to -3.1 pp. Do not chase a deteriorating edge."
@@ -1395,7 +1395,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.117,
           "edge_pp": 3.05,
-          "ev_per_100": 26.07,
+          "ev_per_100": 26.08,
           "confidence": "B",
           "action": "SMALL BET",
           "trader_note": "Model fair: +578. Best market: +755. Edge: +3.1 pp, EV: +26.1% per $100. Edge clears threshold; reduced sizing recommended."
@@ -1575,7 +1575,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.1175,
           "edge_pp": 2.06,
-          "ev_per_100": 17.57,
+          "ev_per_100": 17.58,
           "confidence": "C",
           "action": "LEAN",
           "trader_note": "Model fair: +624. Best market: +751. Edge: +2.1 pp. Positive edge, but below the pregame execution threshold. Monitor for a better price."
@@ -1605,7 +1605,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.3559,
           "edge_pp": -1.53,
-          "ev_per_100": -4.3,
+          "ev_per_100": -4.29,
           "confidence": "D",
           "action": "PASS",
           "trader_note": "Model fair: +194. No material edge on this market at current prices."
