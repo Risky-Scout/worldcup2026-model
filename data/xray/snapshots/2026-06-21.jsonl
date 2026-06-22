@@ -785,3 +785,73 @@
 {"match_id": "36", "market_id": "away_over_1_5", "timestamp_utc": "2026-06-21T16:55:01.156858+00:00", "model_probability": 0.5636, "market_odds_american": -129, "edge_pp": 0.03, "action": "PASS"}
 {"match_id": "36", "market_id": "double_chance_12", "timestamp_utc": "2026-06-21T16:55:01.156858+00:00", "model_probability": 0.7813, "market_odds_american": -357, "edge_pp": 0.01, "action": "PASS"}
 {"match_id": "36", "market_id": "draw", "timestamp_utc": "2026-06-21T16:55:01.156858+00:00", "model_probability": 0.2187, "market_odds_american": 357, "edge_pp": -0.01, "action": "PASS"}
+{"match_id": "40", "market_id": "over_4_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1056, "market_odds_american": 774, "edge_pp": -0.87, "action": "PASS"}
+{"match_id": "40", "market_id": "under_4_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.8944, "market_odds_american": -774, "edge_pp": 0.87, "action": "PASS"}
+{"match_id": "40", "market_id": "home_over_2_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.0385, "market_odds_american": 2185, "edge_pp": -0.52, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.6525, "market_odds_american": -184, "edge_pp": 0.49, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_2", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.6525, "market_odds_american": -184, "edge_pp": 0.49, "action": "PASS"}
+{"match_id": "40", "market_id": "away_over_2_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.2563, "market_odds_american": 283, "edge_pp": -0.46, "action": "PASS"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.5526, "market_odds_american": -122, "edge_pp": 0.4, "action": "PASS"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.4474, "market_odds_american": 122, "edge_pp": -0.4, "action": "PASS"}
+{"match_id": "40", "market_id": "home_over_1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1789, "market_odds_american": 449, "edge_pp": -0.32, "action": "PASS"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.7234, "market_odds_american": -265, "edge_pp": -0.29, "action": "PASS"}
+{"match_id": "40", "market_id": "under_1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.2766, "market_odds_american": 265, "edge_pp": 0.29, "action": "PASS"}
+{"match_id": "40", "market_id": "clean_sheet_away", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.46, "market_odds_american": 118, "edge_pp": 0.21, "action": "PASS"}
+{"match_id": "40", "market_id": "home_over_0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.54, "market_odds_american": -118, "edge_pp": -0.21, "action": "PASS"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.2495, "market_odds_american": 298, "edge_pp": -0.19, "action": "PASS"}
+{"match_id": "40", "market_id": "under_3_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.7505, "market_odds_american": -298, "edge_pp": 0.19, "action": "PASS"}
+{"match_id": "40", "market_id": "away_over_0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.8246, "market_odds_american": -476, "edge_pp": -0.17, "action": "PASS"}
+{"match_id": "40", "market_id": "away_over_1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.5266, "market_odds_american": -112, "edge_pp": -0.17, "action": "PASS"}
+{"match_id": "40", "market_id": "clean_sheet_home", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1754, "market_odds_american": 476, "edge_pp": 0.17, "action": "PASS"}
+{"match_id": "40", "market_id": "draw_no_bet_away", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.7909, "market_odds_american": -380, "edge_pp": -0.08, "action": "PASS"}
+{"match_id": "40", "market_id": "draw_no_bet_home", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.2091, "market_odds_american": 380, "edge_pp": 0.08, "action": "PASS"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.4682, "market_odds_american": 114, "edge_pp": 0.08, "action": "PASS"}
+{"match_id": "40", "market_id": "under_2_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.5318, "market_odds_american": -114, "edge_pp": -0.08, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_-0.5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1594, "market_odds_american": 530, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_0", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1594, "market_odds_american": 530, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_neg0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1594, "market_odds_american": 530, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_neg1", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.0475, "market_odds_american": 2039, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_neg1_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.0475, "market_odds_american": 2039, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "double_chance_x2", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.8406, "market_odds_american": -530, "edge_pp": -0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.1594, "market_odds_american": 530, "edge_pp": 0.07, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.397, "market_odds_american": 152, "edge_pp": 0.04, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_1", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.397, "market_odds_american": 152, "edge_pp": 0.04, "action": "PASS"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.603, "market_odds_american": -152, "edge_pp": -0.04, "action": "PASS"}
+{"match_id": "40", "market_id": "double_chance_1x", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.397, "market_odds_american": 152, "edge_pp": 0.04, "action": "PASS"}
+{"match_id": "40", "market_id": "asian_handicap_home_neg2", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.01, "market_odds_american": 9618, "edge_pp": -0.03, "action": "PASS"}
+{"match_id": "40", "market_id": "double_chance_12", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.7624, "market_odds_american": -320, "edge_pp": 0.03, "action": "PASS"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.2376, "market_odds_american": 320, "edge_pp": -0.03, "action": "PASS"}
+{"match_id": "40", "market_id": "over_0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.9172, "market_odds_american": -1105, "edge_pp": 0.02, "action": "PASS"}
+{"match_id": "40", "market_id": "under_0_5", "timestamp_utc": "2026-06-22T01:20:45.355669+00:00", "model_probability": 0.0828, "market_odds_american": 1105, "edge_pp": -0.02, "action": "PASS"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.6339, "market_odds_american": 527, "edge_pp": 47.45, "action": "BET"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.133, "market_odds_american": -153, "edge_pp": -47.21, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.3944, "market_odds_american": -123, "edge_pp": -15.7, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.6056, "market_odds_american": 123, "edge_pp": 15.7, "action": "BET"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.8244, "market_odds_american": -261, "edge_pp": 10.14, "action": "BET"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.5189, "market_odds_american": 115, "edge_pp": 5.36, "action": "SMALL BET"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.2532, "market_odds_american": 300, "edge_pp": 0.34, "action": "PASS"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:30:40.730485+00:00", "model_probability": 0.2331, "market_odds_american": 325, "edge_pp": -0.24, "action": "PASS"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.6339, "market_odds_american": 527, "edge_pp": 47.45, "action": "WAIT"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.133, "market_odds_american": -153, "edge_pp": -47.21, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.3944, "market_odds_american": -123, "edge_pp": -15.7, "action": "WAIT"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.6056, "market_odds_american": 123, "edge_pp": 15.7, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.8244, "market_odds_american": -261, "edge_pp": 10.14, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.5189, "market_odds_american": 115, "edge_pp": 5.36, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.2532, "market_odds_american": 300, "edge_pp": 0.34, "action": "WAIT"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:42:29.912272+00:00", "model_probability": 0.2331, "market_odds_american": 325, "edge_pp": -0.24, "action": "WAIT"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.3011, "market_odds_american": -112, "edge_pp": -22.67, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.6673, "market_odds_american": -566, "edge_pp": -18.25, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.6479, "market_odds_american": 109, "edge_pp": 16.88, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.0997, "market_odds_american": 296, "edge_pp": -15.31, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.0996, "market_odds_american": 333, "edge_pp": -13.12, "action": "PASS"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.5177, "market_odds_american": 114, "edge_pp": 5.11, "action": "SMALL BET"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.4823, "market_odds_american": -114, "edge_pp": -5.11, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:44:17.721082+00:00", "model_probability": 0.2525, "market_odds_american": 245, "edge_pp": -3.76, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "over_2_5", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.3684, "market_odds_american": 105, "edge_pp": -11.91, "action": "PASS"}
+{"match_id": "40", "market_id": "over_1_5", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.7238, "market_odds_american": -471, "edge_pp": -10.1, "action": "PASS"}
+{"match_id": "40", "market_id": "over_3_5", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.1398, "market_odds_american": 348, "edge_pp": -8.32, "action": "PASS"}
+{"match_id": "40", "market_id": "btts_no", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.4199, "market_odds_american": 105, "edge_pp": -6.77, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "btts_yes", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.5801, "market_odds_american": -105, "edge_pp": 6.77, "action": "BET"}
+{"match_id": "40", "market_id": "home_win", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.5555, "market_odds_american": -101, "edge_pp": 5.42, "action": "DO NOT CHASE"}
+{"match_id": "40", "market_id": "away_win", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.1585, "market_odds_american": 381, "edge_pp": -4.95, "action": "PASS"}
+{"match_id": "40", "market_id": "draw", "timestamp_utc": "2026-06-22T01:51:59.995852+00:00", "model_probability": 0.286, "market_odds_american": 244, "edge_pp": -0.47, "action": "PASS"}
