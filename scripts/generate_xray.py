@@ -1008,11 +1008,13 @@ def generate(date: str | None = None) -> None:
                 return (now_utc - ko_dt).total_seconds() > 105 * 60
             except Exception:
                 pass
-        # Fallback: if regulation_minute >= 90 and live doc is >5 min old, treat as done.
-        # The live workflow runs every ~2 min so a 5-min gap means multiple cycles passed
-        # without BDL clearing the match — almost certainly finished.
+        # No published kickoff found: match was filtered from pub_matches because it's old.
+        # If regulation_minute >= 90, the game is over — BDL is just slow to clear it.
         minute = lm.get("regulation_minute") or 0
-        if minute >= 90 and live_generated_at:
+        if minute >= 90:
+            return True
+        # Fallback: doc is too old for an active game to still be at <90 min.
+        if live_generated_at:
             try:
                 gen_dt = datetime.fromisoformat(live_generated_at.replace("Z", "+00:00"))
                 if gen_dt.tzinfo is None:
