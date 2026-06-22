@@ -270,13 +270,14 @@ def load_published(date: str) -> list[dict]:
 
 
 def load_live() -> dict:
-    """Returns live JSON or empty dict."""
-    live_path = REPO_ROOT / "data" / "live" / "latest.json"
-    if live_path.exists():
-        try:
-            return json.loads(live_path.read_text())
-        except Exception:
-            pass
+    """Returns live JSON or empty dict. Checks wc-live.json first, falls back to latest.json."""
+    for p in ["data/live/wc-live.json", "data/live/latest.json"]:
+        live_path = REPO_ROOT / p
+        if live_path.exists():
+            try:
+                return json.loads(live_path.read_text())
+            except Exception:
+                continue
     return {}
 
 
@@ -848,6 +849,26 @@ def generate(date: str | None = None) -> None:
     live_doc = load_live()
     clv_index = load_clv()
     prev_snapshots = load_snapshots(date)
+
+    # Filter out matches whose kickoff was >180 minutes ago (almost certainly finished)
+    def _is_stale_match(m: dict) -> bool:
+        """True if match kickoff was >3 hours ago (likely finished)."""
+        ko = m.get("kickoff_utc") or m.get("match_datetime_utc") or m.get("kick_off") or ""
+        if not ko:
+            return False
+        try:
+            ko_dt = datetime.fromisoformat(str(ko).replace("Z", "+00:00"))
+            if ko_dt.tzinfo is None:
+                ko_dt = ko_dt.replace(tzinfo=timezone.utc)
+            return (now_utc - ko_dt).total_seconds() > 180 * 60
+        except Exception:
+            return False
+
+    before = len(pub_matches)
+    pub_matches = [m for m in pub_matches if not _is_stale_match(m)]
+    stale_filtered = before - len(pub_matches)
+    if stale_filtered:
+        print(f"  Filtered {stale_filtered} stale match(es) (kickoff >3h ago)")
 
     print(f"  Published matches: {len(pub_matches)}")
     print(f"  Live matches: {len(live_doc.get('live_matches', []))}")

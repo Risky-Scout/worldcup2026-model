@@ -49,6 +49,20 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/live_snapshot.py
 
+      - name: Regenerate Market X-Ray
+        if: always()
+        run: python3.10 scripts/generate_xray.py
+        continue-on-error: true
+
+      - name: Upload Market X-Ray JSON (FTP)
+        if: always()
+        run: python3.10 scripts/upload_xray.py
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+        continue-on-error: true
+
       - name: Re-trigger if live or match imminent (self-chain)
         # Self-chain ensures reliable updates without depending on GitHub's cron
         # scheduler (which can skip runs by 30-60+ min under load).
