@@ -383,13 +383,7 @@ def build_markets(
             continue
         # Clamp instead of skip: late-game PMFs produce exact 0.0 or 1.0 (Poisson underflow).
         # Clamping preserves market display (PASS/DO NOT CHASE) while keeping math valid.
-        orig_prob = model_prob
         model_prob = max(0.001, min(0.999, float(model_prob)))
-        # #region agent log H-1
-        if orig_prob != model_prob:
-            import json as _jx, time as _tx
-            open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log","a").write(_jx.dumps({"sessionId":"3f8dcc","hypothesisId":"H-1","location":"generate_xray.py:clamp","message":"clamped","data":{"key":key,"orig":orig_prob,"clamped":model_prob},"timestamp":int(_tx.time()*1000)})+"\n")
-        # #endregion
 
         edge_pp = (model_prob - market_no_vig) * 100
         model_fair_american = prob_to_american(model_prob)
