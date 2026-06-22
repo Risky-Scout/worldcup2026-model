@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-22T20:57:05.601526+00:00",
+  "generated_at": "2026-06-22T21:30:13.821110+00:00",
   "date": "2026-06-22",
   "pregame_matches": [
     {
@@ -76,7 +76,7 @@
           "market_odds_estimated": true,
           "market_no_vig_probability": 0.1138,
           "edge_pp": 3.67,
-          "ev_per_100": 32.24,
+          "ev_per_100": 32.23,
           "confidence": "B",
           "action": "SMALL BET",
           "trader_note": "Model fair: +565. Best market: +779. Edge: +3.7 pp, EV: +32.2% per $100. Edge clears threshold; reduced sizing recommended."
