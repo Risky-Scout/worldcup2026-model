@@ -1,6 +1,6 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-22T04:20:51.040895+00:00",
+  "generated_at": "2026-06-22T04:56:28.847967+00:00",
   "date": "2026-06-22",
   "pregame_matches": [
     {
@@ -593,10 +593,10 @@
         }
       ],
       "line_movement": {
-        "snapshots_available": 1,
-        "open_edge_pp": -1.13,
+        "snapshots_available": 3,
+        "open_edge_pp": -1.14,
         "current_edge_pp": -1.13,
-        "edge_change": 0.0,
+        "edge_change": 0.01,
         "note": "Edge stable since open."
       },
       "what_changed": [],
@@ -1383,7 +1383,7 @@
         }
       ],
       "line_movement": {
-        "snapshots_available": 1,
+        "snapshots_available": 3,
         "open_edge_pp": -8.96,
         "current_edge_pp": -8.96,
         "edge_change": 0.0,
@@ -2173,7 +2173,7 @@
         }
       ],
       "line_movement": {
-        "snapshots_available": 1,
+        "snapshots_available": 3,
         "open_edge_pp": -1.05,
         "current_edge_pp": -1.05,
         "edge_change": 0.0,
@@ -2963,7 +2963,7 @@
         }
       ],
       "line_movement": {
-        "snapshots_available": 1,
+        "snapshots_available": 3,
         "open_edge_pp": -1.09,
         "current_edge_pp": -1.09,
         "edge_change": 0.0,
@@ -3164,187 +3164,5 @@
       ]
     }
   ],
-  "live_matches": [
-    {
-      "match_id": "40",
-      "home_team": "New Zealand",
-      "away_team": "Egypt",
-      "home_abbr": "NZL",
-      "away_abbr": "EGY",
-      "kickoff_utc": null,
-      "status": "live",
-      "mode": "live",
-      "minute": 90.0,
-      "score": "1–3",
-      "odds_timestamp": null,
-      "top_action": "WAIT",
-      "best_edge_market": "btts_yes",
-      "best_edge_pct": 56.37,
-      "confidence": "B",
-      "summary_note": "WAIT signal on BTTS No (-56.4 pp edge). 6 actionable markets total.",
-      "live_market_odds_stale": false,
-      "markets": [
-        {
-          "market_id": "btts_no",
-          "market_label": "BTTS No",
-          "selection_label": "BTTS No",
-          "model_probability": 0.001,
-          "model_fair_american": 99900,
-          "market_odds_american": -130,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5647,
-          "edge_pp": -56.37,
-          "ev_per_100": -99.82,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: +99900. Best market: -130. Edge: -56.4 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "btts_yes",
-          "market_label": "BTTS Yes",
-          "selection_label": "BTTS Yes",
-          "model_probability": 0.999,
-          "model_fair_american": -99900,
-          "market_odds_american": 130,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.4353,
-          "edge_pp": 56.37,
-          "ev_per_100": 129.52,
-          "confidence": "B",
-          "action": "WAIT",
-          "trader_note": "Model fair: -99900. Best market: +130. Edge: +56.4 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "over_0_5",
-          "market_label": "Total Over 0.5",
-          "selection_label": "Total Over 0.5",
-          "model_probability": 0.999,
-          "model_fair_american": -99900,
-          "market_odds_american": -118,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.5412,
-          "edge_pp": 45.78,
-          "ev_per_100": 84.58,
-          "confidence": "B",
-          "action": "WAIT",
-          "trader_note": "Model fair: -99900. Best market: -118. Edge: +45.8 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "away_win",
-          "market_label": "Away Win (1X2)",
-          "selection_label": "Egypt ML",
-          "model_probability": 0.999,
-          "model_fair_american": -99900,
-          "market_odds_american": -1143,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.9196,
-          "edge_pp": 7.94,
-          "ev_per_100": 8.64,
-          "confidence": "B",
-          "action": "WAIT",
-          "trader_note": "Model fair: -99900. Best market: -1143. Edge: +7.9 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "draw",
-          "market_label": "Draw (1X2)",
-          "selection_label": "Draw",
-          "model_probability": 0.001,
-          "model_fair_american": 99900,
-          "market_odds_american": 1261,
-          "market_odds_estimated": true,
-          "market_no_vig_probability": 0.0735,
-          "edge_pp": -7.25,
-          "ev_per_100": -98.64,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: +99900. Best market: +1261. Edge: -7.2 pp. Price is close but not yet sufficient. Wait for improvement."
-        },
-        {
-          "market_id": "home_win",
-          "market_label": "Home Win (1X2)",
-          "selection_label": "New Zealand ML",
-          "model_probability": 0.001,
-          "model_fair_american": 99900,
-          "market_odds_american": null,
-          "market_odds_estimated": false,
-          "market_no_vig_probability": 0.007,
-          "edge_pp": -0.6,
-          "ev_per_100": null,
-          "confidence": "D",
-          "action": "WAIT",
-          "trader_note": "Model fair: +99900. Best market: N/A. Edge: -0.6 pp. Price is close but not yet sufficient. Wait for improvement."
-        }
-      ],
-      "line_movement": {
-        "snapshots_available": 1,
-        "open_edge_pp": -56.37,
-        "current_edge_pp": -56.37,
-        "edge_change": 0.0,
-        "note": "Edge stable since open."
-      },
-      "what_changed": [],
-      "clv_signals": [
-        {
-          "market_id": "btts_no",
-          "market_label": "BTTS No",
-          "model_prob": 0.27744,
-          "model_fair_odds": 3.6044,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "btts_yes",
-          "market_label": "BTTS Yes",
-          "model_prob": 0.72256,
-          "model_fair_odds": 1.384,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "over_0_5",
-          "market_label": "Total Over 0.5",
-          "model_prob": 0.97514,
-          "model_fair_odds": 1.0255,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "away_win",
-          "market_label": "Away Win (1X2)",
-          "model_prob": 0.48408,
-          "model_fair_odds": 2.0658,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "draw",
-          "market_label": "Draw (1X2)",
-          "model_prob": 0.19574,
-          "model_fair_odds": 5.1088,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        },
-        {
-          "market_id": "home_win",
-          "market_label": "Home Win (1X2)",
-          "model_prob": 0.32017,
-          "model_fair_odds": 3.1233,
-          "prediction_timestamp": "2026-06-19T02:56:03.312Z",
-          "closing_timestamp": "2026-06-22T00:57:00.029376+00:00",
-          "closing_source": "live_capture",
-          "beat_close": null
-        }
-      ]
-    }
-  ]
+  "live_matches": []
 }
