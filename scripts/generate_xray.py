@@ -124,6 +124,14 @@ def _is_market_decided(key: str, home_goals: int, away_goals: int) -> bool:
     return False
 
 
+# Total goals over/under line market keys — BDL does not update these live,
+# so their prices remain at pre-game opening lines during in-play markets.
+TOTAL_GOALS_LINES: frozenset[str] = frozenset({
+    "over_0_5", "over_1_5", "over_2_5", "over_3_5", "over_4_5",
+    "under_0_5", "under_1_5", "under_2_5", "under_3_5", "under_4_5",
+})
+
+
 # Markets to expose (canonical set + any value_flag edge markets)
 CORE_MARKETS: set[str] = {
     "home_win", "draw", "away_win",
@@ -443,6 +451,26 @@ def build_markets(
         model_prob = max(0.001, min(0.999, float(model_prob)))
 
         edge_pp = (model_prob - market_no_vig) * 100
+
+        # In live mode, BDL does not update total goals over/under lines — they
+        # remain at their pre-game opening prices.  A large negative edge on a
+        # total goals line (market >> model) almost always means the line is stale,
+        # not a real "market knows better" signal.  Hide them to keep the table
+        # clean.  -30pp threshold: safely above any realistic live edge, well below
+        # the 50-80pp gaps produced by stale pregame totals mid/late game.
+        if mode == "live" and key in TOTAL_GOALS_LINES and edge_pp < -30.0:
+            # #region agent log H-3
+            try:
+                import json as _jl, time as _tl, os as _ol
+                _lp = "/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log"
+                _ol.makedirs(_ol.path.dirname(_lp), exist_ok=True)
+                with open(_lp, "a") as _lf:
+                    _lf.write(_jl.dumps({"sessionId":"3f8dcc","hypothesisId":"H-3","location":"generate_xray.py:stale_totals","message":"stale_total_skipped","data":{"match_id":match_id,"key":key,"edge_pp":round(edge_pp,2),"model":round(model_prob,4),"mkt":round(market_no_vig,4)},"timestamp":int(_tl.time()*1000)}) + "\n")
+            except Exception:
+                pass
+            # #endregion
+            continue
+
         model_fair_american = prob_to_american(model_prob)
 
         # Market odds: use actual odds from edge report when available,
