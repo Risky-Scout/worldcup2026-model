@@ -291,7 +291,7 @@ function renderTable(rows) {
         + modePill
       + '</td>'
       + '<td>'+modePill+'</td>'
-      + '<td style="color:var(--text);font-weight:500">'+esc(r.market_label||'')+'</td>'
+      + '<td style="color:var(--text);font-weight:500">'+esc(r.market_label||'')+(r._mode === 'live' && match.live_market_odds_stale ? '<span title="Market odds are pregame prices — live comparison unavailable" style="color:#D4AF37;font-size:10px;margin-left:4px;">⚠ PRE</span>' : '')+'</td>'
       + '<td style="color:var(--text-dim)">'+esc(r.selection_label||'')+'</td>'
       + '<td>'+formatPct(r.model_probability)+'</td>'
       + '<td style="color:var(--text-dim)">'+formatPct(r.market_no_vig_probability)+'</td>'
@@ -306,7 +306,7 @@ function renderTable(rows) {
 
     html += '<tr class="detail-row" id="xr-detail-'+idx+'">'
       + '<td colspan="13"><div class="detail-panel">'
-      + '<div class="detail-note">'+esc(r.trader_note||'')+'</div>'
+      + '<div class="detail-note">'+esc((r.trader_note||'') + (r._mode === 'live' && match.live_market_odds_stale ? ' Note: market odds shown are pregame prices — live market comparison unavailable.' : ''))+'</div>'
       + probBarHTML(r.model_probability, r.market_no_vig_probability)
       + '<div style="margin-top:10px">'
       + '<a class="detail-link" href="'+matchLink+'">View Full Match Detail →</a>'

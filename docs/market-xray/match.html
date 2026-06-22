@@ -294,8 +294,10 @@ function renderMatch(matchObj, predMatch) {
       var edgeCls = m.edge_pp > 0 ? 'edge-pos' : (m.edge_pp < 0 ? 'edge-neg' : 'edge-zero');
       var rid = 'mr-'+rowIdx, did = 'md-'+rowIdx;
       rowIdx++;
+      var stalePreBadge = (matchObj.live_market_odds_stale ? '<span title="Market odds are pregame prices — live comparison unavailable" style="color:#D4AF37;font-size:10px;margin-left:4px;">⚠ PRE</span>' : '');
+      var staleNote = (matchObj.live_market_odds_stale ? ' Note: market odds shown are pregame prices — live market comparison unavailable.' : '');
       tableHtml += '<tr class="market-row" id="'+rid+'" onclick="toggleDetailRow(\''+rid+'\',\''+did+'\',this)">'
-        + '<td style="color:var(--text);font-weight:500">'+esc(m.market_label||'')+'</td>'
+        + '<td style="color:var(--text);font-weight:500">'+esc(m.market_label||'')+stalePreBadge+'</td>'
         + '<td style="color:var(--text-dim)">'+esc(m.selection_label||'')+'</td>'
         + '<td>'+formatPct(m.model_probability)+'</td>'
         + '<td style="color:var(--text-dim)">'+formatPct(m.market_no_vig_probability)+'</td>'
@@ -309,7 +311,7 @@ function renderMatch(matchObj, predMatch) {
         + '</tr>';
       tableHtml += '<tr class="detail-row" id="'+did+'"><td colspan="11">'
         + '<div class="detail-panel">'
-        + '<div class="detail-note">'+esc(m.trader_note||'')+'</div>'
+        + '<div class="detail-note">'+esc((m.trader_note||'')+staleNote)+'</div>'
         + probBarHTML(m.model_probability, m.market_no_vig_probability)
         + '</div></td></tr>';
     });

@@ -182,7 +182,11 @@ def live_action(
     pmf_age_min: float = 0.0,
     odds_age_sec: float = 0.0,
     price_moved_against: bool = False,
+    market_odds_stale: bool = False,
 ) -> str:
+    if market_odds_stale:
+        return "WAIT"  # Cannot act when comparing live model to stale pregame odds
+
     if prev_edge_pp is not None and prev_edge_pp > edge_pp + 0.5:
         return "DO NOT CHASE"
 
@@ -335,6 +339,7 @@ def build_markets(
     odds_age_sec: float = 0.0,
     match_uncertainty: str = "MEDIUM",
     warnings: list[str] | None = None,
+    market_odds_stale: bool = False,
 ) -> list[dict]:
     warnings = warnings or []
     has_warnings = any(w for w in warnings if w)
@@ -410,6 +415,7 @@ def build_markets(
                 edge_pp, prev_edge_pp,
                 pmf_age_min=pmf_age_min,
                 odds_age_sec=odds_age_sec,
+                market_odds_stale=market_odds_stale,
             )
         else:
             action = pregame_action(edge_pp, prev_edge_pp)
@@ -712,6 +718,7 @@ def process_live_match(
     # Live JSON may not have market_implied_markets. When missing, use the
     # pregame market_implied_markets from the published prediction (191 markets)
     # so edge = live-model-prob minus pregame-market-no-vig gives a meaningful comparison.
+    mim_is_stale = lm.get("market_implied_markets") is None  # True = using pregame fallback
     mim = lm.get("market_implied_markets")
     if mim is None and pub_match_lookup:
         pub_m = pub_match_lookup.get(match_id, {})
@@ -762,6 +769,7 @@ def process_live_match(
         pmf_age_min=pmf_age_min,
         match_uncertainty=uncertainty,
         warnings=warnings,
+        market_odds_stale=mim_is_stale,
     )
 
     top_action, confidence, best_edge_market, best_edge_pct = _top_action_and_confidence(markets)
@@ -793,6 +801,7 @@ def process_live_match(
         "best_edge_pct": best_edge_pct,
         "confidence": confidence,
         "summary_note": summary_note,
+        "live_market_odds_stale": mim_is_stale,
         "markets": markets,
         "line_movement": line_movement,
         "what_changed": what_changed,

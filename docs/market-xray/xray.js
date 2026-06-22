@@ -175,8 +175,14 @@ function renderMarketsTable(markets, container, options) {
       const edgeCls = m.edge_pp > 0 ? 'edge-pos' : (m.edge_pp < 0 ? 'edge-neg' : 'edge-zero');
       const rowId = `mkt-row-${options.prefix || ''}${i}`;
       const detailId = `mkt-detail-${options.prefix || ''}${i}`;
+      const stalePreBadge = options.liveMarketOddsStale
+        ? '<span title="Market odds are pregame prices — live comparison unavailable" style="color:#D4AF37;font-size:10px;margin-left:4px;">⚠ PRE</span>'
+        : '';
+      const staleNote = options.liveMarketOddsStale
+        ? ' Note: market odds shown are pregame prices — live market comparison unavailable.'
+        : '';
       tbody += `<tr class="market-row" id="${rowId}" onclick="toggleDetailRow('${rowId}','${detailId}',this)">
-        <td><strong style="color:var(--text)">${esc(m.market_label)}</strong></td>
+        <td><strong style="color:var(--text)">${esc(m.market_label)}</strong>${stalePreBadge}</td>
         <td style="color:var(--text-dim)">${esc(m.selection_label || '')}</td>
         <td>${formatPct(m.model_probability)}</td>
         <td>${formatPct(m.market_no_vig_probability)}</td>
@@ -190,7 +196,7 @@ function renderMarketsTable(markets, container, options) {
       <tr class="detail-row" id="${detailId}">
         <td colspan="10">
           <div class="detail-panel">
-            <div class="detail-note">${esc(m.trader_note || '')}</div>
+            <div class="detail-note">${esc((m.trader_note || '') + staleNote)}</div>
             ${probBarHTML(m.model_probability, m.market_no_vig_probability)}
           </div>
         </td>
