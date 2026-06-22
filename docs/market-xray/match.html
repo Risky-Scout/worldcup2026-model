@@ -347,6 +347,18 @@ function renderMatch(matchObj, predMatch) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+var MATCH_REFRESH_TIMER = null;
+
+function matchNextRefreshMs(matchObj) {
+  if (!matchObj) return 5 * 60 * 1000;
+  if (matchObj.mode === 'live') return 30 * 1000;
+  if (matchObj.kickoff_utc) {
+    var diff = new Date(matchObj.kickoff_utc).getTime() - Date.now();
+    if (diff > 0 && diff < 30 * 60 * 1000) return 2 * 60 * 1000;
+  }
+  return 5 * 60 * 1000;
+}
+
 async function init() {
   var matchId = getMatchId();
   if (!matchId) {
@@ -381,6 +393,9 @@ async function init() {
   document.getElementById('loading-state').style.display = 'none';
   document.getElementById('match-content').style.display = '';
   renderMatch(matchObj, predMatch);
+
+  clearTimeout(MATCH_REFRESH_TIMER);
+  MATCH_REFRESH_TIMER = setTimeout(init, matchNextRefreshMs(matchObj));
 }
 
 init();

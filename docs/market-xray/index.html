@@ -172,7 +172,7 @@
 
 <footer>
   PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
-  Not financial advice · <span id="footer-date"></span> · Auto-refreshes every 5 min
+  Not financial advice · <span id="footer-date"></span> · Auto-refreshes (30 s live · 2 min pre-KO · 5 min otherwise)
 </footer>
 
 <script src="xray.js"></script>
@@ -365,6 +365,23 @@ function applyAndRender() {
   updateKPIs(filtered);
 }
 
+// ── Adaptive refresh interval ─────────────────────────────────────────────────
+function nextRefreshMs(data) {
+  // Live game in progress → 30 s (X-Ray backend updates every ~2 min, stay close)
+  if ((data.live_matches || []).length > 0) return 30 * 1000;
+  // Kickoff within 30 min → 2 min (pre-match closing odds capture runs T-3)
+  var now = Date.now();
+  var soonest = Infinity;
+  (data.pregame_matches || []).forEach(function(m) {
+    if (m.kickoff_utc) {
+      var diff = new Date(m.kickoff_utc).getTime() - now;
+      if (diff > 0 && diff < soonest) soonest = diff;
+    }
+  });
+  if (soonest < 30 * 60 * 1000) return 2 * 60 * 1000;
+  return 5 * 60 * 1000;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   var data = await loadXrayData();
@@ -380,19 +397,24 @@ async function init() {
 
   applyAndRender();
 
+  var refreshMs = nextRefreshMs(data);
+  var refreshLabel = refreshMs < 60000
+    ? Math.round(refreshMs / 1000) + ' sec'
+    : Math.round(refreshMs / 60000) + ' min';
+
   var tag = document.getElementById('updated-tag');
   if (data.generated_at) {
     var d = new Date(data.generated_at);
     tag.innerHTML = 'Updated <span>' + d.toLocaleString('en-US', {
       timeZone: 'America/New_York', month: 'short', day: 'numeric',
       hour: 'numeric', minute: '2-digit', hour12: true
-    }) + ' ET</span> · auto-refreshes every 5 min';
+    }) + ' ET</span> · auto-refreshes every ' + refreshLabel;
   }
   document.getElementById('footer-date').textContent = data.date || '';
   document.title = 'Market X-Ray ' + (data.date || '') + ' · Wizard of Odds';
 
   clearTimeout(REFRESH_TIMER);
-  REFRESH_TIMER = setTimeout(init, 5 * 60 * 1000);
+  REFRESH_TIMER = setTimeout(init, refreshMs);
 }
 
 updateEdgeLabel();
