@@ -346,7 +346,15 @@ function updateKPIs(rows) {
     document.getElementById('kpi-best-edge').textContent = '—';
   }
 
-  document.getElementById('kpi-avg-clv').textContent = '—';
+  var clvEl = document.getElementById('kpi-avg-clv');
+  var clv = (window._xrayData || {}).clv_rolling_avg_pct;
+  if (clv != null && isFinite(clv)) {
+    clvEl.textContent = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
+    clvEl.style.color = clv >= 0 ? 'var(--green)' : 'var(--red, #ef4444)';
+  } else {
+    clvEl.textContent = '—';
+    clvEl.style.color = '';
+  }
 }
 
 // ── Apply + render ────────────────────────────────────────────────────────────
@@ -366,6 +374,7 @@ async function init() {
     return;
   }
 
+  window._xrayData = data;
   allMatches = (data.pregame_matches || []).concat(data.live_matches || []);
   allMarketRows = flattenMarkets(data);
 

@@ -1046,11 +1046,28 @@ def generate(date: str | None = None) -> None:
         except Exception as e:
             print(f"  WARN: pregame match {match_id} failed: {e}")
 
+    # Load rolling CLV from pipeline_health so the frontend can display it
+    clv_rolling_avg: float | None = None
+    clv_markets_beat: int | None = None
+    clv_n_captured: int | None = None
+    try:
+        ph_path = REPO_ROOT / "data" / "live" / "pipeline_health.json"
+        if ph_path.exists():
+            ph = json.loads(ph_path.read_text())
+            clv_rolling_avg = ph.get("clv_rolling_avg_pct")
+            clv_markets_beat = ph.get("clv_positive_market_count")
+            clv_n_captured = ph.get("n_closing_odds_captured")
+    except Exception:
+        pass
+
     # Build output
     output = {
         "schema_version": "wo_market_xray_v1",
         "generated_at": now_utc.isoformat(),
         "date": date,
+        "clv_rolling_avg_pct": clv_rolling_avg,
+        "clv_markets_beat_close": clv_markets_beat,
+        "clv_n_captured": clv_n_captured,
         "pregame_matches": pregame_results,
         "live_matches": live_results,
     }
