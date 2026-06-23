@@ -58,6 +58,7 @@ COMPLETED_STATUS_CODES = {
 
 FTP_DIR_SPACE = "/tools/odds-scanner/predictions/world cup"
 FTP_DIR_HYPHEN = "/tools/odds-scanner/predictions/world-cup/live"
+FTP_DIR_CANON = "/tools/odds-scanner/predictions/worldcup"   # canonical no-space path (same as wc-xray.json)
 LIVE_FILE = "wc-live.json"
 
 
@@ -1401,7 +1402,7 @@ def upload_snapshot(snapshot: dict) -> None:
 
     with ftplib.FTP(host, timeout=30) as ftp:
         ftp.login(user, password)
-        for remote_dir in [FTP_DIR_SPACE, FTP_DIR_HYPHEN]:
+        for remote_dir in [FTP_DIR_SPACE, FTP_DIR_HYPHEN, FTP_DIR_CANON]:
             _ensure_remote_dir_and_chmod(ftp, remote_dir)
             ftp.cwd(remote_dir)
             ftp.storbinary(f"STOR {LIVE_FILE}", io.BytesIO(payload))
@@ -1409,7 +1410,7 @@ def upload_snapshot(snapshot: dict) -> None:
                 ftp.sendcmd(f"SITE CHMOD 775 {remote_dir}/{LIVE_FILE}")
             except Exception:
                 pass
-        log.info("✓ Uploaded wc-live.json to both paths")
+        log.info("✓ Uploaded wc-live.json to all three paths")
 
     log.info("FTP upload complete: %d bytes, %d live matches, status=%s",
              len(payload), snapshot.get("n_live", 0), snapshot.get("status"))
@@ -1433,7 +1434,7 @@ def write_health_status(ok: bool, message: str, extra: dict | None = None) -> No
     try:
         with ftplib.FTP(host, timeout=15) as ftp:
             ftp.login(user, password)
-            for remote_dir in [FTP_DIR_SPACE, FTP_DIR_HYPHEN,
+            for remote_dir in [FTP_DIR_SPACE, FTP_DIR_HYPHEN, FTP_DIR_CANON,
                                 "/tools/odds-scanner/predictions/world-cup/pre-match"]:
                 try:
                     ftp.cwd(remote_dir)
