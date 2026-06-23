@@ -288,9 +288,13 @@ class OddsSnapshotStore:
             return hashes
         for f in sorted(season_dir.glob("*.parquet")):
             try:
-                # Use to_pylist() to get native Python strings, bypassing pandas
-                # type-inference changes (e.g. StringDtype in pandas 2.3+).
-                raw_list = pq.read_table(f, columns=["raw_payload_hash"]).column(0).to_pylist()
+                # Use ParquetFile.read() instead of pq.read_table() to avoid
+                # PyArrow Hive-partition detection on the season=XXXX directory:
+                # pq.read_table() sees the parent dir name "season=2026" and
+                # injects a dictionary-encoded partition column that conflicts
+                # with the int32 "season" column already stored in the file,
+                # producing "Unable to merge: Field season has incompatible types".
+                raw_list = pq.ParquetFile(f).read(columns=["raw_payload_hash"]).column(0).to_pylist()
                 hashes.update(h for h in raw_list if h is not None)
             except Exception as e:
                 log.warning("Could not read hashes from %s: %s", f, e)
