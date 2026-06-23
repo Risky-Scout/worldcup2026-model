@@ -1769,7 +1769,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.820454,
+        "draw_prob": 0.112771,
+        "away_win_prob": 0.066775,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 0,
@@ -3659,7 +3663,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.656164,
+        "draw_prob": 0.199358,
+        "away_win_prob": 0.144478,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 2,
@@ -5523,7 +5531,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.555271,
+        "draw_prob": 0.237673,
+        "away_win_prob": 0.207056,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 5,

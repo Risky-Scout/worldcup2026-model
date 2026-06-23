@@ -1783,7 +1783,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.160158,
+        "draw_prob": 0.235542,
+        "away_win_prob": 0.6043,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 1,
@@ -3540,7 +3544,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.678681,
+        "draw_prob": 0.217131,
+        "away_win_prob": 0.104189,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 2,
@@ -5326,7 +5334,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.680369,
+        "draw_prob": 0.200096,
+        "away_win_prob": 0.119534,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 0,
@@ -7100,7 +7112,11 @@
           "shots_on_target": {},
           "shots": {}
         },
-        "player_props_top_value": []
+        "player_props_top_value": [],
+        "home_win_prob": 0.864149,
+        "draw_prob": 0.090757,
+        "away_win_prob": 0.045094,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 4,
@@ -8865,7 +8881,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.125312,
+        "draw_prob": 0.21866,
+        "away_win_prob": 0.656028,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 0,

@@ -1024,7 +1024,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.63359,
+        "draw_prob": 0.22848,
+        "away_win_prob": 0.13793,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 3,
@@ -2064,7 +2068,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.65031,
+        "draw_prob": 0.2112,
+        "away_win_prob": 0.13849,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 3,
@@ -3115,7 +3123,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.07088,
+        "draw_prob": 0.14194,
+        "away_win_prob": 0.78718,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 1,

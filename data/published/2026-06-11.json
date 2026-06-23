@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-23T01:56:10Z",
+  "generated_at": "2026-06-23T02:42:00Z",
   "date": "2026-06-11",
   "date_timezone": "US/Eastern (UTC-4)",
   "data_source": "balldontlie_api_v1",
@@ -966,7 +966,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.67692,
+        "draw_prob": 0.20542,
+        "away_win_prob": 0.11766,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 2,
@@ -1932,7 +1936,11 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "home_win_prob": 0.36245,
+        "draw_prob": 0.31256,
+        "away_win_prob": 0.32499,
+        "publish_mode": "market_reconciled"
       },
       "result": {
         "home_goals": 2,
