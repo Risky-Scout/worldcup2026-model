@@ -139,7 +139,8 @@
 
 <footer>
   PMF model · Regulation time only (90 min + stoppage) · Excludes ET &amp; penalties ·
-  Not financial advice · <span id="footer-date"></span>
+  Not financial advice · <span id="footer-date"></span> ·
+  Updates every 30 s (live) / 2 min (pre-KO) / 5 min (other) via polling
 </footer>
 
 <script src="xray.js"></script>
@@ -283,20 +284,30 @@ function renderMatch(matchObj, predMatch) {
   });
   var tableHtml = '<table class="xray-table" style="width:100%"><thead><tr>'
     + '<th>Market</th><th>Selection</th><th>Model%</th><th>Mkt%</th>'
-    + '<th>Fair</th><th>Best Mkt</th><th>Edge</th><th>EV/100</th><th>Conf</th><th>Action</th><th></th>'
+    + '<th>Fair</th><th>Best Mkt</th><th>Move</th><th>Edge</th><th>EV/100</th><th>Conf</th><th>Action</th><th></th>'
     + '</tr></thead><tbody>';
 
   var rowIdx = 0;
   GROUP_ORDER.forEach(function(gName) {
     var gRows = groups[gName];
     if (!gRows || !gRows.length) return;
-    tableHtml += '<tr><td colspan="11" class="market-group-header">'+esc(gName)+'</td></tr>';
+    tableHtml += '<tr><td colspan="12" class="market-group-header">'+esc(gName)+'</td></tr>';
     gRows.forEach(function(m) {
       var edgeCls = m.edge_pp > 0 ? 'edge-pos' : (m.edge_pp < 0 ? 'edge-neg' : 'edge-zero');
       var rid = 'mr-'+rowIdx, did = 'md-'+rowIdx;
       rowIdx++;
       var stalePreBadge = (matchObj.live_market_odds_stale ? '<span title="Market odds are pregame prices — live comparison unavailable" style="color:#D4AF37;font-size:10px;margin-left:4px;">⚠ PRE</span>' : '');
       var staleNote = (matchObj.live_market_odds_stale ? ' Note: market odds shown are pregame prices — live market comparison unavailable.' : '');
+      var moveCellHtml = '';
+      if (m.line_direction) {
+        var dirColor = m.line_direction === '↑' ? 'var(--red)' : (m.line_direction === '↓' ? 'var(--green)' : 'var(--text-muted)');
+        var magStr = m.line_magnitude_pp != null ? (m.line_magnitude_pp > 0 ? '+' : '') + m.line_magnitude_pp.toFixed(1) + 'pp' : '';
+        var dirTitle = m.line_direction === '↑' ? 'Edge grew — market drifted from fair value' : (m.line_direction === '↓' ? 'Edge shrunk — market converging to fair value' : 'Edge stable since open');
+        moveCellHtml = '<span style="color:' + dirColor + ';font-size:14px;font-weight:700" title="' + dirTitle + '">' + m.line_direction + '</span>'
+          + (magStr ? '<span style="color:var(--text-muted);font-size:10px;margin-left:2px">' + magStr + '</span>' : '');
+      } else {
+        moveCellHtml = '<span style="color:var(--text-muted)">—</span>';
+      }
       tableHtml += '<tr class="market-row" id="'+rid+'" onclick="toggleDetailRow(\''+rid+'\',\''+did+'\',this)">'
         + '<td style="color:var(--text);font-weight:500">'+esc(m.market_label||'')+stalePreBadge+'</td>'
         + '<td style="color:var(--text-dim)">'+esc(m.selection_label||'')+'</td>'
@@ -304,13 +315,14 @@ function renderMatch(matchObj, predMatch) {
         + '<td style="color:var(--text-dim)">'+formatPct(m.market_no_vig_probability)+'</td>'
         + '<td style="font-weight:600">'+formatAmericanOdds(m.model_fair_american)+'</td>'
         + '<td style="color:var(--blue)">'+formatAmericanOdds(m.market_odds_american)+'</td>'
+        + '<td style="white-space:nowrap">'+moveCellHtml+'</td>'
         + '<td class="'+edgeCls+'">'+formatEdgePP(m.edge_pp)+'</td>'
         + '<td>'+(m.ev_per_100 != null ? formatEV(m.ev_per_100) : '—')+'</td>'
         + '<td>'+confidenceBadge(m.confidence)+'</td>'
         + '<td>'+actionBadge(m.action)+'</td>'
         + '<td><span class="expand-arrow">▶</span></td>'
         + '</tr>';
-      tableHtml += '<tr class="detail-row" id="'+did+'"><td colspan="11">'
+      tableHtml += '<tr class="detail-row" id="'+did+'"><td colspan="12">'
         + '<div class="detail-panel">'
         + '<div class="detail-note">'+esc((m.trader_note||'')+staleNote)+'</div>'
         + probBarHTML(m.model_probability, m.market_no_vig_probability)

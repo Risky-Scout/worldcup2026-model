@@ -502,6 +502,20 @@ def build_markets(
         prev_rows = prev_snapshots.get(snap_key, [])
         prev_edge_pp: float | None = prev_rows[-1]["edge_pp"] if prev_rows else None
 
+        # Per-market line movement arrow (direction + magnitude since first snapshot)
+        opening_edge_pp: float | None = prev_rows[0]["edge_pp"] if prev_rows else None
+        line_direction: str | None = None
+        line_magnitude_pp: float | None = None
+        if opening_edge_pp is not None:
+            delta = round(edge_pp - opening_edge_pp, 2)
+            line_magnitude_pp = delta
+            if abs(delta) < 0.3:
+                line_direction = "→"
+            elif delta > 0:
+                line_direction = "↑"  # edge grew (market drifted away from fair value)
+            else:
+                line_direction = "↓"  # edge shrunk (market converging toward fair value)
+
         # Action
         if mode == "live":
             action = live_action(
@@ -550,6 +564,8 @@ def build_markets(
             "confidence": conf,
             "action": action,
             "trader_note": trader_note,
+            "line_direction": line_direction,
+            "line_magnitude_pp": line_magnitude_pp,
         })
 
     # Sort by |edge_pp| descending
@@ -667,19 +683,44 @@ def build_clv_signals(
         rec = clv_index.get(key)
         if rec is None:
             continue
-        closing_ts = rec.get("closing_timestamp")
-        beat_close = None  # null until closing odds confirmed
+        # Closing data is only valid when closing_source is not backfill_invalid
+        # and closing_prob was actually captured.
+        closing_valid = (
+            rec.get("closing_source") not in (None, "backfill_invalid")
+            and rec.get("closing_prob") is not None
+        )
         signals.append({
             "market_id": mkt["market_id"],
             "market_label": mkt["market_label"],
+            # CLV Tracker columns (spec: Opening Model% / Closing Market% / CLV / Result)
+            "opening_model_prob": rec.get("opening_prob"),
+            "closing_market_prob": rec.get("closing_prob") if closing_valid else None,
+            "clv_pct": rec.get("clv_pct") if closing_valid else None,
+            "clv_raw": rec.get("clv_raw") if closing_valid else None,
+            "beat_close": rec.get("beat_close") if closing_valid else None,
+            "outcome": rec.get("outcome"),
+            # Legacy fields kept for backward compat
             "model_prob": rec.get("model_prob"),
             "model_fair_odds": rec.get("model_fair_odds"),
             "prediction_timestamp": rec.get("prediction_timestamp"),
-            "closing_timestamp": closing_ts,
+            "closing_timestamp": rec.get("closing_timestamp"),
             "closing_source": rec.get("closing_source"),
-            "beat_close": beat_close,
         })
     return signals
+
+
+def build_clv_match_summary(clv_signals: list[dict]) -> dict | None:
+    """Aggregate CLV stats for a completed match (shown in CLV Tracker header)."""
+    valid = [s for s in clv_signals if s.get("clv_pct") is not None]
+    if not valid:
+        return None
+    avg_clv = sum(s["clv_pct"] for s in valid) / len(valid)
+    n_beat = sum(1 for s in valid if s.get("beat_close"))
+    return {
+        "n_markets": len(valid),
+        "n_beat_close": n_beat,
+        "avg_clv_pct": round(avg_clv, 2),
+    }
 
 
 def _top_action_and_confidence(markets: list[dict]) -> tuple[str, str, str | None, float | None]:
@@ -768,6 +809,7 @@ def process_pregame_match(
     line_movement = build_line_movement(markets, prev_snapshots, match_id)
     what_changed = build_what_changed(markets, prev_snapshots, match_id)
     clv_signals = build_clv_signals(match_id, markets, clv_index)
+    clv_summary = build_clv_match_summary(clv_signals)
 
     actionable = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE")]
     summary_note = _summary_note(actionable, home, away, "pregame")
@@ -793,6 +835,7 @@ def process_pregame_match(
         "line_movement": line_movement,
         "what_changed": what_changed,
         "clv_signals": clv_signals,
+        "clv_summary": clv_summary,
     }
 
 
@@ -876,6 +919,7 @@ def process_live_match(
     line_movement = build_line_movement(markets, prev_snapshots, match_id)
     what_changed = build_what_changed(markets, prev_snapshots, match_id)
     clv_signals = build_clv_signals(match_id, markets, clv_index)
+    clv_summary = build_clv_match_summary(clv_signals)
 
     minute = lm.get("regulation_minute") or lm.get("clock_display")
 
@@ -904,6 +948,7 @@ def process_live_match(
         "line_movement": line_movement,
         "what_changed": what_changed,
         "clv_signals": clv_signals,
+        "clv_summary": clv_summary,
     }
 
 

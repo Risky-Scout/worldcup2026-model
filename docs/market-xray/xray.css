@@ -481,6 +481,9 @@ table.xray-table {
   color: var(--text-muted);
   font-style: italic;
 }
+/* Spec: positive CLV = gold, negative CLV = muted gray */
+.clv-pos { color: var(--gold); font-weight: 600; }
+.clv-neg { color: var(--text-muted); }
 
 /* ── Edge value cell coloring ────────────────────────────────────────────── */
 .edge-pos  { color: var(--green); font-weight: 600; }

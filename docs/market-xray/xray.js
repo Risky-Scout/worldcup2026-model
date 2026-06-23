@@ -271,29 +271,73 @@ function renderWhatChanged(changes, container) {
 }
 
 // ── CLV signals renderer ──────────────────────────────────────────────────────
+// Spec: Market | Opening Model% | Closing Market% | CLV (pp) | Beat Close? | Result
+// Positive CLV = gold; Negative CLV = muted gray
 function renderCLVSignals(signals, container) {
   if (!signals || !signals.length) {
-    container.innerHTML = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">No CLV signals for this match.</div>';
+    container.innerHTML = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">No CLV signals for this match yet. CLV is recorded at market close.</div>';
     return;
   }
-  let rows = '';
-  for (const s of signals) {
-    const closeCell = s.closing_timestamp
-      ? `<td>${esc(s.closing_source || '—')}</td>`
-      : `<td class="clv-pending">CLV Pending</td>`;
-    const beatCell = s.beat_close != null ? `<td>${s.beat_close ? '✓' : '✗'}</td>` : `<td class="clv-pending">—</td>`;
-    rows += `<tr>
-      <td>${esc(s.market_label)}</td>
-      <td>${s.prediction_timestamp ? s.prediction_timestamp.slice(0,16) : '—'}</td>
-      <td>${s.model_fair_odds != null ? s.model_fair_odds.toFixed(3) : '—'}</td>
-      ${closeCell}
-      ${beatCell}
-    </tr>`;
+
+  // Aggregate over markets with valid closing data
+  var valid = signals.filter(function(s) { return s.clv_pct != null; });
+  var aggregateHtml = '';
+  if (valid.length > 0) {
+    var avgClv = valid.reduce(function(sum, s) { return sum + s.clv_pct; }, 0) / valid.length;
+    var nBeat = valid.filter(function(s) { return s.beat_close; }).length;
+    var clvCls = avgClv >= 0 ? 'clv-pos' : 'clv-neg';
+    aggregateHtml = '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;padding:12px 16px;background:var(--panel-2);border-radius:4px;border:1px solid var(--border);">'
+      + '<div><div class="filter-label">Avg CLV (this match)</div>'
+      + '<div class="' + clvCls + '" style="font-family:\'JetBrains Mono\',monospace;font-size:22px;font-weight:700">'
+      + (avgClv >= 0 ? '+' : '') + avgClv.toFixed(1) + '%</div></div>'
+      + '<div><div class="filter-label">Markets Beat Close</div>'
+      + '<div style="font-family:\'JetBrains Mono\',monospace;font-size:22px;font-weight:700;color:var(--text)">' + nBeat + ' / ' + valid.length + '</div></div>'
+      + '</div>';
   }
-  container.innerHTML = `<table class="clv-table">
-    <thead><tr><th>Market</th><th>Signal Time</th><th>Fair Odds</th><th>Close / Source</th><th>Beat Close?</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+
+  var rows = '';
+  for (var i = 0; i < signals.length; i++) {
+    var s = signals[i];
+    var openPct = s.opening_model_prob != null ? formatPct(s.opening_model_prob) : '—';
+    var closePct = s.closing_market_prob != null
+      ? formatPct(s.closing_market_prob)
+      : '<span class="clv-pending">Pending</span>';
+
+    var clvTd;
+    if (s.clv_pct != null) {
+      var cls = s.clv_pct >= 0 ? 'clv-pos' : 'clv-neg';
+      clvTd = '<td class="' + cls + '">' + (s.clv_pct >= 0 ? '+' : '') + s.clv_pct.toFixed(1) + '%</td>';
+    } else {
+      clvTd = '<td class="clv-pending">Pending</td>';
+    }
+
+    var beatTd = s.beat_close != null
+      ? '<td style="color:' + (s.beat_close ? 'var(--green)' : 'var(--text-muted)') + '">' + (s.beat_close ? '✓' : '✗') + '</td>'
+      : '<td class="clv-pending">—</td>';
+
+    var outcomeTd = s.outcome != null
+      ? '<td style="color:' + (s.outcome ? 'var(--green)' : 'var(--text-muted)') + '">' + (s.outcome ? 'Win' : 'Loss') + '</td>'
+      : '<td class="clv-pending">—</td>';
+
+    rows += '<tr>'
+      + '<td>' + esc(s.market_label) + '</td>'
+      + '<td style="color:var(--gold)">' + openPct + '</td>'
+      + '<td style="color:var(--blue)">' + closePct + '</td>'
+      + clvTd
+      + beatTd
+      + outcomeTd
+      + '</tr>';
+  }
+
+  container.innerHTML = aggregateHtml
+    + '<table class="clv-table"><thead><tr>'
+    + '<th>Market</th>'
+    + '<th>Opening Model%</th>'
+    + '<th>Closing Market%</th>'
+    + '<th>CLV</th>'
+    + '<th>Beat Close?</th>'
+    + '<th>Result</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 // ── iframe auto-resize ────────────────────────────────────────────────────────
