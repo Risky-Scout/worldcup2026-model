@@ -1,6 +1,6 @@
 # Schedule Validation (2026 World Cup)
 
-**Generated**: 2026-06-23T00:06:49Z
+**Generated**: 2026-06-23T00:42:52Z
 
 ## 2026 World Cup format
 
