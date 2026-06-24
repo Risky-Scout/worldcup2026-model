@@ -1,8 +1,9 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-06-24T17:12:05.784855+00:00",
+  "generated_at": "2026-06-24T17:51:06.423699+00:00",
   "date": "2026-06-24",
   "clv_rolling_avg_pct": 5.3527,
+  "clv_rolling_avg_1x2_pct": 61.2847,
   "clv_markets_beat_close": 10,
   "clv_n_captured": 29,
   "pregame_matches": [
