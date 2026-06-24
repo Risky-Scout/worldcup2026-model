@@ -93,7 +93,7 @@
     <div class="kpi"><div class="kpi-label">Markets Analyzed</div><div class="kpi-val" id="kpi-total-markets">—</div><div class="kpi-sub">all markets today</div></div>
     <div class="kpi"><div class="kpi-label">Actionable Markets</div><div class="kpi-val gold" id="kpi-value-markets">—</div><div class="kpi-sub">BET · LEAN · WAIT</div></div>
     <div class="kpi"><div class="kpi-label">Best Edge</div><div class="kpi-val green" id="kpi-best-edge">—</div><div class="kpi-sub" id="kpi-best-edge-sub">top market</div></div>
-    <div class="kpi"><div class="kpi-label">Rolling CLV</div><div class="kpi-val" id="kpi-avg-clv">—</div><div class="kpi-sub">avg closing line value</div></div>
+    <div class="kpi" title="1X2 markets only (home_win / draw / away_win). Excludes derivative markets like BTTS and correct score which structurally distort the average."><div class="kpi-label">1X2 Rolling CLV</div><div class="kpi-val" id="kpi-avg-clv">—</div><div class="kpi-sub">1X2 closing line value</div></div>
   </div>
 </section>
 
@@ -347,7 +347,8 @@ function updateKPIs(rows) {
   }
 
   var clvEl = document.getElementById('kpi-avg-clv');
-  var clv = (window._xrayData || {}).clv_rolling_avg_pct;
+  var xd = window._xrayData || {};
+  var clv = xd.clv_rolling_avg_1x2_pct != null ? xd.clv_rolling_avg_1x2_pct : xd.clv_rolling_avg_pct;
   if (clv != null && isFinite(clv)) {
     clvEl.textContent = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
     clvEl.style.color = clv >= 0 ? 'var(--green)' : 'var(--red, #ef4444)';

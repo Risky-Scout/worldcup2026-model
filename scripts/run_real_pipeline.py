@@ -870,7 +870,7 @@ def _supplement_T_from_wc2026(
 
     try:
         res = _ms(neg_ll, bounds=(0.8, 3.0), method="bounded")
-        T_2026 = float(np.clip(res.x, 1.0, 1.5))
+        T_2026 = float(np.clip(res.x, 1.0, 1.8))
         # Enhancement 4: WC2026-dominant temperature when we have enough data
         if len(outcomes) >= 24:
             wc_weight = 0.60   # was 0.30
@@ -4379,6 +4379,7 @@ def main():
 
         # Read latest calibration health record for CLV metrics
         _clv_avg = None
+        _clv_1x2_avg = None
         _clv_pos_count = None
         _n_closing = None
         try:
@@ -4392,6 +4393,10 @@ def main():
                         _clv_vals = [v for v in _clv_mkt.values() if v is not None]
                         _clv_avg = round(sum(_clv_vals) / len(_clv_vals), 4) if _clv_vals else None
                         _clv_pos_count = sum(1 for v in _clv_vals if v > 0)
+                        # Extract 1x2-only CLV for cleaner headline metric
+                        _1x2_markets = {"home_win", "draw", "away_win"}
+                        _clv_1x2_vals = [v for k, v in _clv_mkt.items() if k in _1x2_markets and v is not None]
+                        _clv_1x2_avg = round(sum(_clv_1x2_vals) / len(_clv_1x2_vals), 4) if _clv_1x2_vals else None
                     _n_closing = _last_calib.get("n_closing_odds_captured")
         except Exception:
             pass
@@ -4419,6 +4424,7 @@ def main():
             "calib_rho": round(_calib_rho_val, 4) if _calib_rho_val is not None else None,
             "calib_temperature": round(_calib_temp_val, 3) if _calib_temp_val is not None else None,
             "clv_rolling_avg_pct": _clv_avg,
+            "clv_rolling_avg_1x2_pct": _clv_1x2_avg,
             "clv_positive_market_count": _clv_pos_count,
             "n_closing_odds_captured": _n_closing,
         }))

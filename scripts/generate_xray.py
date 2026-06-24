@@ -77,7 +77,7 @@ MARKET_LABELS: dict[str, str] = {
 }
 
 # ── Decided-market detection ─────────────────────────────────────────────────
-def _is_market_decided(key: str, home_goals: int, away_goals: int) -> bool:
+def _is_market_decided(key: str, home_goals: int, away_goals: int, regulation_minute: float | None = None) -> bool:
     """Return True when a market outcome is already settled by the current score.
     
     Over/under total goal lines are trivially resolved once enough goals have
@@ -117,6 +117,11 @@ def _is_market_decided(key: str, home_goals: int, away_goals: int) -> bool:
     # BTTS no / clean sheets: decided impossible once both teams scored or one concedes
     if key == "btts_no" and home_goals > 0 and away_goals > 0:
         return True
+    # BTTS No: if one team has scored nothing by minute 75+, market is effectively closed
+    # and any remaining odds are stale pregame lines
+    if key == "btts_no" and regulation_minute is not None and regulation_minute >= 75:
+        if home_goals == 0 or away_goals == 0:
+            return True
     if key == "clean_sheet_home" and away_goals > 0:
         return True
     if key == "clean_sheet_away" and home_goals > 0:
@@ -434,7 +439,7 @@ def build_markets(
         # These create fake edge from stale market prices (e.g. over 0.5 at 72%
         # when the score is already 1-0 — the line hasn't moved and the model
         # is trivially at 99.9%, manufacturing a phantom +28pp edge).
-        if mode == "live" and _is_market_decided(key, home_goals, away_goals):
+        if mode == "live" and _is_market_decided(key, home_goals, away_goals, regulation_minute=regulation_minute):
             continue
 
         model_prob = derived_markets.get(key)
@@ -1093,6 +1098,7 @@ def generate(date: str | None = None) -> None:
 
     # Load rolling CLV from pipeline_health so the frontend can display it
     clv_rolling_avg: float | None = None
+    clv_rolling_avg_1x2: float | None = None
     clv_markets_beat: int | None = None
     clv_n_captured: int | None = None
     try:
@@ -1100,6 +1106,7 @@ def generate(date: str | None = None) -> None:
         if ph_path.exists():
             ph = json.loads(ph_path.read_text())
             clv_rolling_avg = ph.get("clv_rolling_avg_pct")
+            clv_rolling_avg_1x2 = ph.get("clv_rolling_avg_1x2_pct")
             clv_markets_beat = ph.get("clv_positive_market_count")
             clv_n_captured = ph.get("n_closing_odds_captured")
     except Exception:
@@ -1111,6 +1118,7 @@ def generate(date: str | None = None) -> None:
         "generated_at": now_utc.isoformat(),
         "date": date,
         "clv_rolling_avg_pct": clv_rolling_avg,
+        "clv_rolling_avg_1x2_pct": clv_rolling_avg_1x2,
         "clv_markets_beat_close": clv_markets_beat,
         "clv_n_captured": clv_n_captured,
         "pregame_matches": pregame_results,
