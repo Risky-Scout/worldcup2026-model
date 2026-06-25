@@ -1,6 +1,6 @@
 # June 11, 2026 Opening Day Predictions
 
-**Generated**: 2026-06-25T06:35:09Z
+**Generated**: 2026-06-25T08:26:55Z
 **Date**: June 11, 2026 (US Eastern time)
 
 Both opening-day matches identified: Mexico vs South Africa AND South Korea vs Czechia.
