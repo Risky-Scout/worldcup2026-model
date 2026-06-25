@@ -1,6 +1,6 @@
 # Data Quality Report (Real BDL Data)
 
-**Generated**: 2026-06-25T02:53:21Z
+**Generated**: 2026-06-25T03:29:18Z
 **Data version**: v1
 
 ## Overview
@@ -8,7 +8,7 @@
 | Metric | Value |
 |--------|-------|
 | Total matches | 232 |
-| Completed | 180 |
+| Completed | 182 |
 | Missing goals | 0 |
 | Odds rows | 432 |
 | Correct-score rows | 4724 |
@@ -20,9 +20,9 @@
 
 | Stat | Value |
 |------|-------|
-| Mean home goals | 1.644 |
-| Mean away goals | 1.122 |
-| Mean total goals | 2.767 |
-| Home win rate | 0.461 |
-| Draw rate | 0.233 |
-| Away win rate | 0.306 |
+| Mean home goals | 1.632 |
+| Mean away goals | 1.126 |
+| Mean total goals | 2.758 |
+| Home win rate | 0.462 |
+| Draw rate | 0.231 |
+| Away win rate | 0.308 |
