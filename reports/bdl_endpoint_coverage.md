@@ -1,6 +1,6 @@
 # BDL Endpoint Coverage (Real Data)
 
-**Generated**: 2026-06-24T23:55:43Z
+**Generated**: 2026-06-25T01:05:33Z
 
 ## Match counts
 
@@ -8,7 +8,7 @@
 |--------|---------|
 | 2018 | 64 (all completed) |
 | 2022 | 64 (all completed) |
-| 2026 | 104 (54 scheduled) |
+| 2026 | 104 (50 scheduled) |
 | **Total** | **232** |
 
 ## Odds coverage
@@ -17,22 +17,22 @@
 |--------|-------|
 | Odds rows | 432 |
 | Vendors | 6: betmgm, betrivers, caesars, draftkings, fanatics, fanduel |
-| Correct-score rows | 4726 |
+| Correct-score rows | 4770 |
 | Market types parsed | 12 |
 
 ## Market type breakdown
 
 | Type | Rows |
 |------|------|
-| total | 12563 |
-| other | 8046 |
-| correct_score | 4726 |
-| team_total | 3330 |
-| spread | 2300 |
-| double_chance | 2198 |
-| timing | 1974 |
-| both_teams_to_score | 1382 |
-| margin | 1258 |
-| moneyline | 909 |
-| result_combo | 905 |
-| draw_no_bet | 309 |
+| total | 12734 |
+| other | 7854 |
+| correct_score | 4770 |
+| team_total | 3310 |
+| spread | 2326 |
+| double_chance | 2204 |
+| timing | 1956 |
+| both_teams_to_score | 1377 |
+| margin | 1238 |
+| moneyline | 927 |
+| result_combo | 899 |
+| draw_no_bet | 313 |
