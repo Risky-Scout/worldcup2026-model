@@ -68,6 +68,31 @@ DEPLOYMENTS = [
         "remote_file": "live-pitch.html",
         "description": "Live retro-turf pitch visualization page",
     },
+    # Market X-Ray — HTML shell + JS + CSS
+    {
+        "local": REPO_ROOT / "docs" / "market-xray" / "index.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/market-xray",
+        "remote_file": "index.html",
+        "description": "Market X-Ray index page",
+    },
+    {
+        "local": REPO_ROOT / "docs" / "market-xray" / "match.html",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/market-xray",
+        "remote_file": "match.html",
+        "description": "Market X-Ray match detail page",
+    },
+    {
+        "local": REPO_ROOT / "docs" / "market-xray" / "xray.js",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/market-xray",
+        "remote_file": "xray.js",
+        "description": "Market X-Ray JavaScript",
+    },
+    {
+        "local": REPO_ROOT / "docs" / "market-xray" / "xray.css",
+        "remote_dir": "/tools/odds-scanner/predictions/world-cup/market-xray",
+        "remote_file": "xray.css",
+        "description": "Market X-Ray stylesheet",
+    },
 ]
 
 
