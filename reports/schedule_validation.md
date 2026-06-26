@@ -1,6 +1,6 @@
 # Schedule Validation (2026 World Cup)
 
-**Generated**: 2026-06-26T20:51:50Z
+**Generated**: 2026-06-26T21:27:33Z
 
 ## 2026 World Cup format
 
@@ -15,8 +15,8 @@
 | Category | Count |
 |----------|-------|
 | Total 2026 matches in BDL | 104 |
-| Named (both teams known) | 73 |
-| TBD (placeholder teams) | 31 |
+| Named (both teams known) | 76 |
+| TBD (placeholder teams) | 28 |
 | Group-stage matches | 72 |
 
 ## Stages breakdown
@@ -35,11 +35,11 @@
 
 | Category | Count | Note |
 |----------|-------|------|
-| Named matches predicted | 13 | Excludes TBD knockouts |
-| With BDL odds (1X2) | 13 | ≥1 vendor |
-| With correct-score odds | 13 | Used in KL reconciliation |
-| Published as market_reconciled | 13 | Default publish mode |
-| Skipped (TBD teams) | 31 | Cannot predict: W73 v W75 etc. |
+| Named matches predicted | 14 | Excludes TBD knockouts |
+| With BDL odds (1X2) | 14 | ≥1 vendor |
+| With correct-score odds | 14 | Used in KL reconciliation |
+| Published as market_reconciled | 14 | Default publish mode |
+| Skipped (TBD teams) | 28 | Cannot predict: W73 v W75 etc. |
 | June 11 ET matches | 0 | Mexico v SA + South Korea v Czechia |
 
 ## Why 88 named, not 72
