@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-27T04:18:42Z",
+  "generated_at": "2026-06-27T04:54:30Z",
   "date": "2026-07-01",
   "date_timezone": "US/Eastern (UTC-4)",
   "data_source": "balldontlie_api_v1",
@@ -75,7 +75,7 @@
       "n_vendors_1x2": 5,
       "n_correct_score_outcomes": 26,
       "n_cs_vendors": 1,
-      "odds_timestamp": "2026-06-27T04:20:03.811Z",
+      "odds_timestamp": "2026-06-27T04:56:03.070Z",
       "prediction": {
         "regulation_only": true,
         "extra_time_excluded": true,
@@ -85,7 +85,7 @@
         "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
         "pure_parametric_model": "negative_binomial",
         "odds_used": true,
-        "odds_timestamp": "2026-06-27T04:20:03.811Z",
+        "odds_timestamp": "2026-06-27T04:56:03.070Z",
         "lineups_known": false,
         "arbitrary_score_lookup_supported": true,
         "max_goals": 15,
