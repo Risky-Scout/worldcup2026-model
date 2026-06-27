@@ -1,6 +1,6 @@
 # Composite Rating Methodology
 
-**Generated**: 2026-06-27T22:44:55Z
+**Generated**: 2026-06-27T23:41:17Z
 
 ## Why plain Elo is NOT the fallback
 
@@ -12,7 +12,7 @@ the 6-vendor BDL market says 67.5%. Plain Elo is now a diagnostic baseline only.
 
 | Priority | Source | Weight | Coverage |
 |----------|--------|--------|----------|
-| 1 | market_implied (BDL group-stage odds) | 0.70 | 48/52 teams |
+| 1 | market_implied (BDL group-stage odds) | 0.70 | 48/48 teams |
 | 2 | penaltyblog Pi rating (continuous update) | 0.15 | All teams with WC history |
 | 3 | penaltyblog Elo (WC history) | 0.10 | All teams (1500 for new) |
 | 4 | Massey offence component | 0.05 | Teams in 2018/2022 WC |
@@ -82,12 +82,12 @@ Then Dixon-Coles grid(lambda_h, lambda_a, rho=-0.05) gives the composite PMF.
 
 | Metric | Mexico | South Africa |
 |--------|--------|--------------|
-| market_implied_attack | 3.030 | 0.975 |
-| market_implied_defense | 0.194 | 1.422 |
-| final_attack_lambda | 2.124 | 1.161 |
-| final_defense_lambda | 0.613 | 1.189 |
-| composite lambda_h | **2.322** | — |
-| composite lambda_a | — | **2.461** |
+| market_implied_attack | 3.030 | 0.974 |
+| market_implied_defense | 0.194 | 1.423 |
+| final_attack_lambda | 2.116 | 1.156 |
+| final_defense_lambda | 0.611 | 1.184 |
+| composite lambda_h | **2.323** | — |
+| composite lambda_a | — | **2.462** |
 | composite PMF home_win | **0.382** | (was 0.234 with elo_prior_blend) |
 | BDL market home_win | **0.675** | |
 | composite vs market gap | 0.293 | (was 0.441 with elo) |
