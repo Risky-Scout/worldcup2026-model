@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-06-28T10:25:00.231909+00:00",
+  "generated_at": "2026-06-28T11:15:47.022118+00:00",
   "date": "2026-06-28",
   "n_matches": 12,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Canada",
       "stage": "Round of 32",
       "match_datetime": "2026-06-28 19:00",
-      "generated_at": "2026-06-28T10:25:00.145478+00:00",
+      "generated_at": "2026-06-28T11:15:46.940116+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": -0.0559,
@@ -485,7 +485,7 @@
       "away_team": "Japan",
       "stage": "Round of 32",
       "match_datetime": "2026-06-29 17:00",
-      "generated_at": "2026-06-28T10:25:00.153596+00:00",
+      "generated_at": "2026-06-28T11:15:46.947560+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2907,
@@ -960,7 +960,7 @@
       "away_team": "Paraguay",
       "stage": "Round of 32",
       "match_datetime": "2026-06-29 20:30",
-      "generated_at": "2026-06-28T10:25:00.161418+00:00",
+      "generated_at": "2026-06-28T11:15:46.954994+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.6411,
@@ -1435,7 +1435,7 @@
       "away_team": "Morocco",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 01:00",
-      "generated_at": "2026-06-28T10:25:00.169200+00:00",
+      "generated_at": "2026-06-28T11:15:46.962563+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2032,
@@ -1910,7 +1910,7 @@
       "away_team": "Norway",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 17:00",
-      "generated_at": "2026-06-28T10:25:00.177320+00:00",
+      "generated_at": "2026-06-28T11:15:46.969995+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.2799,
@@ -2385,7 +2385,7 @@
       "away_team": "Sweden",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 21:00",
-      "generated_at": "2026-06-28T10:25:00.185075+00:00",
+      "generated_at": "2026-06-28T11:15:46.977320+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.6351,
@@ -2860,7 +2860,7 @@
       "away_team": "3C/3E/3F/3H/3I",
       "stage": "Round of 32",
       "match_datetime": "2026-07-01 01:00",
-      "generated_at": "2026-06-28T10:25:00.192690+00:00",
+      "generated_at": "2026-06-28T11:15:46.984634+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.5605,
@@ -3335,7 +3335,7 @@
       "away_team": "3A/3E/3H/3I/3J",
       "stage": "Round of 32",
       "match_datetime": "2026-07-01 20:00",
-      "generated_at": "2026-06-28T10:25:00.200250+00:00",
+      "generated_at": "2026-06-28T11:15:46.992036+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.8185,
@@ -3810,7 +3810,7 @@
       "away_team": "Bosnia & Herzegovina",
       "stage": "Round of 32",
       "match_datetime": "2026-07-02 00:00",
-      "generated_at": "2026-06-28T10:25:00.207856+00:00",
+      "generated_at": "2026-06-28T11:15:46.999231+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.3233,
@@ -4285,7 +4285,7 @@
       "away_team": "3E/3F/3G/3I/3J",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 03:00",
-      "generated_at": "2026-06-28T10:25:00.215688+00:00",
+      "generated_at": "2026-06-28T11:15:47.006646+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.1251,
@@ -4760,7 +4760,7 @@
       "away_team": "Egypt",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 18:00",
-      "generated_at": "2026-06-28T10:25:00.223598+00:00",
+      "generated_at": "2026-06-28T11:15:47.013931+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": -0.29,
@@ -5235,7 +5235,7 @@
       "away_team": "Cabo Verde",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 22:00",
-      "generated_at": "2026-06-28T10:25:00.231228+00:00",
+      "generated_at": "2026-06-28T11:15:47.021212+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2338,
