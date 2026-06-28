@@ -8957,6 +8957,13 @@
           "shots": {}
         },
         "player_props_top_value": []
+      },
+      "result": {
+        "home_goals": 0,
+        "away_goals": 0,
+        "result_label": "0-0",
+        "outcome": "draw",
+        "model_prob_exact_score": 0.074302
       }
     },
     {
@@ -10744,6 +10751,13 @@
           "shots": {}
         },
         "player_props_top_value": []
+      },
+      "result": {
+        "home_goals": 3,
+        "away_goals": 1,
+        "result_label": "3-1",
+        "outcome": "home_win",
+        "model_prob_exact_score": 0.056382
       }
     }
   ]
