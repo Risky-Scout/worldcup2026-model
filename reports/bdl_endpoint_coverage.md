@@ -1,6 +1,6 @@
 # BDL Endpoint Coverage (Real Data)
 
-**Generated**: 2026-06-29T23:06:11Z
+**Generated**: 2026-06-29T23:42:18Z
 
 ## Match counts
 
@@ -24,10 +24,10 @@
 
 | Type | Rows |
 |------|------|
-| total | 15754 |
-| other | 9359 |
+| total | 15753 |
+| other | 9357 |
 | correct_score | 5744 |
-| team_total | 3862 |
+| team_total | 3861 |
 | spread | 2844 |
 | double_chance | 2719 |
 | timing | 2289 |
