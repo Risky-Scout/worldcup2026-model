@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-06-29T12:27:18.701311+00:00",
+  "generated_at": "2026-06-29T13:15:44.220864+00:00",
   "date": "2026-06-29",
   "n_matches": 15,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Japan",
       "stage": "Round of 32",
       "match_datetime": "2026-06-29 17:00",
-      "generated_at": "2026-06-29T12:27:18.598101+00:00",
+      "generated_at": "2026-06-29T13:15:44.111153+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2907,
@@ -485,7 +485,7 @@
       "away_team": "Paraguay",
       "stage": "Round of 32",
       "match_datetime": "2026-06-29 20:30",
-      "generated_at": "2026-06-29T12:27:18.605384+00:00",
+      "generated_at": "2026-06-29T13:15:44.119193+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.6411,
@@ -960,7 +960,7 @@
       "away_team": "Morocco",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 01:00",
-      "generated_at": "2026-06-29T12:27:18.612646+00:00",
+      "generated_at": "2026-06-29T13:15:44.126490+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2032,
@@ -1435,7 +1435,7 @@
       "away_team": "Norway",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 17:00",
-      "generated_at": "2026-06-29T12:27:18.619929+00:00",
+      "generated_at": "2026-06-29T13:15:44.134090+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.2799,
@@ -1910,7 +1910,7 @@
       "away_team": "Sweden",
       "stage": "Round of 32",
       "match_datetime": "2026-06-30 21:00",
-      "generated_at": "2026-06-29T12:27:18.627255+00:00",
+      "generated_at": "2026-06-29T13:15:44.141372+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.6351,
@@ -2385,7 +2385,7 @@
       "away_team": "Ecuador",
       "stage": "Round of 32",
       "match_datetime": "2026-07-01 01:00",
-      "generated_at": "2026-06-29T12:27:18.634638+00:00",
+      "generated_at": "2026-06-29T13:15:44.148697+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.5605,
@@ -2860,7 +2860,7 @@
       "away_team": "DR Congo",
       "stage": "Round of 32",
       "match_datetime": "2026-07-01 16:00",
-      "generated_at": "2026-06-29T12:27:18.642016+00:00",
+      "generated_at": "2026-06-29T13:15:44.157048+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0794,
@@ -3335,7 +3335,7 @@
       "away_team": "Senegal",
       "stage": "Round of 32",
       "match_datetime": "2026-07-01 20:00",
-      "generated_at": "2026-06-29T12:27:18.649419+00:00",
+      "generated_at": "2026-06-29T13:15:44.165700+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.8185,
@@ -3810,7 +3810,7 @@
       "away_team": "Bosnia & Herzegovina",
       "stage": "Round of 32",
       "match_datetime": "2026-07-02 00:00",
-      "generated_at": "2026-06-29T12:27:18.656726+00:00",
+      "generated_at": "2026-06-29T13:15:44.175668+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.3233,
@@ -4285,7 +4285,7 @@
       "away_team": "Austria",
       "stage": "Round of 32",
       "match_datetime": "2026-07-02 19:00",
-      "generated_at": "2026-06-29T12:27:18.664033+00:00",
+      "generated_at": "2026-06-29T13:15:44.184031+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0186,
@@ -4760,7 +4760,7 @@
       "away_team": "Croatia",
       "stage": "Round of 32",
       "match_datetime": "2026-07-02 23:00",
-      "generated_at": "2026-06-29T12:27:18.671245+00:00",
+      "generated_at": "2026-06-29T13:15:44.191437+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0085,
@@ -5235,7 +5235,7 @@
       "away_team": "Algeria",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 03:00",
-      "generated_at": "2026-06-29T12:27:18.678501+00:00",
+      "generated_at": "2026-06-29T13:15:44.198682+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.1251,
@@ -5710,7 +5710,7 @@
       "away_team": "Egypt",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 18:00",
-      "generated_at": "2026-06-29T12:27:18.685760+00:00",
+      "generated_at": "2026-06-29T13:15:44.205823+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": -0.29,
@@ -6185,7 +6185,7 @@
       "away_team": "Cabo Verde",
       "stage": "Round of 32",
       "match_datetime": "2026-07-03 22:00",
-      "generated_at": "2026-06-29T12:27:18.693085+00:00",
+      "generated_at": "2026-06-29T13:15:44.212940+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2338,
@@ -6660,7 +6660,7 @@
       "away_team": "Ghana",
       "stage": "Round of 32",
       "match_datetime": "2026-07-04 01:30",
-      "generated_at": "2026-06-29T12:27:18.700415+00:00",
+      "generated_at": "2026-06-29T13:15:44.219966+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.5424,
