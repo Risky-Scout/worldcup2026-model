@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-06-29T22:29:56Z
+**Generated**: 2026-06-29T23:06:11Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -8,44 +8,44 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 
 | Team | 2018 | 2022 | Conf | WC Games | Elo | Pi | Market Att | Market Def | n Mkt | Final Att λ | Final Def λ | Uncertainty | Sources |
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
-| Germany | ✅ | ✅ | UEFA | 9 | 1497 | 0.094 | 2.112 | 1.135 | 4 | **2.918** | **1.277** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| France | ✅ | ✅ | UEFA | 17 | 1380 | 1.004 | 3.122 | 0.388 | 4 | **2.917** | **0.860** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| France | ✅ | ✅ | UEFA | 17 | 1380 | 1.004 | 3.137 | 0.403 | 4 | **2.919** | **0.862** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Germany | ✅ | ✅ | UEFA | 9 | 1497 | 0.094 | 1.763 | 1.133 | 4 | **2.878** | **1.277** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Brazil | ✅ | ✅ | CONMEBOL | 14 | 1425 | 0.625 | 2.334 | 0.389 | 4 | **2.740** | **0.735** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Netherlands | ❌ | ✅ | UEFA | 8 | 1443 | 0.459 | 2.867 | 0.651 | 4 | **2.695** | **1.196** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Argentina | ✅ | ✅ | CONMEBOL | 14 | 1439 | 0.562 | 2.905 | 0.279 | 4 | **2.677** | **0.673** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Norway | ❌ | ❌ | UEFA | 3 | 1486 | 0.071 | 2.187 | 1.518 | 4 | **2.483** | **1.756** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Spain | ✅ | ✅ | UEFA | 11 | 1471 | 0.257 | 2.472 | 0.353 | 4 | **2.456** | **0.651** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Switzerland | ✅ | ✅ | UEFA | 11 | 1488 | 0.083 | 1.960 | 0.327 | 4 | **2.432** | **1.028** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Belgium | ✅ | ✅ | UEFA | 13 | 1444 | 0.411 | 1.409 | 0.518 | 4 | **2.431** | **0.856** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| England | ✅ | ✅ | UEFA | 15 | 1458 | 0.448 | 1.889 | 0.220 | 4 | **2.379** | **0.817** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Netherlands | ❌ | ✅ | UEFA | 8 | 1443 | 0.459 | 2.868 | 0.660 | 4 | **2.695** | **1.196** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Argentina | ✅ | ✅ | CONMEBOL | 14 | 1439 | 0.562 | 2.912 | 0.279 | 4 | **2.677** | **0.673** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Norway | ❌ | ❌ | UEFA | 3 | 1486 | 0.071 | 2.189 | 1.516 | 4 | **2.483** | **1.756** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Spain | ✅ | ✅ | UEFA | 11 | 1471 | 0.257 | 2.474 | 0.354 | 4 | **2.456** | **0.652** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Switzerland | ✅ | ✅ | UEFA | 11 | 1488 | 0.083 | 1.956 | 0.329 | 4 | **2.432** | **1.028** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Belgium | ✅ | ✅ | UEFA | 13 | 1444 | 0.411 | 1.410 | 0.517 | 4 | **2.431** | **0.855** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| England | ✅ | ✅ | UEFA | 15 | 1458 | 0.448 | 1.889 | 0.220 | 4 | **2.378** | **0.817** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Canada | ❌ | ✅ | CONCACAF | 7 | 1518 | -0.047 | 1.886 | 1.024 | 4 | **2.355** | **0.902** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| USA | ❌ | ✅ | CONCACAF | 7 | 1494 | 0.121 | 2.260 | 0.318 | 4 | **2.184** | **1.315** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Morocco | ✅ | ✅ | CAF | 13 | 1490 | 0.221 | 1.799 | 0.578 | 4 | **2.169** | **1.035** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Senegal | ✅ | ✅ | CAF | 10 | 1517 | -0.055 | 1.084 | 1.760 | 4 | **2.142** | **1.695** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Portugal | ✅ | ✅ | UEFA | 12 | 1477 | 0.263 | 2.068 | 0.659 | 4 | **2.103** | **0.781** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Colombia | ✅ | ❌ | CONMEBOL | 7 | 1468 | 0.271 | 1.983 | 0.243 | 4 | **2.082** | **0.686** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Mexico | ✅ | ✅ | CONCACAF | 10 | 1477 | 0.184 | 2.533 | 0.322 | 4 | **2.071** | **0.629** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Sweden | ✅ | ❌ | UEFA | 8 | 1491 | 0.090 | 1.558 | 2.147 | 4 | **1.864** | **1.899** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| USA | ❌ | ✅ | CONCACAF | 7 | 1494 | 0.121 | 2.265 | 0.319 | 4 | **2.185** | **1.315** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Morocco | ✅ | ✅ | CAF | 13 | 1490 | 0.221 | 1.809 | 0.579 | 4 | **2.170** | **1.035** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Senegal | ✅ | ✅ | CAF | 10 | 1517 | -0.055 | 1.083 | 1.761 | 4 | **2.142** | **1.695** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Portugal | ✅ | ✅ | UEFA | 12 | 1477 | 0.263 | 2.071 | 0.656 | 4 | **2.103** | **0.781** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Colombia | ✅ | ❌ | CONMEBOL | 7 | 1468 | 0.271 | 1.989 | 0.242 | 4 | **2.082** | **0.686** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Mexico | ✅ | ✅ | CONCACAF | 10 | 1477 | 0.184 | 2.531 | 0.318 | 4 | **2.071** | **0.628** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Sweden | ✅ | ❌ | UEFA | 8 | 1491 | 0.090 | 1.573 | 2.162 | 4 | **1.865** | **1.900** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Japan | ✅ | ✅ | AFC | 12 | 1497 | 0.121 | 1.000 | 0.596 | 4 | **1.829** | **1.167** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Austria | ❌ | ❌ | UEFA | 3 | 1502 | 0.007 | 0.967 | 1.297 | 4 | **1.729** | **1.672** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Algeria | ❌ | ❌ | CAF | 3 | 1502 | -0.038 | 1.060 | 1.022 | 4 | **1.716** | **1.625** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Ecuador | ❌ | ✅ | CONMEBOL | 6 | 1499 | 0.019 | 0.978 | 1.109 | 4 | **1.709** | **0.944** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Croatia | ✅ | ✅ | UEFA | 17 | 1461 | 0.235 | 1.486 | 1.114 | 4 | **1.705** | **1.460** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Côte d'Ivoire | ❌ | ❌ | CAF | 3 | 1494 | 0.103 | 1.728 | 0.814 | 4 | **1.694** | **0.939** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Austria | ❌ | ❌ | UEFA | 3 | 1502 | 0.007 | 0.969 | 1.300 | 4 | **1.729** | **1.673** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Algeria | ❌ | ❌ | CAF | 3 | 1502 | -0.038 | 1.062 | 1.018 | 4 | **1.716** | **1.624** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Ecuador | ❌ | ✅ | CONMEBOL | 6 | 1499 | 0.019 | 0.974 | 1.107 | 4 | **1.709** | **0.944** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Croatia | ✅ | ✅ | UEFA | 17 | 1461 | 0.235 | 1.483 | 1.117 | 4 | **1.705** | **1.460** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Côte d'Ivoire | ❌ | ❌ | CAF | 3 | 1494 | 0.103 | 1.726 | 0.816 | 4 | **1.694** | **0.939** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | Türkiye | ❌ | ❌ | UEFA | 3 | 1507 | -0.093 | 0.089 | 1.740 | 3 | **1.640** | **1.724** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Egypt | ✅ | ❌ | CAF | 6 | 1522 | -0.066 | 1.276 | 0.626 | 4 | **1.635** | **1.106** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Egypt | ✅ | ❌ | CAF | 6 | 1522 | -0.066 | 1.277 | 0.624 | 4 | **1.635** | **1.105** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Uruguay | ✅ | ✅ | CONMEBOL | 11 | 1478 | 0.054 | 0.211 | 1.053 | 3 | **1.557** | **1.245** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Iran | ✅ | ✅ | AFC | 9 | 1511 | -0.043 | 0.260 | 0.259 | 3 | **1.519** | **1.045** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | South Korea | ✅ | ✅ | AFC | 10 | 1525 | -0.173 | 0.928 | 1.872 | 3 | **1.492** | **1.168** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| DR Congo | ❌ | ❌ | CAF | 3 | 1502 | 0.057 | 0.930 | 1.591 | 4 | **1.401** | **1.142** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| DR Congo | ❌ | ❌ | CAF | 3 | 1502 | 0.057 | 0.930 | 1.590 | 4 | **1.401** | **1.142** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | New Zealand | ❌ | ❌ | OFC | 3 | 1517 | -0.239 | 0.180 | 2.061 | 3 | **1.242** | **2.172** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Bosnia & Herzegovina | ❌ | ❌ | UEFA | 3 | 1504 | -0.044 | 1.076 | 1.517 | 4 | **1.193** | **1.926** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Bosnia & Herzegovina | ❌ | ❌ | UEFA | 3 | 1504 | -0.044 | 1.077 | 1.522 | 4 | **1.193** | **1.927** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | Scotland | ❌ | ❌ | UEFA | 3 | 1506 | -0.110 | 0.996 | 1.937 | 3 | **1.185** | **1.455** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Australia | ✅ | ✅ | AFC | 10 | 1525 | -0.143 | 0.920 | 0.990 | 4 | **1.177** | **0.939** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Australia | ✅ | ✅ | AFC | 10 | 1525 | -0.143 | 0.918 | 0.990 | 4 | **1.177** | **0.940** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Jordan | ❌ | ❌ | AFC | 3 | 1525 | -0.259 | 0.176 | 3.328 | 3 | **1.130** | **2.240** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Ghana | ❌ | ✅ | CAF | 6 | 1513 | -0.050 | 0.458 | 1.032 | 4 | **1.080** | **0.964** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Cabo Verde | ❌ | ❌ | CAF | 3 | 1503 | -0.012 | 0.162 | 0.728 | 4 | **1.051** | **0.986** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
-| Paraguay | ❌ | ❌ | CONMEBOL | 3 | 1503 | -0.063 | 0.915 | 1.635 | 4 | **1.021** | **1.357** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Ghana | ❌ | ✅ | CAF | 6 | 1513 | -0.050 | 0.457 | 1.038 | 4 | **1.080** | **0.964** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Cabo Verde | ❌ | ❌ | CAF | 3 | 1503 | -0.012 | 0.162 | 0.735 | 4 | **1.051** | **0.986** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
+| Paraguay | ❌ | ❌ | CONMEBOL | 3 | 1503 | -0.063 | 0.912 | 1.286 | 4 | **1.016** | **1.324** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | Haiti | ❌ | ❌ | CONCACAF | 3 | 1531 | -0.274 | 0.251 | 3.202 | 3 | **1.009** | **2.284** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | South Africa | ❌ | ❌ | CAF | 4 | 1511 | -0.106 | 0.801 | 1.466 | 4 | **1.009** | **1.169** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Uzbekistan | ❌ | ❌ | AFC | 3 | 1532 | -0.322 | 0.477 | 3.724 | 3 | **1.005** | **2.521** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
@@ -72,7 +72,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 
 | Team | Final Att λ | Final Def λ | Market Att (raw) | Sources |
 |------|------------|------------|-----------------|---------|
-| Mexico | 2.071 | 0.629 | 2.533 | market_implied+xg_wc2026+big_chances_wc2026 |
+| Mexico | 2.071 | 0.628 | 2.531 | market_implied+xg_wc2026+big_chances_wc2026 |
 | South Africa | 1.009 | 1.169 | 0.801 | market_implied+xg_wc2026+big_chances_wc2026 |
 | South Korea | 1.492 | 1.168 | 0.928 | market_implied+xg_wc2026+big_chances_wc2026 |
 | Czechia | 0.926 | 1.980 | 0.222 | market_implied+xg_wc2026+big_chances_wc2026 |
