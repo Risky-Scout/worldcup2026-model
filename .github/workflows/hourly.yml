@@ -183,7 +183,7 @@ jobs:
         run: |
           sleep 30
           HOUR=$(date -u +%-H 2>/dev/null || date -u +%H | sed 's/^0*//;s/^$/0/')
-          if [ "$HOUR" -ge 16 ] || [ "$HOUR" -le 4 ]; then
+          if [ "$HOUR" -ge 14 ] || [ "$HOUR" -le 4 ]; then
             QUEUED=$(gh run list --workflow=hourly.yml --status=queued --json databaseId 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
             IN_PROG=$(gh run list --workflow=hourly.yml --status=in_progress --json databaseId 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
             TOTAL=$(( QUEUED + IN_PROG ))
