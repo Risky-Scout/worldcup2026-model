@@ -47,22 +47,30 @@ jobs:
       - name: Check prediction freshness (skip pipeline if recent)
         id: freshness
         run: |
-          LAST=$(ls -t data/published/*.json 2>/dev/null | head -1)
-          if [ -z "$LAST" ]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "No published file found — will run pipeline"
-            exit 0
-          fi
-          # Extract generated_at from JSON (bash/grep only, no Python)
-          GEN=$(grep -o '"generated_at"[[:space:]]*:[[:space:]]*"[^"]*"' "$LAST" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-          # Fallback: check pipeline_health.json
-          if [ -z "$GEN" ] && [ -f "data/live/pipeline_health.json" ]; then
+          # Use pipeline_health.json as the authoritative freshness source.
+          # run_real_pipeline.py always writes last_pipeline_run to this file,
+          # so its timestamp reliably reflects the last full pipeline execution.
+          # (The previous ls -t approach was unreliable: all files have the same
+          # mtime on a fresh checkout, making ls -t return files in undefined order.)
+          GEN=""
+          if [ -f "data/live/pipeline_health.json" ]; then
             GEN=$(grep -o '"last_pipeline_run"[[:space:]]*:[[:space:]]*"[^"]*"' data/live/pipeline_health.json | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-            echo "Using pipeline_health.json fallback timestamp: $GEN"
+            echo "Freshness source: pipeline_health.json (last_pipeline_run=$GEN)"
+          fi
+          # Fallback: scan published JSONs if health file is missing
+          if [ -z "$GEN" ]; then
+            for F in data/published/2026-*.json; do
+              [ -f "$F" ] || continue
+              T=$(grep -o '"generated_at"[[:space:]]*:[[:space:]]*"[^"]*"' "$F" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+              if [ -n "$T" ]; then
+                GEN="$T"
+              fi
+            done
+            [ -n "$GEN" ] && echo "Freshness source: date JSON fallback (generated_at=$GEN)"
           fi
           if [ -z "$GEN" ]; then
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "No generated_at found — will run pipeline"
+            echo "No freshness timestamp found — will run pipeline"
             exit 0
           fi
           NOW_EPOCH=$(date +%s)
