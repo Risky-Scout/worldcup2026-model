@@ -1,6 +1,6 @@
 # Data Quality Report (Real BDL Data)
 
-**Generated**: 2026-07-01T20:36:20Z
+**Generated**: 2026-07-01T22:04:52Z
 **Data version**: v1
 
 ## Overview
@@ -10,8 +10,8 @@
 | Total matches | 232 |
 | Completed | 208 |
 | Missing goals | 0 |
-| Odds rows | 546 |
-| Correct-score rows | 5968 |
+| Odds rows | 548 |
+| Correct-score rows | 6008 |
 | Season 2018 | 64 matches |
 | Season 2022 | 64 matches |
 | Season 2026 | 104 matches |
