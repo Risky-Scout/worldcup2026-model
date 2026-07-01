@@ -289,15 +289,34 @@ def _parse_closing_probs(odds_rows: list[dict]) -> dict[str, float]:
 _SUPPRESS_EDGE_MARKETS = {"over_5_5", "over_6_5"}
 
 
+def _load_prediction_for_match(match_id: str) -> dict | None:
+    """Scan data/published/ (newest first) and return the match dict for match_id."""
+    pub_dir = DATA_DIR / "published"
+    for f in sorted(pub_dir.glob("2026-*.json"), reverse=True):
+        try:
+            data = json.loads(f.read_text())
+            for m in data.get("matches", []):
+                if str(m.get("match_id")) == str(match_id):
+                    return m
+        except Exception:
+            continue
+    return None
+
+
 def _record_closing_odds(match_id: str, closing_probs: dict[str, float],
-                         timestamp: str, source: str = "live_capture") -> int:
+                         timestamp: str, source: str = "live_capture",
+                         home_team: str = "", away_team: str = "") -> int:
     """
     Load CLV store, call set_closing() on every matching record,
     rewrite the file. Returns number of records updated.
+
+    If no seeds exist for this match (e.g. daily pipeline seeded before
+    correct_score_top_20 was added), seeds them on the fly from the most
+    recent published prediction and immediately sets closing odds.
     """
     if not CLV_PATH.exists():
-        log.warning("CLV store not found: %s", CLV_PATH)
-        return 0
+        CLV_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CLV_PATH.touch()  # create empty store so on-the-fly seed logic below can run
 
     from wc2026.markets.clv import CLVStore
 
@@ -322,10 +341,48 @@ def _record_closing_odds(match_id: str, closing_probs: dict[str, float],
             rec.suppress_from_edge = True
         updated += 1
 
+    if updated == 0 and closing_probs:
+        # No CLV seeds exist yet for this match — seed on the fly from the most
+        # recent published prediction, then immediately freeze the closing odds.
+        match_data = _load_prediction_for_match(match_id)
+        if match_data and match_data.get("prediction"):
+            from wc2026.markets.clv import build_clv_records_from_prediction
+            pred_dict = match_data["prediction"]
+            ht = home_team or match_data.get("home_team", "?")
+            at = away_team or match_data.get("away_team", "?")
+            try:
+                clv_recs = build_clv_records_from_prediction(
+                    match_id=match_id,
+                    home_team=ht,
+                    away_team=at,
+                    prediction=pred_dict,
+                )
+            except Exception as seed_exc:
+                log.warning("CLV on-the-fly seed failed for match_id=%s: %s", match_id, seed_exc)
+                clv_recs = []
+            for rec in clv_recs:
+                mkt = rec.market
+                if mkt in closing_probs:
+                    closing_p = closing_probs[mkt]
+                    if closing_p > 0:
+                        closing_dec = round(1.0 / closing_p, 4)
+                        rec.set_closing(closing_dec, timestamp, source=source)
+                        if mkt in _SUPPRESS_EDGE_MARKETS:
+                            rec.suppress_from_edge = True
+                        updated += 1
+                records.append(rec)
+            if clv_recs:
+                log.info(
+                    "CLV seeded on-the-fly for match_id=%s (%s vs %s): %d records, %d with closing",
+                    match_id, ht, at, len(clv_recs), updated,
+                )
+        else:
+            log.warning(
+                "CLV seed skipped for match_id=%s — no published prediction found", match_id
+            )
+
     if updated > 0:
-        with open(CLV_PATH, "w") as f:
-            for r in records:
-                f.write(json.dumps(r.to_dict()) + "\n")
+        store._write_atomic(records)
 
     return updated
 
@@ -354,7 +411,8 @@ def _fetch_and_record(provider, match_id: str, home_team: str, away_team: str,
                     match_id)
         return 0
 
-    n = _record_closing_odds(match_id, closing_probs, ts, source=closing_source)
+    n = _record_closing_odds(match_id, closing_probs, ts, source=closing_source,
+                             home_team=home_team, away_team=away_team)
     log.info("Closing odds recorded for %s vs %s: %d CLV records updated",
              home_team, away_team, n)
 

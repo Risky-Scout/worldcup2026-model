@@ -27,6 +27,10 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
 jobs:
   daily-update:
     runs-on: ubuntu-latest
@@ -113,10 +117,12 @@ jobs:
           git stash --include-untracked 2>/dev/null || true
           git pull --rebase origin main 2>/dev/null || git pull --no-rebase origin main || true
           git stash pop 2>/dev/null || true
-          git push origin main || true
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+
+      - name: Validate published artifacts
+        run: make validate-published
 
       - name: Upload today's predictions to WOO (FTP)
         # Upload TODAY's file (not tomorrow's DATE) so wc-predictions.json shows
@@ -174,10 +180,6 @@ jobs:
           curl -sf -X GET \
             -H "X-Internal-Token: ${{ secrets.WEBHOOK_SECRET }}" \
             https://sportsodds.wizardofodds.com/api/reload-lambdas/index.php || true
-        continue-on-error: true
-
-      - name: Validate published artifacts
-        run: make validate-published
         continue-on-error: true
 
       - name: Kick off hourly refresh chain for match-hours coverage

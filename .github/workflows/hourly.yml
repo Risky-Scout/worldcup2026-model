@@ -117,7 +117,6 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python scripts/run_real_pipeline.py
-        continue-on-error: true
 
       - name: Closing odds forward scan (catch imminent matches missed by pre-match.yml)
         if: steps.freshness.outputs.skip != 'true'
@@ -134,7 +133,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload predictions to server (FTP)
-        if: steps.freshness.outputs.skip != 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.pipeline.outcome == 'success'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -143,12 +142,12 @@ jobs:
         continue-on-error: true
 
       - name: Generate Market X-Ray
-        if: steps.freshness.outputs.skip != 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.pipeline.outcome == 'success'
         run: source .env 2>/dev/null || true; python3.10 scripts/generate_xray.py
         continue-on-error: true
 
       - name: Upload Market X-Ray (FTP)
-        if: steps.freshness.outputs.skip != 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.pipeline.outcome == 'success'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -157,7 +156,7 @@ jobs:
         continue-on-error: true
 
       - name: Deploy HTML pages (FTP)
-        if: steps.freshness.outputs.skip != 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.pipeline.outcome == 'success'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -174,10 +173,9 @@ jobs:
           git diff --cached --quiet || \
             git commit -m "Hourly update $DATE: predictions [skip ci]"
           git pull --rebase origin main || true
-          git push || true
+          git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
       - name: Self-chain next refresh (guarantee 45-min cadence during match hours)
         # Dispatches the next hourly run immediately after this one completes.
@@ -191,7 +189,7 @@ jobs:
         run: |
           sleep 30
           HOUR=$(date -u +%-H 2>/dev/null || date -u +%H | sed 's/^0*//;s/^$/0/')
-          if [ "$HOUR" -ge 14 ] || [ "$HOUR" -le 4 ]; then
+          if [ "$HOUR" -ge 16 ] || [ "$HOUR" -le 4 ]; then
             QUEUED=$(gh run list --workflow=hourly.yml --status=queued --json databaseId 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
             IN_PROG=$(gh run list --workflow=hourly.yml --status=in_progress --json databaseId 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
             TOTAL=$(( QUEUED + IN_PROG ))

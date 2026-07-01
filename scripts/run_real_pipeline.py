@@ -1653,13 +1653,14 @@ def predict_all_2026(
     n_market_implied = 0
     n_pure_model = 0
     n_skipped = 0
+    pending_clv_recs: list = []  # accumulated across all matches; flushed once after loop
 
     # CLV store: record prediction-time probs for post-match closing line comparison
     try:
         from wc2026.markets.clv import CLVStore, build_clv_records_from_prediction
         clv_store = CLVStore(str(DATA_DIR / "clv" / "2026" / "records.jsonl"))
     except Exception as _clv_exc:
-        log.debug("CLV store init failed: %s", _clv_exc)
+        log.warning("CLV store init failed — CLV seeding disabled for this run: %s", _clv_exc)
         clv_store = None
 
     # ── predict_many() batch pre-computation (PenaltyBlog 1.11.0) ────────────
@@ -1946,8 +1947,8 @@ def predict_all_2026(
                     _opening_odds: dict = {}
                     for _k, _v in _mim.items():
                         _norm_k = _k.replace(".", "_")  # over_0.5 → over_0_5
-                        if _v and float(_v) > 0:
-                            _opening_odds[_norm_k] = round(1.0 / float(_v), 4)
+                        if isinstance(_v, (int, float)) and _v > 0:
+                            _opening_odds[_norm_k] = round(1.0 / _v, 4)
                     clv_recs = build_clv_records_from_prediction(
                         match_id=str(mid),
                         home_team=home,
@@ -1955,13 +1956,22 @@ def predict_all_2026(
                         prediction=_pred_dict,
                         opening_odds=_opening_odds or None,
                     )
-                    for cr in clv_recs:
-                        clv_store.upsert(cr)
+                    pending_clv_recs.extend(clv_recs)
                 except Exception as _exc:
-                    log.debug("CLV record failed for %s v %s: %s", home, away, _exc)
+                    log.warning("CLV record failed for %s v %s: %s", home, away, _exc, exc_info=True)
 
     log.info("Predictions: %d total  market_reconciled=%d  market_implied=%d  pure_model=%d  skipped=%d",
              len(all_predictions), n_market_reconciled, n_market_implied, n_pure_model, n_skipped)
+
+    # Flush all accumulated CLV records in a single read→merge→write pass
+    if clv_store is not None and pending_clv_recs:
+        try:
+            clv_store.batch_upsert(pending_clv_recs)
+            log.info("CLV batch_upsert: %d records written for %d matches",
+                     len(pending_clv_recs),
+                     len({r.match_id for r in pending_clv_recs}))
+        except Exception as _clv_flush_exc:
+            log.warning("CLV batch_upsert failed: %s", _clv_flush_exc, exc_info=True)
 
     # ── H5: Daily calibration health log ─────────────────────────────────────
     # Writes a JSONL record to data/calibration/health.jsonl every run.

@@ -45,6 +45,8 @@ import datetime as dt
 import json
 import logging
 import math
+import os
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -349,6 +351,21 @@ class CLVStore:
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
+    def _write_atomic(self, records: list[CLVRecord]) -> None:
+        """Write records to a temp file then atomically rename — crash-safe."""
+        fd, tmp = tempfile.mkstemp(dir=self._path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                for r in records:
+                    f.write(json.dumps(r.to_dict()) + "\n")
+            os.replace(tmp, self._path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+
     def append(self, record: CLVRecord) -> None:
         """Append a new prediction record (legacy; prefer upsert)."""
         with open(self._path, "a") as f:
@@ -369,8 +386,7 @@ class CLVStore:
             if record.first_model_prob is None:
                 record.first_model_prob = record.model_prob
                 record.first_prediction_timestamp = record.prediction_timestamp
-            with open(self._path, "w") as f:
-                f.write(json.dumps(record.to_dict()) + "\n")
+            self._write_atomic([record])
             return
 
         records = self.load_all()
@@ -443,9 +459,84 @@ class CLVStore:
                 record.first_prediction_timestamp = record.prediction_timestamp
             records.append(record)
 
-        with open(self._path, "w") as f:
-            for r in records:
-                f.write(json.dumps(r.to_dict()) + "\n")
+        self._write_atomic(records)
+
+    def batch_upsert(self, new_records: list[CLVRecord]) -> None:
+        """Merge a list of records in one read→merge→write pass (O(n) vs O(n²)).
+
+        Identical merge semantics to `upsert`; use when seeding many records
+        at once (e.g. the full prediction loop for a pipeline run).
+        """
+        if not new_records:
+            return
+
+        if not self._path.exists():
+            # First write ever — initialize first_model_prob for each record
+            init: list[CLVRecord] = []
+            for record in new_records:
+                if record.first_model_prob is None:
+                    record.first_model_prob = record.model_prob
+                    record.first_prediction_timestamp = record.prediction_timestamp
+                init.append(record)
+            self._write_atomic(init)
+            return
+
+        existing_records = self.load_all()
+        # Build a lookup dict keyed by (match_id, market)
+        index: dict[tuple[str, str], CLVRecord] = {
+            (r.match_id, r.market): r for r in existing_records
+        }
+
+        for record in new_records:
+            key = (record.match_id, record.market)
+            if key in index:
+                existing = index[key]
+                # Preserve opening_prob from first observation
+                if existing.opening_prob is not None:
+                    record.opening_prob = existing.opening_prob
+                    record.opening_odds_decimal = existing.opening_odds_decimal
+                    record.opening_timestamp = existing.opening_timestamp
+                # Preserve closing/outcome from prior calls
+                if existing.closing_prob is not None and record.closing_prob is None:
+                    record.closing_prob = existing.closing_prob
+                    record.closing_odds_decimal = existing.closing_odds_decimal
+                    record.closing_timestamp = existing.closing_timestamp
+                    record.clv_raw = existing.clv_raw
+                    record.clv_pct = existing.clv_pct
+                    record.clv_bits = existing.clv_bits
+                    record.beat_close = existing.beat_close
+                    record.opening_drift = existing.opening_drift
+                    record.model_vs_opening = existing.model_vs_opening
+                    record.frozen_model_prob = existing.frozen_model_prob
+                    record.frozen_at = existing.frozen_at
+                    record.clv_from_last = existing.clv_from_last
+                    record.clv_pct_from_last = existing.clv_pct_from_last
+                    record.clv_pct_pure = existing.clv_pct_pure
+                    record.model_prob = existing.model_prob
+                    record.model_fair_odds = existing.model_fair_odds
+                    if existing.first_model_prob is not None:
+                        record.first_model_prob = existing.first_model_prob
+                        record.first_prediction_timestamp = existing.first_prediction_timestamp
+                    elif record.first_model_prob is None:
+                        record.first_model_prob = existing.model_prob
+                else:
+                    if existing.first_model_prob is not None:
+                        record.first_model_prob = existing.first_model_prob
+                        record.first_prediction_timestamp = existing.first_prediction_timestamp
+                    elif record.first_model_prob is None:
+                        record.first_model_prob = existing.model_prob
+                        record.first_prediction_timestamp = existing.prediction_timestamp
+                if existing.outcome is not None and record.outcome is None:
+                    record.outcome = existing.outcome
+                    record.outcome_timestamp = existing.outcome_timestamp
+                index[key] = record
+            else:
+                if record.first_model_prob is None:
+                    record.first_model_prob = record.model_prob
+                    record.first_prediction_timestamp = record.prediction_timestamp
+                index[key] = record
+
+        self._write_atomic(list(index.values()))
 
     def load_all(self) -> list[CLVRecord]:
         """Load all records from the store."""
@@ -483,9 +574,7 @@ class CLVStore:
                 r.set_closing(closing_odds_decimal, closing_timestamp)
                 n_updated += 1
         # Rewrite
-        with open(self._path, "w") as f:
-            for r in records:
-                f.write(json.dumps(r.to_dict()) + "\n")
+        self._write_atomic(records)
         return n_updated
 
     def update_outcome(
@@ -502,9 +591,7 @@ class CLVStore:
             if r.match_id == match_id and r.market == market:
                 r.set_outcome(outcome, timestamp)
                 n_updated += 1
-        with open(self._path, "w") as f:
-            for r in records:
-                f.write(json.dumps(r.to_dict()) + "\n")
+        self._write_atomic(records)
         return n_updated
 
     def summary(self) -> CLVSummary:

@@ -677,7 +677,7 @@ def _fetch_live_matches() -> tuple[list[dict], list[dict], list[dict]]:
         all_matches = provider.fetch_matches(seasons=[2026])
     except Exception as exc:
         log.error("BDL fetch failed: %s", exc)
-        return [], []
+        return [], [], []
 
     log.info("BDL fetch complete: %d total matches, sample_status=%s",
              len(all_matches), all_matches[0].get("status") if all_matches else None)
@@ -1549,18 +1549,38 @@ def main() -> None:
         log.info("Health status written.")
         return
 
+    live_dir = REPO_ROOT / "data" / "live"
+    live_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         snapshot = run_live_snapshot()
     except Exception as exc:
         log.error("Snapshot computation failed: %s", exc)
+        # Write a fallback quiet snapshot so latest.json is never stale.
+        # Try to preserve the last good snapshot; fall back to a minimal stub.
+        try:
+            _existing_raw = (live_dir / "latest.json").read_text()
+            _fallback = json.loads(_existing_raw)
+            _fallback["snapshot_error"] = str(exc)
+            _fallback["generated_at"] = datetime.now(tz=timezone.utc).isoformat()
+        except Exception:
+            _fallback = {
+                "status": "quiet",
+                "n_live": 0,
+                "upcoming_today": [],
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+                "snapshot_error": str(exc),
+            }
+        try:
+            (live_dir / "latest.json").write_text(json.dumps(_fallback, indent=2))
+        except Exception as _write_exc:
+            log.error("Could not write fallback latest.json: %s", _write_exc)
         write_health_status(False, f"Live snapshot failed: {exc}")
         sys.exit(1)
 
     log.info("Snapshot: status=%s, %d live matches", snapshot["status"], snapshot["n_live"])
 
     # Write local file FIRST so the self-chain logic can read it even if FTP fails.
-    live_dir = REPO_ROOT / "data" / "live"
-    live_dir.mkdir(parents=True, exist_ok=True)
     (live_dir / "latest.json").write_text(json.dumps(snapshot, indent=2))
 
     # FTP upload — log and continue on failure; the chain must not die due to FTP issues.
