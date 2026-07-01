@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-01T20:00:18Z
+**Generated**: 2026-07-01T20:36:20Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -9,7 +9,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Team | 2018 | 2022 | Conf | WC Games | Elo | Pi | Market Att | Market Def | n Mkt | Final Att λ | Final Def λ | Uncertainty | Sources |
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
 | France | ✅ | ✅ | UEFA | 18 | 1370 | 1.102 | 3.126 | 0.361 | 5 | **3.041** | **0.728** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Brazil | ✅ | ✅ | CONMEBOL | 14 | 1425 | 0.625 | 2.199 | 0.519 | 5 | **2.684** | **0.737** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Brazil | ✅ | ✅ | CONMEBOL | 14 | 1425 | 0.625 | 2.200 | 0.519 | 5 | **2.684** | **0.737** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Germany | ✅ | ✅ | UEFA | 10 | 1494 | 0.072 | 1.763 | 1.133 | 4 | **2.668** | **1.219** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Argentina | ✅ | ✅ | CONMEBOL | 14 | 1439 | 0.562 | 2.912 | 0.275 | 4 | **2.649** | **0.664** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Norway | ❌ | ❌ | UEFA | 4 | 1479 | 0.143 | 2.110 | 1.401 | 5 | **2.419** | **1.689** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
