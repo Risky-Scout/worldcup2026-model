@@ -758,16 +758,6 @@ def build_clv_records_from_prediction(
         cal_total = sum(p for _, _, p in calibrated)
         norm_factor = raw_total / cal_total if cal_total > 1e-9 else 1.0
 
-        # #region agent log
-        import json as _json_cs, time as _time_cs
-        try:
-            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
-                _sample = [{"score": f"{h}-{a}", "raw": round(raw_entries[i][2], 4), "cal": round(p * norm_factor, 4)} for i, (h, a, p) in enumerate(calibrated[:4])]
-                _lf.write(_json_cs.dumps({"sessionId": "3f8dcc", "timestamp": int(_time_cs.time()*1000), "location": "clv.py:score_cal", "message": "exact score calibration applied", "hypothesisId": "C", "data": {"match": f"{home_team} vs {away_team}", "n_scores": len(calibrated), "norm_factor": round(norm_factor, 4), "sample": _sample}, "runId": "fix5"}) + "\n")
-        except Exception:
-            pass
-        # #endregion
-
         for hg, ag, cal_prob in calibrated:
             prob_final = cal_prob * norm_factor
             if prob_final < 0.005:
