@@ -29,7 +29,9 @@ on:
         options:
           - recon
           - apply
+          - apply-sportsodds
           - verify
+          - verify-sportsodds
 
 jobs:
   configure-nginx:
@@ -151,7 +153,41 @@ jobs:
             done
           "
 
-      - name: Verify - check all 4 URLs
+      - name: Apply clean URLs on sportsodds (immediate, no WOO_ROOT_SSH_KEY needed)
+        if: inputs.mode == 'apply-sportsodds'
+        run: |
+          set -e
+          # SCP the standalone script to sportsodds, then run it
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            deploy/nginx/apply_sportsodds_aliases.py \
+            woo@45.79.0.107:~/apply_sportsodds_aliases.py
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 \
+            "python3 ~/apply_sportsodds_aliases.py && \
+             nginx -t 2>&1 && \
+             systemctl reload nginx && \
+             echo 'NGINX reloaded' && \
+             sleep 2 && \
+             for path in /sports-odds/world-cup-market-xray/ /sports-odds/wnba-predictions/ /sports-odds/wnba-distributions/ /sports-odds/wnba-live-edges/; do \
+               STATUS=\$(curl -s -o /dev/null -w '%{http_code}' \"https://sportsodds.wizardofodds.com\${path}\"); \
+               echo \"  sportsodds.wizardofodds.com\${path} -> \${STATUS}\"; \
+             done"
+
+      - name: Verify clean URLs on sportsodds
+        if: inputs.mode == 'verify-sportsodds'
+        run: |
+          echo '── sportsodds.wizardofodds.com clean URL check ──'
+          for path in \
+            /sports-odds/world-cup-market-xray/ \
+            /sports-odds/wnba-predictions/ \
+            /sports-odds/wnba-distributions/ \
+            /sports-odds/wnba-live-edges/; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://sportsodds.wizardofodds.com${path}")
+            [ "$STATUS" = "200" ] && echo "OK   sportsodds.wizardofodds.com${path} -> $STATUS" \
+                                  || echo "ERR  sportsodds.wizardofodds.com${path} -> $STATUS"
+          done
+
+      - name: Verify - check all 4 URLs on wizardofodds.com
         if: inputs.mode == 'verify'
         run: |
           echo '── URL status ──'
