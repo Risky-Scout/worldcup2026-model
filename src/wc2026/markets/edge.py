@@ -55,7 +55,7 @@ log = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 MIN_EDGE_THRESHOLD = 0.04      # flag edge ≥ 4%
 MIN_LIQUIDITY_PROB = 0.02      # ignore sub-2% market implied
-MAX_KELLY_FRACTION = 0.05      # cap half-Kelly at 5% of bankroll
+MAX_KELLY_FRACTION = 0.15      # cap half-Kelly at 15% of bankroll (edge-dependent)
 CI_Z = 1.645                   # 90% one-sided z-score
 LAMBDA_UNCERTAINTY_FRAC = 0.12 # ±12% λ uncertainty for CI (conservative)
 
@@ -140,25 +140,46 @@ def _prob_to_decimal_odds(prob: float) -> float:
     return round(1.0 / prob, 4)
 
 
+def _edge_dependent_kelly_cap(edge_frac: float) -> float:
+    """
+    Return Kelly cap proportional to conviction (edge size).
+    Prevents over-sizing on marginal edges while allowing full allocation on strong ones.
+    """
+    if edge_frac >= 0.15:
+        return MAX_KELLY_FRACTION
+    elif edge_frac >= 0.08:
+        return MAX_KELLY_FRACTION * 0.67
+    elif edge_frac >= 0.04:
+        return MAX_KELLY_FRACTION * 0.40
+    else:
+        return MAX_KELLY_FRACTION * 0.20
+
+
 def _half_kelly(model_p: float, market_odds_dec: float) -> float:
     """
     Compute half-Kelly bet fraction using penaltyblog.betting.kelly_criterion.
     Falls back to the manual formula if penaltyblog is unavailable.
-    Capped at MAX_KELLY_FRACTION (5% of bankroll).
+    Capped at edge-dependent fraction of MAX_KELLY_FRACTION (15% of bankroll max).
     """
     if market_odds_dec <= 1.01:
         return 0.0
+
+    # Compute raw edge for edge-dependent cap
+    market_p = 1.0 / market_odds_dec if market_odds_dec > 0 else 0.5
+    edge_frac = (model_p - market_p) / market_p if market_p > 0 else 0.0
+    kelly_cap = _edge_dependent_kelly_cap(edge_frac)
+
     if _HAS_PB_KELLY:
         try:
             result = _pb_kelly_criterion(market_odds_dec, model_p, fraction=0.5)
             stake = float(result.stake)
-            return min(max(stake, 0.0), MAX_KELLY_FRACTION)
+            return min(max(stake, 0.0), kelly_cap)
         except Exception:
             pass
     # Manual fallback: standard Kelly formula halved
     full_kelly = (model_p * market_odds_dec - 1.0) / (market_odds_dec - 1.0)
     half = max(full_kelly / 2.0, 0.0)
-    return min(half, MAX_KELLY_FRACTION)
+    return min(half, kelly_cap)
 
 
 def _poisson_ci(lh: float, la: float, pmf_func, uncertainty: float = LAMBDA_UNCERTAINTY_FRAC) -> tuple:

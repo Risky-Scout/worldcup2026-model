@@ -725,11 +725,11 @@ def reconcile(
         return result
 
     # ── 2. Determine blend weight α ──────────────────────────────────────
-    # Cap at 0.45: preserves ≥55% independent model signal in the published PMF.
-    # Previous cap of 0.85 produced a PMF that was ~95% market, eliminating CLV.
-    # At 0.45 the published prediction retains meaningful independent signal.
-    # Formula: alpha scales with market quality up to 0.45 max.
-    alpha = min(market_quality * 0.70, 0.45)
+    # Cap at 0.25: preserves ≥75% independent model signal in the published PMF.
+    # Previous cap of 0.45 still allowed too much market contamination of edge signals.
+    # At 0.25 the published prediction retains dominant model signal for CLV generation.
+    # Formula: alpha scales with market quality up to 0.25 max.
+    alpha = min(market_quality * 0.70, 0.25)
     result.market_blend_alpha = alpha
 
     if market_quality < min_market_quality:
