@@ -813,15 +813,6 @@ def process_pregame_match(
     all_estimated = bool(markets) and all(m.get("market_odds_estimated") for m in markets)
     summary_note = _summary_note(actionable, home, away, "pregame")
 
-    # #region agent log
-    import json as _json_xray, time as _time_xray
-    try:
-        with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
-            _lf.write(_json_xray.dumps({"sessionId": "3f8dcc", "timestamp": int(_time_xray.time()*1000), "location": "generate_xray.py:809", "message": "pregame match output", "hypothesisId": "B", "data": {"match": f"{home} vs {away}", "confidence": confidence, "best_edge_pct": best_edge_pct, "n_edges": len(edges), "n_actionable": len(actionable), "all_estimated": all_estimated}, "runId": "pre-fix"}) + "\n")
-    except Exception:
-        pass
-    # #endregion
-
     return {
         "match_id": match_id,
         "home_team": home,

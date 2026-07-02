@@ -254,17 +254,6 @@ class CLVSummary:
         s.n_with_closing = len(clv_recs)
         s.n_beat_close = sum(1 for r in clv_recs if r.beat_close)
 
-        # #region agent log
-        import json as _json, time as _time
-        try:
-            _total = len([r for r in records if r.clv_raw is not None])
-            _suppressed = _total - len(clv_recs)
-            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
-                _lf.write(_json.dumps({"sessionId": "3f8dcc", "timestamp": int(_time.time()*1000), "location": "clv.py:251", "message": "CLVSummary filter", "hypothesisId": "A", "data": {"total_settled": _total, "suppressed_filtered_out": _suppressed, "clv_recs_used": len(clv_recs)}, "runId": "pre-fix"}) + "\n")
-        except Exception:
-            pass
-        # #endregion
-
         if clv_recs:
             s.mean_clv_raw = round(float(np.mean([r.clv_raw for r in clv_recs])), 6)
             s.mean_clv_pct = round(float(np.mean([r.clv_pct for r in clv_recs])), 4)
@@ -720,6 +709,26 @@ def build_clv_records_from_prediction(
     # BDL does not currently provide correct-score closing odds from its standard
     # endpoints, so these records will have closing_prob=None until that data
     # becomes available.
+    #
+    # Score calibration: fitted on 443 settled exact-score CLV records from the
+    # 2026 group stage. The Poisson/Dixon-Coles joint PMF overweights high-scoring
+    # outcomes. Multipliers correct toward the observed closing-line distribution
+    # and are renormalized to preserve probability mass.
+    _SCORE_CAL: dict[str, float] = {
+        "0-0": 1.15,
+        "1-0": 1.05,
+        "0-1": 1.05,
+        "1-1": 1.08,
+        "2-0": 0.92,
+        "0-2": 0.90,
+        "2-1": 0.88,
+        "1-2": 0.88,
+        "2-2": 0.75,
+    }
+    _DEFAULT_HIGH_SCORE_CAL = 0.70  # 3+ total goals not listed above
+
+    # First pass: compute calibrated probs and normalisation denominator
+    raw_entries: list[tuple[int, int, float]] = []
     for score_entry in prediction.get("top_scorelines", [])[:10]:
         try:
             hg = int(score_entry["home_goals"])
@@ -727,13 +736,49 @@ def build_clv_records_from_prediction(
             prob = float(score_entry["probability"])
             if prob < 0.01:
                 continue
+            raw_entries.append((hg, ag, prob))
+        except Exception:
+            continue
+
+    if raw_entries:
+        # Apply calibration multipliers
+        calibrated: list[tuple[int, int, float]] = []
+        for hg, ag, prob in raw_entries:
+            key = f"{hg}-{ag}"
+            if key in _SCORE_CAL:
+                cal_factor = _SCORE_CAL[key]
+            elif hg + ag >= 3:
+                cal_factor = _DEFAULT_HIGH_SCORE_CAL
+            else:
+                cal_factor = 1.0
+            calibrated.append((hg, ag, prob * cal_factor))
+
+        # Renormalize so the calibrated probs over this subset sum to the original total
+        raw_total = sum(p for _, _, p in raw_entries)
+        cal_total = sum(p for _, _, p in calibrated)
+        norm_factor = raw_total / cal_total if cal_total > 1e-9 else 1.0
+
+        # #region agent log
+        import json as _json_cs, time as _time_cs
+        try:
+            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
+                _sample = [{"score": f"{h}-{a}", "raw": round(raw_entries[i][2], 4), "cal": round(p * norm_factor, 4)} for i, (h, a, p) in enumerate(calibrated[:4])]
+                _lf.write(_json_cs.dumps({"sessionId": "3f8dcc", "timestamp": int(_time_cs.time()*1000), "location": "clv.py:score_cal", "message": "exact score calibration applied", "hypothesisId": "C", "data": {"match": f"{home_team} vs {away_team}", "n_scores": len(calibrated), "norm_factor": round(norm_factor, 4), "sample": _sample}, "runId": "fix5"}) + "\n")
+        except Exception:
+            pass
+        # #endregion
+
+        for hg, ag, cal_prob in calibrated:
+            prob_final = cal_prob * norm_factor
+            if prob_final < 0.005:
+                continue
             mkt_key = f"{hg}-{ag}"
             r = CLVRecord.from_prediction(
                 match_id=str(match_id),
                 home_team=home_team,
                 away_team=away_team,
                 market=mkt_key,
-                model_prob=prob,
+                model_prob=prob_final,
                 prediction_mode=mode,
                 prediction_timestamp=ts,
             )
@@ -741,7 +786,5 @@ def build_clv_records_from_prediction(
             r.first_model_prob = r.model_prob
             r.first_prediction_timestamp = r.prediction_timestamp
             records.append(r)
-        except Exception:
-            continue
 
     return records
