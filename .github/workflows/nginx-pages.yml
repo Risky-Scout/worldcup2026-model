@@ -154,29 +154,40 @@ jobs:
             done
           "
 
-      - name: Install pages - try root on both servers with deploy key
+      - name: Install pages - password SSH to both servers
         if: inputs.mode == 'install-pages'
         run: |
-          echo "=== Testing root@13.52.111.2 ==="
-          if ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-             -o BatchMode=yes root@13.52.111.2 "curl -s ipinfo.io/ip" 2>/dev/null; then
-            echo "SUCCESS: root@13.52.111.2 accessible with deploy key"
-            scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          sudo apt-get install -y sshpass 2>&1 | tail -1
+          PASS="${{ secrets.WOO_ROOT_SSH_PASS }}"
+
+          echo "=== Testing root@13.52.111.2 (wizardofodds.com) ==="
+          SERVER_IP=$(sshpass -p "$PASS" ssh \
+            -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
+            root@13.52.111.2 "curl -s ipinfo.io/ip" 2>/dev/null || true)
+          if [ -n "$SERVER_IP" ]; then
+            echo "Connected! Server public IP: $SERVER_IP"
+            sshpass -p "$PASS" scp \
+              -o StrictHostKeyChecking=no \
               deploy/pages/install.sh root@13.52.111.2:/tmp/woo_install.sh
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@13.52.111.2 \
-              "bash /tmp/woo_install.sh"
+            sshpass -p "$PASS" ssh \
+              -o StrictHostKeyChecking=no \
+              root@13.52.111.2 "bash /tmp/woo_install.sh"
           else
-            echo "FAILED: root@13.52.111.2 not accessible"
+            echo "FAILED: root@13.52.111.2 not accessible with password"
           fi
 
           echo ""
-          echo "=== Testing root@45.79.0.107 ==="
-          if ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-             -o BatchMode=yes root@45.79.0.107 "curl -s ipinfo.io/ip" 2>/dev/null; then
-            echo "SUCCESS: root@45.79.0.107 accessible — this is the SPORTSODDS server, NOT wizardofodds.com"
-            echo "wizardofodds.com pages cannot be deployed here"
+          echo "=== Testing root@45.79.0.107 (sportsodds) ==="
+          SERVER_IP2=$(sshpass -p "$PASS" ssh \
+            -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
+            root@45.79.0.107 "curl -s ipinfo.io/ip" 2>/dev/null || true)
+          if [ -n "$SERVER_IP2" ]; then
+            echo "Connected! Server public IP: $SERVER_IP2"
+            if [ "$SERVER_IP2" = "45.79.0.107" ]; then
+              echo "NOTE: This is the SPORTSODDS server — wizardofodds.com pages cannot be installed here"
+            fi
           else
-            echo "FAILED: root@45.79.0.107 not accessible"
+            echo "FAILED: root@45.79.0.107 not accessible with password"
           fi
 
       - name: Apply clean URLs on sportsodds (static HTML redirects, no sudo needed)
