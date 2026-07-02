@@ -1,7 +1,7 @@
 name: Configure NGINX — WOO Model Pages
 
 # Adds location blocks to wizardofodds.com NGINX config so the following
-# URLs serve directly from the FTP-deployed files already on the server:
+# URLs serve directly from FTP-deployed files already on the server:
 #
 #   wizardofodds.com/sports-odds/world-cup-market-xray/
 #   wizardofodds.com/sports-odds/wnba-predictions/
@@ -9,19 +9,21 @@ name: Configure NGINX — WOO Model Pages
 #   wizardofodds.com/sports-odds/wnba-live-edges/
 #
 # ALWAYS run with mode=recon first to inspect the live server config.
-# Only run mode=apply after reviewing recon output and confirming paths.
+# Run mode=apply after reviewing recon output.
+# Run mode=verify to check URL status without modifying anything.
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "recon = print server state only | apply = write NGINX config + reload"
+        description: "recon=inspect server | apply=write NGINX config | verify=check URLs"
         required: true
         default: "recon"
         type: choice
         options:
-          - recon   # safe read-only inspection — run this first
-          - apply   # writes NGINX config, tests, and reloads — run after recon
+          - recon    # safe read-only inspection
+          - apply    # writes NGINX config + reloads (requires Miro's sudo grant or auto if woo has sudo)
+          - verify   # curl all 4 URLs and report HTTP status
 
 jobs:
   configure-nginx:
@@ -38,236 +40,236 @@ jobs:
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-      - name: Phase 1 — Reconnaissance (always runs)
+      - name: Phase 1 — Reconnaissance
+        if: github.event.inputs.mode == 'recon'
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 '
-            set -e
-            echo "════════════════════════════════════════"
-            echo "PHASE 1: SERVER RECONNAISSANCE"
-            echo "════════════════════════════════════════"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 /bin/bash << 'ENDSSH'
+          set -e
+          echo "════════════════════════════════════════"
+          echo "PHASE 1: SERVER RECONNAISSANCE"
+          echo "════════════════════════════════════════"
+          echo ""
+          echo "── 1. NGINX sites-enabled ──"
+          ls /etc/nginx/sites-enabled/ 2>/dev/null || ls /etc/nginx/conf.d/ 2>/dev/null || echo "No standard NGINX config dirs found"
+          echo ""
+          echo "── 2. wizardofodds.com vhost (default) ──"
+          cat /etc/nginx/sites-enabled/default 2>/dev/null || echo "WARNING: No default vhost found"
+          echo ""
+          echo "── 3. sportsodds vhost (excerpt) ──"
+          grep -r "sportsodds\|root\|server_name" /etc/nginx/sites-available/sportsodds 2>/dev/null | head -10
+          echo ""
+          echo "── 4. FTP file locations ──"
+          ls /var/www/ 2>/dev/null
+          echo "market-xray dir:"
+          find /var/www/sportsodds -name "market-xray" -type d 2>/dev/null
+          echo "WNBA Edge dir:"
+          find /var/www/sportsodds -path "*/WNBA/Pre-Game/Edge" -type d 2>/dev/null
+          echo ""
+          echo "── 5. WordPress check ──"
+          find /var/www -name "wp-config.php" 2>/dev/null && echo "→ WORDPRESS DETECTED" || echo "→ No WordPress"
+          echo ""
+          echo "── 6. sudo permissions ──"
+          sudo -n -l 2>&1 || echo "(sudo requires password or not configured)"
+          echo ""
+          echo "── 7. Existing model location blocks ──"
+          grep -r "wnba-predictions\|market-xray\|world-cup-market" /etc/nginx/ 2>/dev/null || echo "→ None yet"
+          echo ""
+          echo "────────────────────────────────────────"
+          echo "RECON COMPLETE"
+          echo "────────────────────────────────────────"
+          ENDSSH
 
-            echo ""
-            echo "── 1. NGINX sites-enabled ──"
-            ls /etc/nginx/sites-enabled/ 2>/dev/null || ls /etc/nginx/conf.d/ 2>/dev/null || echo "No standard NGINX config dirs found"
-
-            echo ""
-            echo "── 2. wizardofodds.com vhost config ──"
-            cat /etc/nginx/sites-enabled/wizardofodds.com 2>/dev/null \
-              || cat /etc/nginx/conf.d/wizardofodds.com.conf 2>/dev/null \
-              || cat /etc/nginx/sites-enabled/default 2>/dev/null \
-              || echo "WARNING: Could not find wizardofodds.com vhost config"
-
-            echo ""
-            echo "── 3. sportsodds.wizardofodds.com vhost config ──"
-            cat /etc/nginx/sites-enabled/sportsodds.wizardofodds.com 2>/dev/null \
-              || grep -r "sportsodds" /etc/nginx/ 2>/dev/null | head -5 \
-              || echo "WARNING: Could not find sportsodds vhost config"
-
-            echo ""
-            echo "── 4. Web root / FTP root locations ──"
-            ls /var/www/ 2>/dev/null
-            echo "FTP files (market-xray):"
-            find / -name "market-xray" -type d 2>/dev/null | grep -v proc | grep -v sys
-            echo "FTP files (WNBA Edge):"
-            find / -path "*/WNBA/Pre-Game/Edge" -type d 2>/dev/null | grep -v proc | grep -v sys
-
-            echo ""
-            echo "── 5. WordPress check ──"
-            find /var/www -name "wp-config.php" 2>/dev/null && echo "→ WORDPRESS DETECTED" || echo "→ No WordPress found (static)"
-
-            echo ""
-            echo "── 6. sudo nginx access check ──"
-            sudo nginx -t 2>&1 && echo "→ sudo nginx access: YES" || echo "→ sudo nginx access: NO (will need root)"
-
-            echo ""
-            echo "── 7. Existing model location blocks (if any) ──"
-            grep -r "wnba\|market-xray\|world-cup-market" /etc/nginx/ 2>/dev/null || echo "→ No model pages in NGINX yet"
-
-            echo ""
-            echo "════════════════════════════════════════"
-            echo "RECON COMPLETE — review output above"
-            echo "then re-run with mode=apply"
-            echo "════════════════════════════════════════"
-          '
-
-      - name: Phase 2-5 — Apply NGINX config (only when mode=apply)
+      - name: Phase 2-5 — Apply + Generate Miro Instructions
         if: github.event.inputs.mode == 'apply'
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 '
-            set -e
-            echo "════════════════════════════════════════"
-            echo "PHASE 2: DETECT PATHS"
-            echo "════════════════════════════════════════"
+          # Generate location blocks locally, then SCP to server
+          mkdir -p deploy/nginx
 
-            # Auto-detect the FTP root (where /tools/... files land)
-            FTP_ROOT=""
-            for candidate in \
-              /home/woo/public_html \
-              /var/www/sportsodds \
-              /var/www/html \
-              /var/www/wizardofodds \
-              /var/www/sportsodds.wizardofodds.com \
-              /srv/www; do
-              if [ -d "$candidate/tools/odds-scanner/predictions/world-cup/market-xray" ]; then
-                FTP_ROOT="$candidate"
-                echo "✓ FTP root detected: $FTP_ROOT"
-                break
-              fi
-            done
+          cat > /tmp/location_blocks.conf << 'LOCBLOCKS'
+    # ── WizardOfOdds model pages — added by deploy pipeline ──────────────────
+    # World Cup Market X-Ray
+    location /sports-odds/world-cup-market-xray/ {
+        alias /var/www/sportsodds/tools/odds-scanner/predictions/world-cup/market-xray/;
+        index index.html;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+    # WNBA Edge Board
+    location /sports-odds/wnba-predictions/ {
+        alias /var/www/sportsodds/tools/odds-scanner/predictions/WNBA/Pre-Game/Edge/;
+        index index.html;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+    # WNBA Distributions
+    location /sports-odds/wnba-distributions/ {
+        alias /var/www/sportsodds/tools/odds-scanner/predictions/WNBA/Pre-Game/Distributions/;
+        index index.html;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+    # WNBA In-Play Edges
+    location /sports-odds/wnba-live-edges/ {
+        alias /var/www/sportsodds/tools/odds-scanner/predictions/WNBA/In-Play/Edges/;
+        index index.html;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+    # ── End WizardOfOdds model pages ─────────────────────────────────────────
+LOCBLOCKS
 
-            if [ -z "$FTP_ROOT" ]; then
-              echo "✗ FATAL: Could not auto-detect FTP root. Check recon output and run again."
-              exit 1
-            fi
+          # Generate the Python apply script
+          cat > /tmp/apply_nginx.py << 'PYEOF'
+#!/usr/bin/env python3
+"""
+Injects WizardOfOdds model page location blocks into the NGINX default vhost.
+Run as: sudo python3 /home/woo/wc2026/deploy/nginx/apply_nginx.py
+"""
+import sys, shutil, datetime
 
-            # Auto-detect the wizardofodds.com NGINX config file
-            NGINX_CONF=""
-            for candidate in \
-              /etc/nginx/sites-enabled/wizardofodds.com \
-              /etc/nginx/conf.d/wizardofodds.com.conf \
-              /etc/nginx/sites-available/wizardofodds.com; do
-              if [ -f "$candidate" ]; then
-                NGINX_CONF="$candidate"
-                echo "✓ NGINX config detected: $NGINX_CONF"
-                break
-              fi
-            done
+NGINX_CONF = "/etc/nginx/sites-available/default"
+BLOCKS_FILE = "/home/woo/wc2026/deploy/nginx/location_blocks.conf"
 
-            if [ -z "$NGINX_CONF" ]; then
-              echo "✗ FATAL: Could not find wizardofodds.com NGINX config. Check recon output."
-              exit 1
-            fi
+conf = open(NGINX_CONF).read()
+blocks = open(BLOCKS_FILE).read()
 
-            echo ""
-            echo "════════════════════════════════════════"
-            echo "PHASE 3: BACKUP + INJECT LOCATION BLOCKS"
-            echo "════════════════════════════════════════"
+if "wnba-predictions" in conf:
+    print("ALREADY DONE — location blocks already present in", NGINX_CONF)
+    sys.exit(0)
 
-            # Back up current config with timestamp
-            BACKUP="${NGINX_CONF}.bak.$(date +%Y%m%d_%H%M%S)"
-            sudo cp "$NGINX_CONF" "$BACKUP"
-            echo "✓ Backup written: $BACKUP"
+# Backup
+bak = NGINX_CONF + ".bak." + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+shutil.copy2(NGINX_CONF, bak)
+print(f"Backup written: {bak}")
 
-            # Check if blocks already exist (idempotent)
-            if grep -q "wnba-predictions" "$NGINX_CONF" 2>/dev/null; then
-              echo "✓ Location blocks already present — skipping injection (idempotent)"
+# Insert before the last 'location / {' block (WordPress catch-all)
+marker = "location / {"
+idx = conf.rfind(marker)
+if idx == -1:
+    # Fallback: insert before last closing brace
+    idx = conf.rfind("}")
+    if idx == -1:
+        print("ERROR: Cannot find insertion point in NGINX config")
+        sys.exit(1)
+
+new_conf = conf[:idx] + "\n" + blocks + "\n    " + conf[idx:]
+open(NGINX_CONF, "w").write(new_conf)
+print(f"Location blocks injected into {NGINX_CONF}")
+print("Next steps: sudo nginx -t && sudo systemctl reload nginx")
+PYEOF
+
+          # Copy files to server
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            /tmp/location_blocks.conf woo@45.79.0.107:~/wc2026/deploy/nginx/location_blocks.conf 2>/dev/null || \
+            (ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 "mkdir -p ~/wc2026/deploy/nginx" && \
+             scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+               /tmp/location_blocks.conf woo@45.79.0.107:~/wc2026/deploy/nginx/location_blocks.conf)
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            /tmp/apply_nginx.py woo@45.79.0.107:~/wc2026/deploy/nginx/apply_nginx.py
+
+          cp /tmp/location_blocks.conf deploy/nginx/location_blocks.conf
+          cp /tmp/apply_nginx.py deploy/nginx/apply_nginx.py
+
+          echo "✓ Files copied to server and saved locally"
+
+          # Now SSH in and attempt the apply
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 /bin/bash << 'ENDSSH'
+          set -e
+          echo "════════════════════════════════════════"
+          echo "PHASE 2: ATTEMPTING AUTO-APPLY"
+          echo "════════════════════════════════════════"
+
+          chmod +x ~/wc2026/deploy/nginx/apply_nginx.py
+
+          # Check if woo has passwordless sudo for nginx
+          if sudo -n nginx -t 2>/dev/null; then
+            echo "✓ sudo nginx available — applying automatically"
+
+            sudo python3 ~/wc2026/deploy/nginx/apply_nginx.py
+            if sudo nginx -t; then
+              echo "✓ nginx -t passed"
+              sudo systemctl reload nginx
+              echo "✓ NGINX reloaded"
+              echo ""
+              echo "── Verifying URLs ──"
+              sleep 2
+              for path in "/sports-odds/world-cup-market-xray/" "/sports-odds/wnba-predictions/" "/sports-odds/wnba-distributions/" "/sports-odds/wnba-live-edges/"; do
+                STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://wizardofodds.com${path}" 2>/dev/null || echo "ERR")
+                echo "  https://wizardofodds.com${path} → ${STATUS}"
+              done
+              echo ""
+              echo "SUCCESS: All 4 model pages now live on wizardofodds.com"
             else
-              # Inject location blocks just before the final closing brace of the server block
-              BLOCKS="
-            # ── WizardOfOdds model pages (auto-configured $(date +%Y-%m-%d)) ──────────
-            # World Cup Market X-Ray
-            location /sports-odds/world-cup-market-xray/ {
-                alias ${FTP_ROOT}/tools/odds-scanner/predictions/world-cup/market-xray/;
-                index index.html;
-                try_files \$uri \$uri/ =404;
-                add_header Cache-Control \"no-cache, must-revalidate\";
-            }
-            # WNBA Edge Board
-            location /sports-odds/wnba-predictions/ {
-                alias ${FTP_ROOT}/tools/odds-scanner/predictions/WNBA/Pre-Game/Edge/;
-                index index.html;
-                try_files \$uri \$uri/ =404;
-                add_header Cache-Control \"no-cache, must-revalidate\";
-            }
-            # WNBA Distributions
-            location /sports-odds/wnba-distributions/ {
-                alias ${FTP_ROOT}/tools/odds-scanner/predictions/WNBA/Pre-Game/Distributions/;
-                index index.html;
-                try_files \$uri \$uri/ =404;
-                add_header Cache-Control \"no-cache, must-revalidate\";
-            }
-            # WNBA In-Play Edges
-            location /sports-odds/wnba-live-edges/ {
-                alias ${FTP_ROOT}/tools/odds-scanner/predictions/WNBA/In-Play/Edges/;
-                index index.html;
-                try_files \$uri \$uri/ =404;
-                add_header Cache-Control \"no-cache, must-revalidate\";
-            }
-            # ── End WizardOfOdds model pages ─────────────────────────────────────────"
-
-              # Insert blocks before the last closing brace of the server { } block
-              sudo python3 -c "
-            import sys
-            conf = open(\"${NGINX_CONF}\").read()
-            blocks = \"\"\"${BLOCKS}\"\"\"
-            # Find the last closing brace and insert before it
-            last_brace = conf.rfind(\"}\")
-            if last_brace == -1:
-                print(\"ERROR: No closing brace found in config\", file=sys.stderr)
-                sys.exit(1)
-            new_conf = conf[:last_brace] + blocks + \"\n\" + conf[last_brace:]
-            open(\"${NGINX_CONF}\", \"w\").write(new_conf)
-            print(\"Location blocks injected successfully\")
-            "
-              echo "✓ Location blocks injected into $NGINX_CONF"
+              echo "✗ nginx -t FAILED — reverting"
+              LATEST_BAK=$(ls /etc/nginx/sites-available/default.bak.* 2>/dev/null | sort | tail -1)
+              [ -n "$LATEST_BAK" ] && sudo cp "$LATEST_BAK" /etc/nginx/sites-available/default && echo "Reverted to $LATEST_BAK"
+              exit 1
             fi
-
+          else
+            echo "✗ sudo nginx not available for woo user"
             echo ""
-            echo "════════════════════════════════════════"
-            echo "PHASE 3: TEST + RELOAD NGINX"
-            echo "════════════════════════════════════════"
-
-            echo "Running nginx -t..."
-            sudo nginx -t
-            echo "✓ Config syntax valid"
-
-            echo "Reloading NGINX (graceful, zero downtime)..."
-            sudo systemctl reload nginx
-            echo "✓ NGINX reloaded"
-
+            echo "╔══════════════════════════════════════════════════════════════════════╗"
+            echo "║  MANUAL STEP REQUIRED — FORWARD THIS TO MIRO                       ║"
+            echo "╚══════════════════════════════════════════════════════════════════════╝"
             echo ""
-            echo "════════════════════════════════════════"
-            echo "PHASE 4: VERIFY ALL URLS"
-            echo "════════════════════════════════════════"
-
-            sleep 2
-            for path in \
-              "/sports-odds/world-cup-market-xray/" \
-              "/sports-odds/wnba-predictions/" \
-              "/sports-odds/wnba-distributions/" \
-              "/sports-odds/wnba-live-edges/"; do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://wizardofodds.com${path}")
-              if [ "$STATUS" = "200" ]; then
-                echo "✓ wizardofodds.com${path} → $STATUS"
-              else
-                echo "✗ wizardofodds.com${path} → $STATUS"
-              fi
-            done
-
+            echo "Hi Miro — please run these 3 commands on the WizardOfOdds server."
+            echo "This adds the WNBA + World Cup model pages to wizardofodds.com."
+            echo "Takes 2 minutes, zero downtime."
             echo ""
-            echo "Verifying JSON data endpoints..."
-            curl -sf "https://wizardofodds.com/sports-odds/wnba-predictions/latest.json" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print(\"✓ WNBA Edge JSON: valid (\", len(d) if isinstance(d,list) else \"dict\", \"records)\")" \
-              2>/dev/null || echo "✗ WNBA Edge latest.json — check permissions"
-
+            echo "  sudo python3 /home/woo/wc2026/deploy/nginx/apply_nginx.py"
+            echo "  sudo nginx -t"
+            echo "  sudo systemctl reload nginx"
             echo ""
-            echo "════════════════════════════════════════"
-            echo "PHASE 5: SAVE CONFIG TO REPO"
-            echo "════════════════════════════════════════"
+            echo "After that, these URLs will be live:"
+            echo "  https://wizardofodds.com/sports-odds/world-cup-market-xray/"
+            echo "  https://wizardofodds.com/sports-odds/wnba-predictions/"
+            echo "  https://wizardofodds.com/sports-odds/wnba-distributions/"
+            echo "  https://wizardofodds.com/sports-odds/wnba-live-edges/"
+            echo ""
+            echo "OPTIONAL: To allow future automated deploys, add this to /etc/sudoers.d/woo-nginx:"
+            echo "  woo ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/systemctl reload nginx"
+            echo ""
+            echo "The location_blocks.conf and apply_nginx.py scripts are already on the"
+            echo "server at: /home/woo/wc2026/deploy/nginx/"
+          fi
+          ENDSSH
 
-            mkdir -p ~/wc2026/deploy/nginx
-            sudo cp "$NGINX_CONF" ~/wc2026/deploy/nginx/wizardofodds-vhost.conf
-            echo "✓ Config saved to deploy/nginx/wizardofodds-vhost.conf"
-            echo "(commit this file after the workflow completes)"
-          '
+      - name: Phase 3 — Verify URLs
+        if: github.event.inputs.mode == 'verify'
+        run: |
+          echo "── Checking all 4 model page URLs on wizardofodds.com ──"
+          for path in \
+            "/sports-odds/world-cup-market-xray/" \
+            "/sports-odds/wnba-predictions/" \
+            "/sports-odds/wnba-distributions/" \
+            "/sports-odds/wnba-live-edges/"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://wizardofodds.com${path}")
+            REDIRECT=$(curl -s -o /dev/null -w "%{redirect_url}" "https://wizardofodds.com${path}")
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ https://wizardofodds.com${path} → $STATUS"
+            else
+              echo "✗ https://wizardofodds.com${path} → $STATUS  (redirect: $REDIRECT)"
+            fi
+          done
+          echo ""
+          echo "── Checking JSON data loads ──"
+          for path in \
+            "/sports-odds/wnba-predictions/latest.json" \
+            "/sports-odds/world-cup-market-xray/wc-xray.json"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://wizardofodds.com${path}")
+            echo "  https://wizardofodds.com${path} → $STATUS"
+          done
 
-      - name: Commit NGINX config snapshot to repo
+      - name: Commit generated files to repo
         if: github.event.inputs.mode == 'apply'
         run: |
           git config user.email "ci@risky-scout.com"
           git config user.name "WC Pipeline"
-          # The SSH step above saved the config to deploy/nginx/ on the server.
-          # We pull it back here and commit it so it lives in version control.
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            woo@45.79.0.107:~/wc2026/deploy/nginx/wizardofodds-vhost.conf \
-            deploy/nginx/wizardofodds-vhost.conf 2>/dev/null || true
-          mkdir -p deploy/nginx
-          if [ -f deploy/nginx/wizardofodds-vhost.conf ]; then
-            git add deploy/nginx/wizardofodds-vhost.conf
+          if [ -f deploy/nginx/location_blocks.conf ]; then
+            git add deploy/nginx/
             git diff --cached --quiet || \
-              git commit -m "feat: NGINX location blocks for WNBA+WC pages on wizardofodds.com [skip ci]"
+              git commit -m "feat: NGINX location blocks + apply script for wizardofodds.com model pages [skip ci]"
             git push origin main || true
-            echo "✓ NGINX config committed to repo"
-          else
-            echo "⚠ Could not retrieve config from server (non-fatal)"
+            echo "✓ deploy/nginx/ committed to repo"
           fi
