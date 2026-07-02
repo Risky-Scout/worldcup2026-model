@@ -35,98 +35,143 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          # wizardofodds.com is on 13.52.111.2 (AWS); sportsodds is on 45.79.0.107 (Linode)
+          ssh-keyscan -H 13.52.111.2 >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh-keyscan -H 45.79.0.107 >> ~/.ssh/known_hosts 2>/dev/null || true
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # Also try WOO_SSH_KEY if set (separate key for wizardofodds.com server)
+          if [ -n "${{ secrets.WOO_SSH_KEY }}" ]; then
+            printf '%s\n' "${{ secrets.WOO_SSH_KEY }}" > ~/.ssh/woo_key
+            chmod 600 ~/.ssh/woo_key
+          else
+            cp ~/.ssh/deploy_key ~/.ssh/woo_key
+          fi
 
-      - name: Recon - inspect server (read-only)
+      - name: Recon - inspect BOTH servers
         if: inputs.mode == 'recon'
         run: |
+          echo '════════════════════════════════════════'
+          echo 'RECON A: wizardofodds.com (13.52.111.2)'
+          echo '════════════════════════════════════════'
+          # Try common usernames for the AWS server
+          WOO_HOST=13.52.111.2
+          SSH_WORKED=false
+          for USER in woo ubuntu admin ec2-user root; do
+            if ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+               -o BatchMode=yes "${USER}@${WOO_HOST}" "echo connected_as_${USER}" 2>/dev/null; then
+              SSH_WORKED=true
+              echo "SSH works as: ${USER}@${WOO_HOST}"
+              ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no "${USER}@${WOO_HOST}" "
+                echo '── NGINX config ──'
+                ls /etc/nginx/sites-enabled/ 2>/dev/null || ls /etc/nginx/conf.d/ 2>/dev/null
+                echo '── wizardofodds.com vhost ──'
+                grep -r 'wizardofodds\|server_name\|root\|listen 443' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | head -20
+                echo '── web root ──'
+                ls /var/www/ 2>/dev/null
+                echo '── sudo permissions ──'
+                sudo -n -l 2>&1 | head -10 || echo no_passwordless_sudo
+                echo '── existing model blocks ──'
+                grep -r 'wnba-predictions\|market-xray' /etc/nginx/ 2>/dev/null || echo none
+              " 2>/dev/null
+              break
+            fi
+          done
+          if [ "$SSH_WORKED" = "false" ]; then
+            echo "SSH FAILED for all usernames on 13.52.111.2"
+            echo "The SSH_PRIVATE_KEY secret does not grant access to the wizardofodds.com server"
+            echo "Miro needs to either:"
+            echo "  a) Add the deploy key to authorized_keys on 13.52.111.2, OR"
+            echo "  b) Apply the NGINX changes manually on 13.52.111.2"
+          fi
+
+          echo ''
+          echo '════════════════════════════════════════'
+          echo 'RECON B: sportsodds (45.79.0.107) — FTP files live here'
+          echo '════════════════════════════════════════'
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 "
-            set -e
-            echo '════════════════════════════════════════'
-            echo 'PHASE 1: SERVER RECONNAISSANCE'
-            echo '════════════════════════════════════════'
-            echo ''
-            echo '── 1. NGINX sites-enabled ──'
-            ls /etc/nginx/sites-enabled/ 2>/dev/null
-            echo ''
-            echo '── 2. default vhost (wizardofodds.com) ──'
-            cat /etc/nginx/sites-enabled/default 2>/dev/null || echo 'WARNING: no default vhost'
-            echo ''
-            echo '── 3. sportsodds vhost (root + server_name) ──'
-            grep -E 'root|server_name|ssl_cert' /etc/nginx/sites-available/sportsodds 2>/dev/null | head -6
-            echo ''
-            echo '── 4. FTP file locations ──'
-            echo 'market-xray:' && find /var/www/sportsodds -name 'market-xray' -type d 2>/dev/null
-            echo 'WNBA Edge:' && find /var/www/sportsodds -path '*/WNBA/Pre-Game/Edge' -type d 2>/dev/null
-            echo ''
-            echo '── 5. WordPress check ──'
-            find /var/www -name 'wp-config.php' 2>/dev/null && echo WORDPRESS_DETECTED || echo no_wordpress
-            echo ''
-            echo '── 6. woo sudo permissions ──'
-            sudo -n -l 2>&1 | head -20 || echo no_passwordless_sudo
-            echo ''
-            echo '── 7. Existing model location blocks ──'
-            grep -r 'wnba-predictions' /etc/nginx/ 2>/dev/null || echo none_yet
-            echo ''
-            echo 'RECON COMPLETE'
+            echo 'FTP root contents:'
+            ls /var/www/sportsodds/tools/odds-scanner/predictions/ 2>/dev/null
+            echo 'WNBA subdirs:'
+            ls /var/www/sportsodds/tools/odds-scanner/predictions/WNBA/ 2>/dev/null
+            echo 'market-xray files:'
+            ls /var/www/sportsodds/tools/odds-scanner/predictions/world-cup/market-xray/ 2>/dev/null | head -5
           "
 
-      - name: Apply - copy scripts + attempt NGINX config update
+      - name: Apply - copy scripts + attempt NGINX on wizardofodds.com server
         if: inputs.mode == 'apply'
         run: |
-          # Copy the repo scripts to the server
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 "mkdir -p ~/wc2026/deploy/nginx"
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            deploy/nginx/location_blocks.conf \
-            deploy/nginx/apply_nginx.py \
-            woo@45.79.0.107:~/wc2026/deploy/nginx/
-          echo "Scripts copied to server"
+          WOO_HOST=13.52.111.2
+          SSH_USER=""
 
-          # Attempt auto-apply (succeeds only if woo has passwordless sudo for nginx)
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 "
-            echo '════════════════════════════════════════'
-            echo 'ATTEMPTING AUTO-APPLY'
-            echo '════════════════════════════════════════'
+          # Find which user works on the wizardofodds.com server
+          for USER in woo ubuntu admin ec2-user root; do
+            if ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+               -o BatchMode=yes "${USER}@${WOO_HOST}" "echo ok" 2>/dev/null; then
+              SSH_USER="$USER"
+              echo "SSH user for wizardofodds.com server: $SSH_USER"
+              break
+            fi
+          done
 
+          if [ -z "$SSH_USER" ]; then
+            echo ""
+            echo "════════════════════════════════════════"
+            echo "SSH ACCESS NEEDED TO 13.52.111.2"
+            echo "════════════════════════════════════════"
+            echo ""
+            echo "wizardofodds.com (13.52.111.2) is a DIFFERENT server from sportsodds (45.79.0.107)."
+            echo "The deploy SSH key does not grant access to the wizardofodds.com server."
+            echo ""
+            echo "SEND THIS TO MIRO — he needs to run these commands on 13.52.111.2 (the wizardofodds.com server):"
+            echo ""
+            echo "Option A — Proxy (recommended, no file copying needed):"
+            echo "  sudo nano /etc/nginx/sites-available/wizardofodds.com"
+            echo "  # Add inside the HTTPS server { } block, before 'location / {':"
+            echo ""
+            cat deploy/nginx/location_blocks_proxy.conf
+            echo ""
+            echo "  sudo nginx -t && sudo systemctl reload nginx"
+            echo ""
+            echo "Option B — Grant SSH access for automated deploys:"
+            echo "  On 13.52.111.2, run: echo '$(cat ~/.ssh/deploy_key.pub 2>/dev/null || ssh-keygen -y -f ~/.ssh/deploy_key)' >> ~/.ssh/authorized_keys"
+            echo "  Then re-run this workflow with mode=apply"
+            exit 0
+          fi
+
+          # We have SSH access — do recon then apply
+          NGINX_CONF=$(ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no "${SSH_USER}@${WOO_HOST}" "
+            for f in /etc/nginx/sites-enabled/wizardofodds.com /etc/nginx/sites-available/wizardofodds.com \
+                      /etc/nginx/conf.d/wizardofodds.com.conf /etc/nginx/sites-enabled/default; do
+              [ -f \"\$f\" ] && echo \"\$f\" && break
+            done
+          ")
+          echo "NGINX config: $NGINX_CONF"
+
+          # Copy scripts to wizardofodds.com server
+          ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no "${SSH_USER}@${WOO_HOST}" "mkdir -p ~/deploy/nginx"
+          scp -i ~/.ssh/woo_key -o StrictHostKeyChecking=no \
+            deploy/nginx/location_blocks_proxy.conf \
+            deploy/nginx/apply_nginx_proxy.py \
+            "${SSH_USER}@${WOO_HOST}:~/deploy/nginx/"
+
+          # Attempt auto-apply
+          ssh -i ~/.ssh/woo_key -o StrictHostKeyChecking=no "${SSH_USER}@${WOO_HOST}" "
             if sudo -n nginx -t 2>/dev/null; then
-              echo 'sudo nginx available - applying automatically'
-              sudo python3 ~/wc2026/deploy/nginx/apply_nginx.py
-              if sudo nginx -t; then
-                sudo systemctl reload nginx
-                echo 'NGINX reloaded - verifying URLs'
-                sleep 2
-                for path in /sports-odds/world-cup-market-xray/ /sports-odds/wnba-predictions/ /sports-odds/wnba-distributions/ /sports-odds/wnba-live-edges/; do
-                  STATUS=\$(curl -s -o /dev/null -w '%{http_code}' \"https://wizardofodds.com\${path}\" 2>/dev/null)
-                  echo \"  https://wizardofodds.com\${path} -> \${STATUS}\"
-                done
-                echo 'SUCCESS: All model pages now live on wizardofodds.com'
-              else
-                echo 'ERROR: nginx -t failed - reverting'
-                LATEST_BAK=\$(ls /etc/nginx/sites-available/default.bak.* 2>/dev/null | sort | tail -1)
-                [ -n \"\$LATEST_BAK\" ] && sudo cp \"\$LATEST_BAK\" /etc/nginx/sites-available/default
-                exit 1
-              fi
+              sudo python3 ~/deploy/nginx/apply_nginx_proxy.py
+              sudo nginx -t && sudo systemctl reload nginx
+              echo 'SUCCESS - NGINX reloaded'
+              sleep 2
+              for path in /sports-odds/world-cup-market-xray/ /sports-odds/wnba-predictions/ /sports-odds/wnba-distributions/ /sports-odds/wnba-live-edges/; do
+                STATUS=\$(curl -s -o /dev/null -w '%{http_code}' \"https://wizardofodds.com\${path}\")
+                echo \"  https://wizardofodds.com\${path} -> \${STATUS}\"
+              done
             else
-              echo ''
-              echo 'woo does not have sudo nginx access'
-              echo 'SCRIPTS ARE ON THE SERVER at ~/wc2026/deploy/nginx/'
-              echo ''
-              echo 'SEND THIS TO MIRO (3 commands, 2 minutes, zero downtime):'
-              echo ''
-              echo '  sudo python3 /home/woo/wc2026/deploy/nginx/apply_nginx.py'
+              echo 'No passwordless sudo on this server either'
+              echo 'MIRO: run these 3 commands on the wizardofodds.com server (13.52.111.2):'
+              echo '  sudo python3 ~/deploy/nginx/apply_nginx_proxy.py'
               echo '  sudo nginx -t'
               echo '  sudo systemctl reload nginx'
-              echo ''
-              echo 'After that, these URLs will be live:'
-              echo '  https://wizardofodds.com/sports-odds/world-cup-market-xray/'
-              echo '  https://wizardofodds.com/sports-odds/wnba-predictions/'
-              echo '  https://wizardofodds.com/sports-odds/wnba-distributions/'
-              echo '  https://wizardofodds.com/sports-odds/wnba-live-edges/'
-              echo ''
-              echo 'OPTIONAL for future automated deploys, Miro adds to /etc/sudoers.d/woo-nginx:'
-              echo '  woo ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/systemctl reload nginx'
             fi
           "
 
