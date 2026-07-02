@@ -153,21 +153,20 @@ jobs:
             done
           "
 
-      - name: Apply clean URLs on sportsodds (immediate, no WOO_ROOT_SSH_KEY needed)
+      - name: Apply clean URLs on sportsodds (static HTML redirects, no sudo needed)
         if: inputs.mode == 'apply-sportsodds'
         run: |
           set -e
-          # SCP the standalone script to sportsodds, then run it
+          # SCP the redirect-file creator to sportsodds web root and run it.
+          # woo's home dir IS the web root (/var/www/sportsodds), so no sudo needed.
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            deploy/nginx/apply_sportsodds_aliases.py \
-            woo@45.79.0.107:~/apply_sportsodds_aliases.py
+            deploy/nginx/create_sportsodds_redirects.py \
+            woo@45.79.0.107:~/create_sportsodds_redirects.py
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 \
-            "sudo python3 ~/apply_sportsodds_aliases.py && \
-             sudo nginx -t 2>&1 && \
-             sudo systemctl reload nginx && \
-             echo 'NGINX reloaded' && \
-             sleep 2 && \
+            "python3 ~/create_sportsodds_redirects.py && \
+             echo '── Checking URLs ──' && \
+             sleep 1 && \
              for path in /sports-odds/world-cup-market-xray/ /sports-odds/wnba-predictions/ /sports-odds/wnba-distributions/ /sports-odds/wnba-live-edges/; do \
                STATUS=\$(curl -s -o /dev/null -w '%{http_code}' \"https://sportsodds.wizardofodds.com\${path}\"); \
                echo \"  sportsodds.wizardofodds.com\${path} -> \${STATUS}\"; \
