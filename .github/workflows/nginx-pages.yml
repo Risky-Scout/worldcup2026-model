@@ -163,9 +163,9 @@ jobs:
             woo@45.79.0.107:~/apply_sportsodds_aliases.py
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no woo@45.79.0.107 \
-            "python3 ~/apply_sportsodds_aliases.py && \
-             nginx -t 2>&1 && \
-             systemctl reload nginx && \
+            "sudo python3 ~/apply_sportsodds_aliases.py && \
+             sudo nginx -t 2>&1 && \
+             sudo systemctl reload nginx && \
              echo 'NGINX reloaded' && \
              sleep 2 && \
              for path in /sports-odds/world-cup-market-xray/ /sports-odds/wnba-predictions/ /sports-odds/wnba-distributions/ /sports-odds/wnba-live-edges/; do \

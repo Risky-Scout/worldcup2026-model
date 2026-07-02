@@ -57,7 +57,7 @@ def main() -> int:
         print("ALREADY DONE — clean URL blocks already present")
         return 0
 
-    bak = CONF + ".bak." + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    bak = "/tmp/sportsodds.bak." + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     shutil.copy2(CONF, bak)
     print(f"Backup: {bak}")
 
