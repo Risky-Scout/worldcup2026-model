@@ -218,7 +218,7 @@ def confidence_grade(edge_pp: float, match_uncertainty: str = "MEDIUM") -> str:
         return "A"
     elif edge_pp >= 3.0:
         return "B"
-    elif edge_pp >= 1.5:
+    elif edge_pp >= 1.0:  # lowered from 1.5 — 1.0pp with confirmed real odds is a genuine C
         return "C"
     else:
         return "D"
@@ -807,7 +807,20 @@ def process_pregame_match(
     clv_summary = build_clv_match_summary(clv_signals)
 
     actionable = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE")]
+    # edges = actionable markets excluding WAIT (positive-edge signals worth displaying)
+    edges = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE", "WAIT")]
+    # Warn when all odds are estimated — reduces confidence in edge magnitudes
+    all_estimated = bool(markets) and all(m.get("market_odds_estimated") for m in markets)
     summary_note = _summary_note(actionable, home, away, "pregame")
+
+    # #region agent log
+    import json as _json_xray, time as _time_xray
+    try:
+        with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
+            _lf.write(_json_xray.dumps({"sessionId": "3f8dcc", "timestamp": int(_time_xray.time()*1000), "location": "generate_xray.py:809", "message": "pregame match output", "hypothesisId": "B", "data": {"match": f"{home} vs {away}", "confidence": confidence, "best_edge_pct": best_edge_pct, "n_edges": len(edges), "n_actionable": len(actionable), "all_estimated": all_estimated}, "runId": "pre-fix"}) + "\n")
+    except Exception:
+        pass
+    # #endregion
 
     return {
         "match_id": match_id,
@@ -825,7 +838,9 @@ def process_pregame_match(
         "best_edge_market": best_edge_market,
         "best_edge_pct": best_edge_pct,
         "confidence": confidence,
+        "all_odds_estimated": all_estimated,
         "summary_note": summary_note,
+        "edges": edges,
         "markets": markets,
         "line_movement": line_movement,
         "what_changed": what_changed,
@@ -919,6 +934,7 @@ def process_live_match(
     minute = lm.get("regulation_minute") or lm.get("clock_display")
 
     actionable = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE")]
+    edges = [m for m in markets if m["action"] not in ("PASS", "DO NOT CHASE", "WAIT")]
     summary_note = _summary_note(actionable, home, away, "live")
 
     return {
@@ -939,6 +955,7 @@ def process_live_match(
         "confidence": confidence,
         "summary_note": summary_note,
         "live_market_odds_stale": mim_is_stale,
+        "edges": edges,
         "markets": markets,
         "line_movement": line_movement,
         "what_changed": what_changed,

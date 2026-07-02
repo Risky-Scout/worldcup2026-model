@@ -248,9 +248,22 @@ class CLVSummary:
         s = cls()
         s.n_records = len(records)
 
-        clv_recs = [r for r in records if r.clv_raw is not None]
+        # Exclude suppressed markets (over_5_5, over_6_5 etc.) from summary stats —
+        # these have wildly inflated model probabilities vs market and corrupt averages.
+        clv_recs = [r for r in records if r.clv_raw is not None and not r.suppress_from_edge]
         s.n_with_closing = len(clv_recs)
         s.n_beat_close = sum(1 for r in clv_recs if r.beat_close)
+
+        # #region agent log
+        import json as _json, time as _time
+        try:
+            _total = len([r for r in records if r.clv_raw is not None])
+            _suppressed = _total - len(clv_recs)
+            with open("/Users/josephshackelford/worldcup2026-model/.cursor/debug-3f8dcc.log", "a") as _lf:
+                _lf.write(_json.dumps({"sessionId": "3f8dcc", "timestamp": int(_time.time()*1000), "location": "clv.py:251", "message": "CLVSummary filter", "hypothesisId": "A", "data": {"total_settled": _total, "suppressed_filtered_out": _suppressed, "clv_recs_used": len(clv_recs)}, "runId": "pre-fix"}) + "\n")
+        except Exception:
+            pass
+        # #endregion
 
         if clv_recs:
             s.mean_clv_raw = round(float(np.mean([r.clv_raw for r in clv_recs])), 6)
