@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-02T16:54:58Z",
+  "generated_at": "2026-07-02T17:31:00Z",
   "data_source": "balldontlie_api_v1",
   "data_version": "v1",
   "model_version": "v1",
@@ -21,7 +21,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.829,
       "home_prior": {
         "final_attack": 2.431,
@@ -1837,7 +1837,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.829,
       "home_prior": {
         "final_attack": 2.0959,
@@ -3680,7 +3680,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.829,
       "home_prior": {
         "final_attack": 2.4062,
@@ -5455,7 +5455,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.8,
       "home_prior": {
         "final_attack": 1.1709,
@@ -7181,7 +7181,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.829,
       "home_prior": {
         "final_attack": 2.6629,
@@ -8909,7 +8909,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.829,
       "home_prior": {
         "final_attack": 2.071,
@@ -10649,7 +10649,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.812,
       "home_prior": {
         "final_attack": 2.3234,
@@ -12404,7 +12404,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.812,
       "home_prior": {
         "final_attack": 1.0092,
@@ -14202,7 +14202,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.812,
       "home_prior": {
         "final_attack": 2.6992,
@@ -16041,7 +16041,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.812,
       "home_prior": {
         "final_attack": 2.0009,
@@ -17782,7 +17782,7 @@
       "composite_model_used": "composite_rating_pmf",
       "composite_sources": "market_implied+xg_wc2026+big_chances_wc2026",
       "pure_parametric_model": "negative_binomial",
-      "market_blend_alpha": 0.45,
+      "market_blend_alpha": 0.25,
       "market_quality": 0.812,
       "home_prior": {
         "final_attack": 2.0335,
