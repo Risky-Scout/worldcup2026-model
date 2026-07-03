@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-03T17:15:37Z
+**Generated**: 2026-07-03T18:02:56Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
