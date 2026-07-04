@@ -1,11 +1,11 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-07-04T16:12:09.362450+00:00",
+  "generated_at": "2026-07-04T17:15:23.130273+00:00",
   "date": "2026-07-04",
-  "clv_rolling_avg_pct": 9.9287,
-  "clv_rolling_avg_1x2_pct": 6.9446,
+  "clv_rolling_avg_pct": 11.0463,
+  "clv_rolling_avg_1x2_pct": 8.3218,
   "clv_markets_beat_close": 8,
-  "clv_n_captured": 60,
+  "clv_n_captured": 61,
   "pregame_matches": [
     {
       "match_id": "162",
@@ -730,7 +730,7 @@
           "model_prob": 0.473516,
           "model_fair_odds": 2.1119,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -745,7 +745,7 @@
           "model_prob": 0.90279,
           "model_fair_odds": 1.1077,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -760,7 +760,7 @@
           "model_prob": 0.09721,
           "model_fair_odds": 10.287,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -775,7 +775,7 @@
           "model_prob": 0.97504,
           "model_fair_odds": 1.0256,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -790,7 +790,7 @@
           "model_prob": 0.630137,
           "model_fair_odds": 1.587,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -805,7 +805,7 @@
           "model_prob": 0.369863,
           "model_fair_odds": 2.7037,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -820,7 +820,7 @@
           "model_prob": 0.255039,
           "model_fair_odds": 3.921,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -835,7 +835,7 @@
           "model_prob": 0.744961,
           "model_fair_odds": 1.3424,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -865,7 +865,7 @@
           "model_prob": 0.18807,
           "model_fair_odds": 5.3172,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -940,7 +940,7 @@
           "model_prob": 0.386135,
           "model_fair_odds": 2.5898,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -955,7 +955,7 @@
           "model_prob": 0.781748,
           "model_fair_odds": 1.2792,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -970,7 +970,7 @@
           "model_prob": 0.218252,
           "model_fair_odds": 4.5819,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
@@ -985,7 +985,7 @@
           "model_prob": 0.425795,
           "model_fair_odds": 2.3486,
           "prediction_timestamp": "2026-07-04T10:47:03.511Z",
-          "closing_timestamp": null,
+          "closing_timestamp": "2026-07-04T16:57:00.100190+00:00",
           "closing_source": null
         },
         {
