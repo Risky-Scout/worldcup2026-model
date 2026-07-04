@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-04T19:44:04Z",
+  "generated_at": "2026-07-04T20:19:51Z",
   "data_source": "balldontlie_api_v1",
   "data_version": "v1",
   "model_version": "v1",
@@ -3660,7 +3660,13 @@
             }
           ],
           "disclaimer": "Edge estimates are model outputs only. Not guaranteed profit signals."
-        }
+        },
+        "player_props": {
+          "anytime_goal": {},
+          "shots_on_target": {},
+          "shots": {}
+        },
+        "player_props_top_value": []
       }
     },
     {
