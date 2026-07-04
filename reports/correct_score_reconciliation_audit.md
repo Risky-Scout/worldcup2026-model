@@ -1,6 +1,6 @@
 # Correct-Score Reconciliation Audit
 
-**Generated**: 2026-07-04T03:24:43Z
+**Generated**: 2026-07-04T04:00:30Z
 
 ## Method
 
@@ -19,9 +19,9 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 
 | Metric | Value |
 |--------|-------|
-| Total 2026 matches predicted | 7 |
-| Matches with any CS data | 7 |
-| Matches with 1 CS vendor | 7 |
+| Total 2026 matches predicted | 8 |
+| Matches with any CS data | 8 |
+| Matches with 1 CS vendor | 8 |
 | Matches with 2+ CS vendors | 0 |
 
 ## Per-match correct-score audit
@@ -152,27 +152,27 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 - PMF validation: ✅ PASS
 
 ### USA vs Belgium
-- CS outcomes: 32  |  CS vendors: 1  |  Publish mode: market_reconciled
+- CS outcomes: 30  |  CS vendors: 1  |  Publish mode: market_reconciled
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |
 |-------|------------------|-----------------|-----------|
-| 1-1 | 0.1305 | 0.1301 | 0.0005 |
-| 1-2 | 0.0870 | 0.0871 | 0.0000 |
-| 2-1 | 0.0783 | 0.0825 | 0.0042 |
-| 2-2 | 0.0746 | 0.0676 | 0.0070 |
-| 0-1 | 0.0746 | 0.0724 | 0.0022 |
-| 1-0 | 0.0712 | 0.0704 | 0.0008 |
-| 0-0 | 0.0522 | 0.0707 | 0.0185 |
-| 0-2 | 0.0522 | 0.0601 | 0.0079 |
-| 2-0 | 0.0435 | 0.0549 | 0.0114 |
-| 1-3 | 0.0392 | 0.0422 | 0.0031 |
-| 3-1 | 0.0341 | 0.0390 | 0.0049 |
-| 3-2 | 0.0341 | 0.0304 | 0.0036 |
-| 2-3 | 0.0341 | 0.0311 | 0.0030 |
-| 0-3 | 0.0253 | 0.0303 | 0.0050 |
-| 3-0 | 0.0230 | 0.0273 | 0.0043 |
-| **Sum (top 15)** | **0.8538** | **0.8961** | — |
-- High-score mass (total ≥9 goals): 2.58e-05
+| 1-1 | 0.1223 | 0.1279 | 0.0056 |
+| 1-2 | 0.0884 | 0.0874 | 0.0009 |
+| 2-1 | 0.0837 | 0.0835 | 0.0002 |
+| 0-1 | 0.0757 | 0.0730 | 0.0027 |
+| 1-0 | 0.0723 | 0.0703 | 0.0020 |
+| 2-2 | 0.0723 | 0.0677 | 0.0046 |
+| 0-0 | 0.0530 | 0.0721 | 0.0191 |
+| 0-2 | 0.0497 | 0.0596 | 0.0099 |
+| 2-0 | 0.0468 | 0.0554 | 0.0086 |
+| 1-3 | 0.0379 | 0.0419 | 0.0040 |
+| 3-1 | 0.0346 | 0.0385 | 0.0040 |
+| 3-2 | 0.0346 | 0.0301 | 0.0045 |
+| 2-3 | 0.0346 | 0.0312 | 0.0034 |
+| 3-0 | 0.0256 | 0.0274 | 0.0017 |
+| 0-3 | 0.0256 | 0.0303 | 0.0047 |
+| **Sum (top 15)** | **0.8571** | **0.8964** | — |
+- High-score mass (total ≥9 goals): 2.57e-05
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
 
@@ -198,5 +198,30 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 | 5-1 | 0.0133 | 0.0119 | 0.0014 |
 | **Sum (top 15)** | **0.9358** | **0.9502** | — |
 - High-score mass (total ≥9 goals): 1.67e-05
+- Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
+- PMF validation: ✅ PASS
+
+### Switzerland vs Colombia
+- CS outcomes: 25  |  CS vendors: 1  |  Publish mode: market_reconciled
+
+| Score | Market P (no-vig) | Published PMF P | Abs Error |
+|-------|------------------|-----------------|-----------|
+| 1-1 | 0.1232 | 0.1291 | 0.0059 |
+| 0-1 | 0.1144 | 0.1257 | 0.0113 |
+| 1-0 | 0.0890 | 0.1022 | 0.0132 |
+| 0-0 | 0.0890 | 0.1071 | 0.0181 |
+| 1-2 | 0.0843 | 0.0836 | 0.0007 |
+| 0-2 | 0.0763 | 0.0824 | 0.0061 |
+| 2-1 | 0.0667 | 0.0675 | 0.0007 |
+| 2-0 | 0.0501 | 0.0550 | 0.0049 |
+| 2-2 | 0.0501 | 0.0456 | 0.0045 |
+| 0-3 | 0.0381 | 0.0361 | 0.0020 |
+| 1-3 | 0.0381 | 0.0354 | 0.0027 |
+| 3-1 | 0.0286 | 0.0236 | 0.0050 |
+| 2-3 | 0.0236 | 0.0180 | 0.0056 |
+| 3-0 | 0.0222 | 0.0192 | 0.0030 |
+| 3-2 | 0.0195 | 0.0144 | 0.0051 |
+| **Sum (top 15)** | **0.9132** | **0.9448** | — |
+- High-score mass (total ≥9 goals): 1.15e-05
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
