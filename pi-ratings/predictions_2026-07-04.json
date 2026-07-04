@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-04T10:05:09.764005+00:00",
+  "generated_at": "2026-07-04T11:02:17.572480+00:00",
   "date": "2026-07-04",
   "n_matches": 8,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Morocco",
       "stage": "Round of 16",
       "match_datetime": "2026-07-04 17:00",
-      "generated_at": "2026-07-04T10:05:09.711676+00:00",
+      "generated_at": "2026-07-04T11:02:17.520411+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.3398,
@@ -485,7 +485,7 @@
       "away_team": "France",
       "stage": "Round of 16",
       "match_datetime": "2026-07-04 21:00",
-      "generated_at": "2026-07-04T10:05:09.719519+00:00",
+      "generated_at": "2026-07-04T11:02:17.527906+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": -0.1683,
@@ -960,7 +960,7 @@
       "away_team": "Norway",
       "stage": "Round of 16",
       "match_datetime": "2026-07-05 20:00",
-      "generated_at": "2026-07-04T10:05:09.727141+00:00",
+      "generated_at": "2026-07-04T11:02:17.535216+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2393,
@@ -1435,7 +1435,7 @@
       "away_team": "England",
       "stage": "Round of 16",
       "match_datetime": "2026-07-06 00:00",
-      "generated_at": "2026-07-04T10:05:09.734400+00:00",
+      "generated_at": "2026-07-04T11:02:17.542515+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.7753,
@@ -1910,7 +1910,7 @@
       "away_team": "Spain",
       "stage": "Round of 16",
       "match_datetime": "2026-07-06 19:00",
-      "generated_at": "2026-07-04T10:05:09.741685+00:00",
+      "generated_at": "2026-07-04T11:02:17.549836+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0061,
@@ -2385,7 +2385,7 @@
       "away_team": "Belgium",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 00:00",
-      "generated_at": "2026-07-04T10:05:09.748913+00:00",
+      "generated_at": "2026-07-04T11:02:17.557297+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.5755,
@@ -2860,7 +2860,7 @@
       "away_team": "Egypt",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 16:00",
-      "generated_at": "2026-07-04T10:05:09.756218+00:00",
+      "generated_at": "2026-07-04T11:02:17.564644+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.1986,
@@ -3335,7 +3335,7 @@
       "away_team": "Colombia",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 20:00",
-      "generated_at": "2026-07-04T10:05:09.763470+00:00",
+      "generated_at": "2026-07-04T11:02:17.571991+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.4093,
