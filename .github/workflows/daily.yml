@@ -103,6 +103,7 @@ jobs:
         continue-on-error: true
 
       - name: Commit updated predictions and processed data
+        continue-on-error: true
         run: |
           git config user.name "wc2026-bot"
           git config user.email "wc2026-bot@users.noreply.github.com"
@@ -113,11 +114,16 @@ jobs:
           # Commit only if there are staged changes
           git diff --cached --quiet || \
             git commit -m "Daily update $DATE: predictions + data [skip ci]"
-          # Stash any remaining workspace changes so rebase is clean, then restore
-          git stash --include-untracked 2>/dev/null || true
-          git pull --rebase origin main 2>/dev/null || git pull --no-rebase origin main || true
-          git stash pop 2>/dev/null || true
-          git push origin main
+          # Robust push: pull-rebase retry loop handles concurrent cron conflicts
+          for _attempt in 1 2 3; do
+            git pull --rebase origin main 2>/dev/null || git pull --no-rebase origin main 2>/dev/null || true
+            if git push origin main; then
+              echo "Push succeeded on attempt ${_attempt}"
+              break
+            fi
+            echo "Push attempt ${_attempt} failed — retrying in $((5 * _attempt))s"
+            sleep $((5 * _attempt))
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

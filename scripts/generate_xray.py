@@ -998,6 +998,13 @@ def generate(date: str | None = None) -> None:
     date = date or datetime.now(tz=ET).strftime("%Y-%m-%d")
 
     print(f"X-Ray generator: {date}")
+    # #region agent log
+    import json as _json_dbg, time as _time_dbg
+    _dbg_path = Path(__file__).resolve().parents[1] / ".cursor" / "debug-3f8dcc.log"
+    _dbg_path.parent.mkdir(exist_ok=True)
+    with open(_dbg_path, "a") as _f:
+        _f.write(_json_dbg.dumps({"sessionId":"3f8dcc","location":"generate_xray.py:996","message":"X-Ray generator started","data":{"date":date,"now_utc":now_utc.isoformat()},"timestamp":int(_time_dbg.time()*1000),"hypothesisId":"H1"}) + "\n")
+    # #endregion
 
     # Load inputs
     pub_matches = load_published(date)
@@ -1127,6 +1134,12 @@ def generate(date: str | None = None) -> None:
     out_path.write_text(json.dumps(output, ensure_ascii=False, indent=2))
     print(f"  ✓ Wrote {out_path} ({out_path.stat().st_size:,} bytes)")
     print(f"    {len(pregame_results)} pregame, {len(live_results)} live matches")
+    # #region agent log
+    import json as _json_dbg2, time as _time_dbg2
+    _dbg_path2 = Path(__file__).resolve().parents[1] / ".cursor" / "debug-3f8dcc.log"
+    with open(_dbg_path2, "a") as _f2:
+        _f2.write(_json_dbg2.dumps({"sessionId":"3f8dcc","location":"generate_xray.py:1128","message":"X-Ray written","data":{"date":date,"pregame_count":len(pregame_results),"live_count":len(live_results),"out_bytes":out_path.stat().st_size,"generated_at":output["generated_at"]},"timestamp":int(_time_dbg2.time()*1000),"hypothesisId":"H1"}) + "\n")
+    # #endregion
 
     all_objs = pregame_results + live_results
     append_snapshots(date, all_objs, now_utc)
