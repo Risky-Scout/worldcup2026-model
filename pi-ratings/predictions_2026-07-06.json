@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-06T12:00:11.876209+00:00",
+  "generated_at": "2026-07-06T12:56:14.999801+00:00",
   "date": "2026-07-06",
   "n_matches": 6,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Spain",
       "stage": "Round of 16",
       "match_datetime": "2026-07-06 19:00",
-      "generated_at": "2026-07-06T12:00:11.836269+00:00",
+      "generated_at": "2026-07-06T12:56:14.967363+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0061,
@@ -485,7 +485,7 @@
       "away_team": "Belgium",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 00:00",
-      "generated_at": "2026-07-06T12:00:11.845164+00:00",
+      "generated_at": "2026-07-06T12:56:14.973520+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.5755,
@@ -960,7 +960,7 @@
       "away_team": "Egypt",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 16:00",
-      "generated_at": "2026-07-06T12:00:11.852892+00:00",
+      "generated_at": "2026-07-06T12:56:14.979751+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.1986,
@@ -1435,7 +1435,7 @@
       "away_team": "Colombia",
       "stage": "Round of 16",
       "match_datetime": "2026-07-07 20:00",
-      "generated_at": "2026-07-06T12:00:11.860501+00:00",
+      "generated_at": "2026-07-06T12:56:14.986245+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.4093,
@@ -1910,7 +1910,7 @@
       "away_team": "Morocco",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-09 20:00",
-      "generated_at": "2026-07-06T12:00:11.868087+00:00",
+      "generated_at": "2026-07-06T12:56:14.993435+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.7165,
@@ -2385,7 +2385,7 @@
       "away_team": "England",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-11 21:00",
-      "generated_at": "2026-07-06T12:00:11.875757+00:00",
+      "generated_at": "2026-07-06T12:56:14.999548+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.2475,
