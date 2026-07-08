@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-08T10:13:18.511481+00:00",
+  "generated_at": "2026-07-08T11:13:07.507621+00:00",
   "date": "2026-07-08",
   "n_matches": 4,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Morocco",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-09 20:00",
-      "generated_at": "2026-07-08T10:13:18.478621+00:00",
+      "generated_at": "2026-07-08T11:13:07.488901+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.7165,
@@ -485,7 +485,7 @@
       "away_team": "Belgium",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-10 19:00",
-      "generated_at": "2026-07-08T10:13:18.492041+00:00",
+      "generated_at": "2026-07-08T11:13:07.495376+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2539,
@@ -960,7 +960,7 @@
       "away_team": "England",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-11 21:00",
-      "generated_at": "2026-07-08T10:13:18.503344+00:00",
+      "generated_at": "2026-07-08T11:13:07.501372+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.2475,
@@ -1435,7 +1435,7 @@
       "away_team": "Switzerland",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-12 01:00",
-      "generated_at": "2026-07-08T10:13:18.511162+00:00",
+      "generated_at": "2026-07-08T11:13:07.507391+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.1695,
