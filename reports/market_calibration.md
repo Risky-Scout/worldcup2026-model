@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-07-08T07:33:23Z
+**Generated**: 2026-07-08T10:07:46Z
 
 ## Publish mode distribution
 
@@ -35,4 +35,4 @@ Market quality score (0-1) determines α:
   correct-score vendors breakdown: 1-vendor=4, 2+vendors=0
 
 ## Vendors
-fanduel, draftkings, betmgm, betrivers, caesars, fanatics (584 total rows)
+fanduel, draftkings, betmgm, betrivers, caesars, fanatics (588 total rows)
