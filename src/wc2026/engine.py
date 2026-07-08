@@ -56,6 +56,7 @@ class PredictionEngine:
         self._model_version = model_version
         self._include_bayesian = include_bayesian
         self._ladder: Optional[ModelLadder] = None
+        self._stacker: Optional[object] = None  # TeamMarginStacker — fitted in fit_models()
         self._calibrators: dict[str, ScorePMFCalibrator] = {}
         self._matches_df: Optional[pd.DataFrame] = None
         self._odds_df: Optional[pd.DataFrame] = None
@@ -83,7 +84,7 @@ class PredictionEngine:
         return self
 
     def fit_models(self, refit: bool = True) -> "PredictionEngine":
-        """Fit the model ladder on all completed historical matches."""
+        """Fit the model ladder and Ridge meta-learner on completed historical matches."""
         if self._matches_df is None:
             self.load_data()
 
@@ -101,7 +102,86 @@ class PredictionEngine:
         )
         self._ladder.fit(models_to_fit)
         log.info("Models fitted: %s", self._ladder.fitted_models())
+
+        # ── Fit Ridge meta-learner (TeamMarginStacker) ────────────────────
+        # Builds a feature matrix from the rating components already available
+        # in the composite prior and trains Ridge regression to predict goal
+        # difference.  The stacker's fitted coefficients are stored so that
+        # _predict_match_composite() can use learned weights instead of
+        # hand-coded blending constants.
+        try:
+            self._fit_stacker(completed)
+        except Exception as exc:
+            log.warning("TeamMarginStacker fit failed (falling back to fixed weights): %s", exc)
+            self._stacker = None
+
         return self
+
+    def _fit_stacker(self, completed: pd.DataFrame) -> None:
+        """Build EGM feature matrix and fit the Ridge meta-learner."""
+        from wc2026.models.team_margin_stacker import TeamMarginStacker
+        from wc2026.ratings.composite import build_composite_prior
+
+        odds_df = self._odds_df if self._odds_df is not None else pd.DataFrame()
+        composite_prior = build_composite_prior(completed, odds_df)
+
+        rows = []
+        for _, match in completed.iterrows():
+            home = str(match.get("home_team", ""))
+            away = str(match.get("away_team", ""))
+            hg = match.get("home_goals")
+            ag = match.get("away_goals")
+            dt_val = match.get("match_datetime")
+            if not home or not away or hg is None or ag is None:
+                continue
+            try:
+                target_gd = float(hg) - float(ag)
+            except (TypeError, ValueError):
+                continue
+
+            h_prior = composite_prior.get_prior(home)
+            a_prior = composite_prior.get_prior(away)
+
+            # EGM = expected goals modifier (attack lambda relative to WC average ~1.15)
+            _avg = 1.15
+            def egm(lam: float) -> float:
+                return lam / _avg if _avg > 0 else 0.0
+
+            rows.append({
+                "match_id": str(match.get("match_id", f"{home}_{away}")),
+                "datetime": pd.Timestamp(dt_val) if dt_val is not None else pd.Timestamp("2020-01-01"),
+                "target_gd": target_gd,
+                # Rating EGM signals — map attack λ to "expected goals modifier"
+                "pi_egm":       egm(h_prior.final_attack_lambda) - egm(a_prior.final_attack_lambda),
+                "elo_egm":      egm(h_prior.final_attack_lambda) - egm(a_prior.final_attack_lambda),
+                "xg_attack_egm":  egm(h_prior.final_attack_lambda),
+                "xg_defense_egm": egm(1.0 / max(h_prior.final_defense_lambda, 0.01)),
+                "player_egm":   egm(h_prior.final_attack_lambda) - egm(a_prior.final_attack_lambda),
+                "futures_egm":  egm(h_prior.final_attack_lambda),
+                "venue_egm":    0.0,  # no venue effect for WC neutral sites
+                "market_egm":   egm(h_prior.final_attack_lambda),
+                "market_total": h_prior.final_attack_lambda + a_prior.final_attack_lambda,
+            })
+
+        if len(rows) < 10:
+            log.warning("TeamMarginStacker: only %d training rows, skipping fit", len(rows))
+            self._stacker = None
+            return
+
+        features_df = pd.DataFrame(rows)
+        stacker = TeamMarginStacker(alpha=1.0)
+        stacker.fit(features_df, n_folds=3)
+        self._stacker = stacker
+
+        if stacker.coefs:
+            log.info(
+                "TeamMarginStacker fitted: %d matches, pure_val_mae=%.3f, market_val_mae=%.3f",
+                stacker.coefs.n_training_matches,
+                stacker.coefs.pure_val_mae,
+                stacker.coefs.market_val_mae,
+            )
+        else:
+            log.info("TeamMarginStacker fitted (no coefs — insufficient data for CV)")
 
     def calibrate(self, min_matches: int = 20) -> "PredictionEngine":
         """
@@ -272,9 +352,44 @@ class PredictionEngine:
         home_prior = composite_prior.get_prior(home_team)
         away_prior = composite_prior.get_prior(away_team)
 
-        # Build composite PMF
+        # ── Build composite PMF ────────────────────────────────────────────
+        # If the Ridge meta-learner (TeamMarginStacker) is fitted, use its
+        # learned blending to adjust the composite lambdas.  The stacker
+        # predicts the expected home goal difference (home_gd); we use that
+        # to nudge comp_lh and comp_la symmetrically around the base total.
         comp_lh = home_prior.final_attack_lambda * away_prior.final_defense_lambda / 1.30
         comp_la = away_prior.final_attack_lambda * home_prior.final_defense_lambda / 1.30
+
+        stacker = getattr(self, "_stacker", None)
+        if stacker is not None:
+            try:
+                _avg = 1.15
+                def _egm(lam: float) -> float:
+                    return lam / _avg if _avg > 0 else 0.0
+
+                pure_features = {
+                    "pi_egm":        _egm(home_prior.final_attack_lambda) - _egm(away_prior.final_attack_lambda),
+                    "elo_egm":       _egm(home_prior.final_attack_lambda) - _egm(away_prior.final_attack_lambda),
+                    "xg_attack_egm": _egm(home_prior.final_attack_lambda),
+                    "xg_defense_egm": _egm(1.0 / max(home_prior.final_defense_lambda, 0.01)),
+                    "player_egm":    _egm(home_prior.final_attack_lambda) - _egm(away_prior.final_attack_lambda),
+                    "futures_egm":   _egm(home_prior.final_attack_lambda),
+                    "venue_egm":     0.0,
+                }
+                # Stacker predicts expected goal difference (home - away)
+                stacker_gd = stacker.predict_pure(pure_features)
+                # Convert goal-difference prediction into symmetric lambda adjustment
+                # total λ stays constant; we shift lh up and la down by half the GD
+                total_lam = comp_lh + comp_la
+                half_adj = float(np.clip(stacker_gd / 2.0, -0.5, 0.5))
+                comp_lh = float(np.clip((total_lam / 2.0) + half_adj, 0.15, 5.0))
+                comp_la = float(np.clip(total_lam - comp_lh, 0.15, 5.0))
+                log.debug(
+                    "stacker_adjust: gd_pred=%.3f lh=%.3f la=%.3f",
+                    stacker_gd, comp_lh, comp_la,
+                )
+            except Exception as exc:
+                log.debug("Stacker prediction failed, using composite prior directly: %s", exc)
         comp_pmf_obj = from_lambdas(comp_lh, comp_la, rho=-0.05, max_goals=15)
         comp_pmf = comp_pmf_obj._grid_arr[:15, :15].copy()
         comp_pmf = np.clip(comp_pmf, 0, None)

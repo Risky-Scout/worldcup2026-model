@@ -131,7 +131,12 @@ class LivePMFResult:
     pregame_home_win_prob: float = 0.0
     pregame_draw_prob: float = 0.0
     pregame_away_win_prob: float = 0.0
-    prior_anchor_weight: float = 0.0   # how much the anchor pulled this snapshot
+    prior_anchor_weight: float = 0.0   # how much the quality anchor pulled this snapshot
+    # Live market anchor — populated only when live_home_win_odds is set on MatchState
+    live_market_anchor_weight: float = 0.0
+    live_market_home_win_prob: Optional[float] = None   # no-vig market implied probability
+    live_market_draw_prob: Optional[float] = None
+    live_market_away_win_prob: Optional[float] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -161,6 +166,10 @@ class LivePMFResult:
             "pregame_draw_prob": round(self.pregame_draw_prob, 4),
             "pregame_away_win_prob": round(self.pregame_away_win_prob, 4),
             "prior_anchor_weight": round(self.prior_anchor_weight, 4),
+            "live_market_anchor_weight": round(self.live_market_anchor_weight, 4),
+            "live_market_home_win_prob": round(self.live_market_home_win_prob, 4) if self.live_market_home_win_prob is not None else None,
+            "live_market_draw_prob": round(self.live_market_draw_prob, 4) if self.live_market_draw_prob is not None else None,
+            "live_market_away_win_prob": round(self.live_market_away_win_prob, 4) if self.live_market_away_win_prob is not None else None,
         }
         # Add score PMF grid (capped at 8×8 for output compactness)
         n = min(self.final_score_pmf.shape[0], 8)
@@ -390,6 +399,77 @@ class LivePMFPredictor:
                 hw,
             )
 
+        # ── 6c. Live market anchor ────────────────────────────────────────
+        # When the sportsbook has live odds, use their implied probability as a
+        # second anchor — separate from the pre-game quality anchor above.
+        #
+        # Rationale: live markets aggregate information (injuries, fatigue,
+        # possession rhythm, crowd signal) that our hazard model cannot see.
+        # We do NOT fully trust the market (it has vig and can over-react), but
+        # we do want our output to never diverge more than ~15–20 pp from it,
+        # especially after minute 30 when significant information has accumulated.
+        #
+        # Market anchor weight formula:
+        #   market_anchor = market_base × time_ramp
+        # where
+        #   market_base  = 0.15  (max 15% market influence, preserving model edge)
+        #   time_ramp    = elapsed² (quadratic: near-zero at kickoff, full by 90')
+        #
+        # This means:
+        #   - minute 0:  market_anchor ≈ 0.0  (pure model)
+        #   - minute 30: market_anchor ≈ 0.06 (6% market)
+        #   - minute 60: market_anchor ≈ 0.11 (11% market)
+        #   - minute 90: market_anchor = 0.15 (15% market)
+        #
+        # Crucially the prior anchor (6c) fires FIRST, then the market anchor
+        # applies to the already-prior-anchored probabilities.  This means:
+        #   - The pre-game prior defends against early-goal overreaction
+        #   - The live market provides a late-game sanity check
+        #   - We keep 85–100% model probability throughout
+
+        market_anchor_weight: float = 0.0
+        m_hw: Optional[float] = None
+        m_dr: Optional[float] = None
+        m_aw: Optional[float] = None
+
+        lo_h = state.live_home_win_odds if hasattr(state, "live_home_win_odds") else None
+        lo_d = state.live_draw_odds if hasattr(state, "live_draw_odds") else None
+        lo_a = state.live_away_win_odds if hasattr(state, "live_away_win_odds") else None
+
+        if lo_h is not None and lo_d is not None and lo_a is not None:
+            try:
+                # Convert decimal odds to implied probability, then remove vig
+                raw_h = 1.0 / float(lo_h) if float(lo_h) > 1.0 else 0.0
+                raw_d = 1.0 / float(lo_d) if float(lo_d) > 1.0 else 0.0
+                raw_a = 1.0 / float(lo_a) if float(lo_a) > 1.0 else 0.0
+                total_implied = raw_h + raw_d + raw_a
+                if total_implied > 0.9:  # sanity: vig should be 2–10%
+                    # No-vig normalization (Pinnacle method)
+                    m_hw = raw_h / total_implied
+                    m_dr = raw_d / total_implied
+                    m_aw = raw_a / total_implied
+                    # Quadratic time ramp: 0.15 × elapsed²
+                    market_anchor_weight = float(np.clip(0.15 * elapsed ** 2, 0.0, 0.15))
+                    hw = (1.0 - market_anchor_weight) * hw + market_anchor_weight * m_hw
+                    dr = (1.0 - market_anchor_weight) * dr + market_anchor_weight * m_dr
+                    aw = (1.0 - market_anchor_weight) * aw + market_anchor_weight * m_aw
+                    log.debug(
+                        "market_anchor: match=%s min=%d score=%d-%d "
+                        "mkt_anchor=%.3f mkt_hw=%.3f model_hw=%.3f final_hw=%.3f",
+                        state.match_id, int(minute), h0, a0,
+                        market_anchor_weight, m_hw, hw,
+                        (1.0 - market_anchor_weight) * hw + market_anchor_weight * m_hw,
+                    )
+            except (ValueError, ZeroDivisionError, TypeError):
+                log.warning("live_market_anchor: invalid odds values, skipping")
+
+        # Renormalize hw+dr+aw to 1.0 after both anchor passes
+        _outcome_sum = hw + dr + aw
+        if _outcome_sum > _EPS:
+            hw /= _outcome_sum
+            dr /= _outcome_sum
+            aw /= _outcome_sum
+
         # ── 7. Next-goal probabilities ────────────────────────────────────
         # P(next goal is home) ≈ λ_h_rem / (λ_h_rem + λ_a_rem)
         total_rate = lh_rem + la_rem
@@ -523,6 +603,10 @@ class LivePMFPredictor:
             pregame_draw_prob=round(p_pre_dr, 4),
             pregame_away_win_prob=round(p_pre_aw, 4),
             prior_anchor_weight=round(anchor, 4),
+            live_market_anchor_weight=round(market_anchor_weight, 4),
+            live_market_home_win_prob=round(m_hw, 4) if m_hw is not None else None,
+            live_market_draw_prob=round(m_dr, 4) if m_dr is not None else None,
+            live_market_away_win_prob=round(m_aw, 4) if m_aw is not None else None,
         )
 
     def predict_from_bdl(

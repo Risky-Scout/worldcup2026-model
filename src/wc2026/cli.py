@@ -293,7 +293,7 @@ def predict_all_scheduled(ctx, season, data_version):
 @click.option("--data-version", default=DATA_VERSION, show_default=True)
 @click.pass_context
 def publish_today(ctx, season, data_version):
-    """Predict and publish today's matches."""
+    """Predict and publish today's matches, then run CLV pipeline."""
     _setup_logging(ctx.obj.get("verbose", False))
     from wc2026.engine import PredictionEngine
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -301,6 +301,72 @@ def publish_today(ctx, season, data_version):
     engine.load_data().fit_models()
     out_path = engine.publish_date(today, season)
     click.echo(f"Published today ({today}) → {out_path}")
+
+    # ── Seed CLV store from today's published predictions ─────────────────
+    # Converts the published JSON into bet_records the CLV pipeline understands,
+    # then compares them against any available closing-line snapshots.
+    # This runs every publish so CLV accumulates a real dataset over the tournament.
+    try:
+        from wc2026.evaluation.clv_pipeline import run_clv_pipeline
+        from wc2026.data.odds_snapshot_store import OddsSnapshotStore
+        from wc2026.config import PUBLISHED_DIR, DATA_DIR
+        import json as _json
+
+        pub_path = PUBLISHED_DIR / f"{today}.json"
+        if pub_path.exists():
+            doc = _json.loads(pub_path.read_text())
+            pred_ts = datetime.now(timezone.utc)
+
+            # Build bet_records from published match predictions
+            bet_records = []
+            match_metadata: dict = {}
+            for m in doc.get("matches", []):
+                mid = m.get("match_id")
+                if mid is None:
+                    continue
+                mid = int(mid)
+                pred = m.get("prediction", {})
+                dm = pred.get("derived_markets", {})
+                home_win_prob = dm.get("home_win") or pred.get("home_win_prob") or 0.0
+                draw_prob = dm.get("draw") or pred.get("draw_prob") or 0.0
+                away_win_prob = dm.get("away_win") or pred.get("away_win_prob") or 0.0
+
+                match_metadata[mid] = {
+                    "home_team": m.get("home_team", ""),
+                    "away_team": m.get("away_team", ""),
+                    "stage": m.get("stage", ""),
+                }
+                # Create one record per 1X2 outcome side
+                for side, prob in [("home", home_win_prob), ("draw", draw_prob), ("away", away_win_prob)]:
+                    if prob and prob > 0:
+                        fair_decimal = 1.0 / max(float(prob), 0.01)
+                        bet_records.append({
+                            "match_id": mid,
+                            "market_type": "1x2",
+                            "market_key": f"1x2_{side}",
+                            "bet_side": side,
+                            "bet_decimal_odds": round(fair_decimal, 3),
+                            "current_fair_probability": float(prob),
+                            "prediction_timestamp": pred_ts.isoformat(),
+                            "vendor": "model",
+                            "stage": m.get("stage", ""),
+                        })
+
+            if bet_records:
+                snapshot_store = OddsSnapshotStore(DATA_DIR / "odds_snapshots")
+                closing_df = snapshot_store.load_snapshots()
+                result = run_clv_pipeline(
+                    bet_records=bet_records,
+                    closing_snapshots=closing_df,
+                    prediction_timestamp=pred_ts,
+                    match_metadata=match_metadata,
+                )
+                n_matched = result.get("n_records_written", 0) if isinstance(result, dict) else 0
+                click.echo(f"CLV pipeline: {len(bet_records)} predictions staged, {n_matched} matched to closing lines")
+            else:
+                click.echo("CLV pipeline: no predictions to stage today")
+    except Exception as exc:
+        click.echo(f"CLV pipeline warning: {exc}", err=True)
 
 
 # ---------------------------------------------------------------------------
