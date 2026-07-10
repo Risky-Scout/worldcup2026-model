@@ -429,6 +429,28 @@ def main():
             )
             sys.exit(1)
 
+    # ── Pi ratings (must run after pipeline so latest match results are in) ──
+    pi_ok = True
+    try:
+        log.info("═══ STEP 6: Pi ratings ═══")
+        pi_script = REPO_ROOT / "pi-ratings" / "run_ratings.py"
+        if pi_script.exists():
+            result = _run(
+                [PYTHON, str(pi_script)],
+                check=False, desc="pi-ratings",
+            )
+            pi_ok = result.returncode == 0
+            if pi_ok:
+                log.info("  ✓ Pi ratings updated → pi-ratings/predictions_%s.json", date)
+            else:
+                log.warning("  ⚠ Pi ratings failed (returncode=%d)", result.returncode)
+        else:
+            log.warning("  ⚠ pi-ratings/run_ratings.py not found — skipping")
+            pi_ok = False
+    except Exception as pi_exc:
+        log.warning("Pi ratings step failed: %s", pi_exc)
+        pi_ok = False
+
     # Generate matchday briefing report for today
     try:
         from matchday_report import generate_report
@@ -442,9 +464,9 @@ def main():
     elapsed = (dt.datetime.now() - start).total_seconds()
     log.info("═" * 60)
     log.info("Update complete for %s in %.1fs", date, elapsed)
-    log.info("  Fetch: %s | Build: %s | Pipeline: %s | Validate: OK",
+    log.info("  Fetch: %s | Build: %s | Pipeline: %s | Validate: OK | Pi ratings: %s",
              "✓" if fetch_ok else "⚠", "✓" if build_ok else "⚠",
-             "✓" if pipeline_ok else "✗")
+             "✓" if pipeline_ok else "✗", "✓" if pi_ok else "⚠")
     log.info("═" * 60)
 
 

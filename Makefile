@@ -75,10 +75,11 @@ publish-today: ## Write today's predictions to data/published/
 pipeline: ## Run the full prediction pipeline (fetch → build → predict → validate)
 	$(PYTHON) scripts/run_real_pipeline.py
 
-update: ## Daily update: fetch latest BDL data → rebuild → re-predict → validate
+update: ## Daily update: fetch latest BDL data → rebuild → re-predict → validate → Pi ratings
 	$(PYTHON) scripts/daily_update.py --date $(DATE)
+	python pi-ratings/run_ratings.py
 
-pi-ratings: ## Generate Pi ratings report from match data
+pi-ratings: ## Generate Pi ratings report from match data (standalone)
 	python pi-ratings/run_ratings.py
 
 shadow-run: ## Run shadow EGM runner for all scheduled 2026 matches
