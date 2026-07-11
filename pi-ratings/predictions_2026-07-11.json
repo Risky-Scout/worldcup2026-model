@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-11T09:20:17.845565+00:00",
+  "generated_at": "2026-07-11T10:25:57.080421+00:00",
   "date": "2026-07-11",
   "n_matches": 3,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "England",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-11 21:00",
-      "generated_at": "2026-07-11T09:20:17.829016+00:00",
+      "generated_at": "2026-07-11T10:25:57.061875+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 0.2475,
@@ -485,7 +485,7 @@
       "away_team": "Switzerland",
       "stage": "Quarterfinal",
       "match_datetime": "2026-07-12 01:00",
-      "generated_at": "2026-07-11T09:20:17.837184+00:00",
+      "generated_at": "2026-07-11T10:25:57.070323+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.1695,
@@ -960,7 +960,7 @@
       "away_team": "Spain",
       "stage": "Semifinal",
       "match_datetime": "2026-07-14 19:00",
-      "generated_at": "2026-07-11T09:20:17.845282+00:00",
+      "generated_at": "2026-07-11T10:25:57.079929+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.7493,
