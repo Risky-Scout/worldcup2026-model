@@ -1,6 +1,6 @@
 # Core-Grid SLSQP Methodology
 
-**Generated**: 2026-07-11T10:20:42Z
+**Generated**: 2026-07-11T11:10:46Z
 
 ## Why 8×8?
 
