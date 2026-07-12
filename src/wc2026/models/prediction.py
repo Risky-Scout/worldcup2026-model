@@ -15,7 +15,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 from penaltyblog.models import FootballProbabilityGrid
@@ -83,12 +82,12 @@ class ScorePMFPrediction:
     All `derived_markets` values are computed from it.
     """
 
-    match_id: Optional[int] = None
+    match_id: int | None = None
     home_team: str = "TBD"
     away_team: str = "TBD"
-    season: Optional[int] = None
-    stage: Optional[str] = None
-    venue: Optional[str] = None
+    season: int | None = None
+    stage: str | None = None
+    venue: str | None = None
     model_name: str = "unknown"
     model_version: str = MODEL_VERSION
     data_version: str = DATA_VERSION
@@ -113,7 +112,7 @@ class ScorePMFPrediction:
 
     # Quality metadata
     calibration_status: CalibrationStatus = CalibrationStatus.UNCALIBRATED
-    uncertainty: Optional[dict] = None
+    uncertainty: dict | None = None
     warnings: list[str] = field(default_factory=list)
 
     # Hash for reproducibility
@@ -135,14 +134,14 @@ class ScorePMFPrediction:
         model_name: str,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
-        season: Optional[int] = None,
-        stage: Optional[str] = None,
-        venue: Optional[str] = None,
+        match_id: int | None = None,
+        season: int | None = None,
+        stage: str | None = None,
+        venue: str | None = None,
         max_goals: int = PMF_MAX_GOALS,
         calibration_status: CalibrationStatus = CalibrationStatus.UNCALIBRATED,
-        uncertainty: Optional[dict] = None,
-    ) -> "ScorePMFPrediction":
+        uncertainty: dict | None = None,
+    ) -> ScorePMFPrediction:
         raw = grid.grid
         # Clip tiny floating-point negatives (can arise from Dixon-Coles tau
         # correction under neutral_venue; values are negligibly small, < 1e-9).

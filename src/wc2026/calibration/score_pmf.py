@@ -23,10 +23,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
-import pandas as pd
 from penaltyblog.metrics import multiclass_brier_score as pb_brier_score
 from penaltyblog.metrics.rps import rps_average as pb_rps_average
 from scipy.optimize import minimize_scalar
@@ -110,7 +108,7 @@ class ScorePMFCalibrator:
         self,
         predictions: list[ScorePMFPrediction],
         actuals: list[tuple[int, int]],  # (home_goals, away_goals)
-    ) -> "ScorePMFCalibrator":
+    ) -> ScorePMFCalibrator:
         """
         Fit temperature T by minimising exact-score log loss on OOF predictions.
 

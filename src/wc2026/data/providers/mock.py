@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from .base import DataProvider
 
-
 MOCK_MATCHES = [
     {
         "id": 1001,

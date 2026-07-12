@@ -4,10 +4,10 @@ All ratings are shrunk toward position and team priors.
 Point-in-time safe: only use stats observed before prediction_timestamp.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
-import numpy as np
+from datetime import datetime, timezone
+
 import pandas as pd
 
 
@@ -16,7 +16,7 @@ class PlayerEfficiencyRating:
     player_id: int
     player_name: str
     team_id: int
-    primary_position: Optional[str]
+    primary_position: str | None
 
     minutes_basis: float
     overall_value_per90: float
@@ -41,7 +41,7 @@ class PlayerEfficiencyRating:
     uncertainty: float
     shrinkage_weight: float
     data_sources: list[str] = field(default_factory=list)
-    asof_timestamp: datetime = field(default_factory=datetime.utcnow)
+    asof_timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {
@@ -91,10 +91,10 @@ def _shrink(observed: float, minutes: float, prior: float = 0.0) -> tuple[float,
 
 def build_player_ratings(
     player_match_stats_df: pd.DataFrame,
-    match_shots_df: "pd.DataFrame | None" = None,
-    prediction_timestamp: "datetime | None" = None,
-    position_map: "dict[int, str] | None" = None,
-) -> "dict[int, PlayerEfficiencyRating]":
+    match_shots_df: pd.DataFrame | None = None,
+    prediction_timestamp: datetime | None = None,
+    position_map: dict[int, str] | None = None,
+) -> dict[int, PlayerEfficiencyRating]:
     """
     Build per-player ratings from BDL /player_match_stats and /match_shots.
 
@@ -182,11 +182,11 @@ def build_player_ratings(
         bcc = float(row.get("_bcc", 0.0))
         saves = float(row.get("_saves", 0.0))
         sib = float(row.get("_sib", 0.0))
-        hcl = float(row.get("_hcl", 0.0))
+        float(row.get("_hcl", 0.0))
         tck = float(row.get("_tck", 0.0))
         inter = float(row.get("_int", 0.0))
         clr = float(row.get("_clr", 0.0))
-        blk = float(row.get("_blk", 0.0))
+        float(row.get("_blk", 0.0))
         dw = float(row.get("_dw", 0.0))
         dl = float(row.get("_dl", 0.0))
         adw = float(row.get("_adw", 0.0))
@@ -195,8 +195,8 @@ def build_player_ratings(
         br = float(row.get("_br", 0.0))
         pa = float(row.get("_pa", 0.0))
         pt = float(row.get("_pt", 0.0))
-        lba = float(row.get("_lba", 0.0))
-        lbt = float(row.get("_lbt", 0.0))
+        float(row.get("_lba", 0.0))
+        float(row.get("_lbt", 0.0))
 
         # Attack components per90
         xg90_raw = _per90(xg, mp)

@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 
@@ -110,7 +109,7 @@ class EdgeReport:
 
     edges: list[MarketEdge] = field(default_factory=list)
     n_value_markets: int = 0
-    top_value_market: Optional[str] = None
+    top_value_market: str | None = None
     model_vs_market_summary: str = ""
     disclaimer: str = (
         "Edge estimates are model outputs only. Not guaranteed profit signals."

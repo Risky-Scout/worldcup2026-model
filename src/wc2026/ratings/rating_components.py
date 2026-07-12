@@ -3,15 +3,17 @@ Individual rating-system EGM components.
 Each component: fit on historical data → produce team EGM estimates.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
 import numpy as np
 import pandas as pd
-
 from src.wc2026.ratings.pi_margin import (
-    fit_pi_ratings, calibrate_pi_to_egm, team_pi_egm,
     PiCalibration,
+    calibrate_pi_to_egm,
+    fit_pi_ratings,
+    team_pi_egm,
 )
 
 try:
@@ -56,12 +58,12 @@ class RatingComponentFitter:
         self.min_samples = min_samples
         self.pi_k = pi_k
         self._pi_ratings: dict = {}
-        self._pi_calib: Optional[PiCalibration] = None
+        self._pi_calib: PiCalibration | None = None
         self._elo_ratings: dict = {}
         self._elo_slope: float = 0.0
         self._elo_intercept: float = 0.0
 
-    def fit(self, matches_df: pd.DataFrame) -> "RatingComponentFitter":
+    def fit(self, matches_df: pd.DataFrame) -> RatingComponentFitter:
         """
         matches_df columns required: home_team, away_team, home_goals, away_goals, datetime
         """
@@ -106,12 +108,12 @@ class RatingComponentFitter:
 
         return self
 
-    def pi_egm(self, home_team: str, away_team: str) -> Optional[float]:
+    def pi_egm(self, home_team: str, away_team: str) -> float | None:
         if not self._pi_ratings or self._pi_calib is None:
             return None
         return team_pi_egm(home_team, away_team, self._pi_ratings, self._pi_calib)
 
-    def elo_egm(self, home_team: str, away_team: str) -> Optional[float]:
+    def elo_egm(self, home_team: str, away_team: str) -> float | None:
         if not self._elo_ratings:
             return None
         h = self._elo_ratings.get(home_team)

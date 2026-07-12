@@ -42,8 +42,6 @@ Shrinkage weights applied:
 from __future__ import annotations
 
 import logging
-import math
-from typing import Optional
 
 import numpy as np
 
@@ -61,7 +59,7 @@ log = logging.getLogger(__name__)
 def _make_baseline() -> np.ndarray:
     """
     Build a 95-element array (minutes 1–95) of relative goal hazard.
-    
+
     Based on empirical WC goal distribution:
     - Sparse in minutes 1-5 (settling in)
     - Rising through first half
@@ -99,7 +97,7 @@ _BASELINE = _make_baseline()   # shape (95,), index = minute - 1
 def baseline_hazard(minute: float) -> float:
     """
     Return the temporal baseline hazard multiplier at a given minute.
-    
+
     minute: float 0.0–94.0
     returns: multiplier ≥ 0 (mean = 1.0 over 0–89)
     """
@@ -349,15 +347,15 @@ def compute_live_rates(
     away_goals: int,
     pregame_lh: float,
     pregame_la: float,
-    home_xg_rate: Optional[float] = None,
-    away_xg_rate: Optional[float] = None,
+    home_xg_rate: float | None = None,
+    away_xg_rate: float | None = None,
     home_disadvantage: int = 0,
     away_disadvantage: int = 0,
     xg_blend: float = 0.60,
     home_momentum_scale: float = 1.0,
     away_momentum_scale: float = 1.0,
-    home_defensive_depth: Optional[float] = None,
-    away_defensive_depth: Optional[float] = None,
+    home_defensive_depth: float | None = None,
+    away_defensive_depth: float | None = None,
     home_passes_ft_scale: float = 1.0,
     away_passes_ft_scale: float = 1.0,
 ) -> tuple[float, float]:
@@ -456,16 +454,16 @@ def expected_goals_remaining(
     pregame_lh: float,
     pregame_la: float,
     remaining_seconds: float,
-    home_xg_rate: Optional[float] = None,
-    away_xg_rate: Optional[float] = None,
+    home_xg_rate: float | None = None,
+    away_xg_rate: float | None = None,
     home_disadvantage: int = 0,
     away_disadvantage: int = 0,
     xg_blend: float = 0.60,
     n_steps: int = 30,
     match_id=None,
     momentum_df=None,
-    home_defensive_depth: Optional[float] = None,
-    away_defensive_depth: Optional[float] = None,
+    home_defensive_depth: float | None = None,
+    away_defensive_depth: float | None = None,
     home_passes_ft: float = 0.0,
     away_passes_ft: float = 0.0,
 ) -> tuple[float, float]:

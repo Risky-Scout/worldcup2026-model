@@ -49,7 +49,6 @@ import os
 import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -76,32 +75,32 @@ class CLVRecord:
     prediction_timestamp: str # ISO-8601
 
     # Opening line (first available odds)
-    opening_prob: Optional[float] = None
-    opening_odds_decimal: Optional[float] = None
-    opening_timestamp: Optional[str] = None
+    opening_prob: float | None = None
+    opening_odds_decimal: float | None = None
+    opening_timestamp: str | None = None
 
     # Closing line (last odds before kickoff)
-    closing_prob: Optional[float] = None
-    closing_odds_decimal: Optional[float] = None
-    closing_timestamp: Optional[str] = None
-    closing_source: Optional[str] = None     # "live_capture" | "backfill_invalid"
+    closing_prob: float | None = None
+    closing_odds_decimal: float | None = None
+    closing_timestamp: str | None = None
+    closing_source: str | None = None     # "live_capture" | "backfill_invalid"
 
     # Frozen model prob — captured at the moment the closing line is set so
     # subsequent upserts with a live-refreshing model_prob don't corrupt CLV.
-    frozen_model_prob: Optional[float] = None
-    frozen_at: Optional[str] = None
+    frozen_model_prob: float | None = None
+    frozen_at: str | None = None
 
     # CLV metrics (computed after closing line is known)
-    clv_raw: Optional[float] = None          # model_prob - closing_prob
-    clv_pct: Optional[float] = None          # clv_raw / closing_prob × 100
-    clv_bits: Optional[float] = None         # log2(model / closing)
-    beat_close: Optional[bool] = None        # model_prob > closing_prob
-    opening_drift: Optional[float] = None    # closing_prob - opening_prob
-    model_vs_opening: Optional[float] = None # model_prob - opening_prob
+    clv_raw: float | None = None          # model_prob - closing_prob
+    clv_pct: float | None = None          # clv_raw / closing_prob × 100
+    clv_bits: float | None = None         # log2(model / closing)
+    beat_close: bool | None = None        # model_prob > closing_prob
+    opening_drift: float | None = None    # closing_prob - opening_prob
+    model_vs_opening: float | None = None # model_prob - opening_prob
 
     # Outcome (set post-match)
-    outcome: Optional[bool] = None           # True if the outcome occurred
-    outcome_timestamp: Optional[str] = None
+    outcome: bool | None = None           # True if the outcome occurred
+    outcome_timestamp: str | None = None
 
     # Suppression flag — True for markets excluded from published edge signals
     # (kept in raw records for diagnostics; never surfaced as value picks)
@@ -111,17 +110,17 @@ class CLVRecord:
     # and preserved across all subsequent upserts.  Used as primary CLV anchor
     # because it represents the most independent assessment, before any market
     # feedback has influenced subsequent predictions.
-    first_model_prob: Optional[float] = None
-    first_prediction_timestamp: Optional[str] = None
+    first_model_prob: float | None = None
+    first_prediction_timestamp: str | None = None
 
     # Pure model probability (before market reconciliation) — for tracking
     # independent signal quality separately from blended predictions.
-    pure_model_prob: Optional[float] = None
-    clv_pct_pure: Optional[float] = None   # pure_model_prob vs closing line %
+    pure_model_prob: float | None = None
+    clv_pct_pure: float | None = None   # pure_model_prob vs closing line %
 
     # Old-style frozen_model_prob CLV — kept for comparison with first_model_prob CLV
-    clv_from_last: Optional[float] = None
-    clv_pct_from_last: Optional[float] = None
+    clv_from_last: float | None = None
+    clv_pct_from_last: float | None = None
 
     def set_closing(self, closing_odds_decimal: float, timestamp: str,
                     source: str = "live_capture") -> None:
@@ -154,7 +153,7 @@ class CLVRecord:
             self.frozen_at = timestamp
         self._compute_clv()
 
-    def set_outcome(self, outcome: bool, timestamp: Optional[str] = None) -> None:
+    def set_outcome(self, outcome: bool, timestamp: str | None = None) -> None:
         self.outcome = outcome
         self.outcome_timestamp = timestamp or dt.datetime.now(tz=dt.timezone.utc).isoformat()
 
@@ -199,10 +198,10 @@ class CLVRecord:
         market: str,
         model_prob: float,
         prediction_mode: str,
-        opening_odds_decimal: Optional[float] = None,
-        opening_timestamp: Optional[str] = None,
-        prediction_timestamp: Optional[str] = None,
-    ) -> "CLVRecord":
+        opening_odds_decimal: float | None = None,
+        opening_timestamp: str | None = None,
+        prediction_timestamp: str | None = None,
+    ) -> CLVRecord:
         ts = prediction_timestamp or dt.datetime.now(tz=dt.timezone.utc).isoformat()
         rec = cls(
             match_id=match_id,
@@ -244,7 +243,7 @@ class CLVSummary:
     clv_vs_log_score_correlation: float = 0.0
 
     @classmethod
-    def from_records(cls, records: list[CLVRecord]) -> "CLVSummary":
+    def from_records(cls, records: list[CLVRecord]) -> CLVSummary:
         s = cls()
         s.n_records = len(records)
 
@@ -584,7 +583,7 @@ class CLVStore:
         match_id: str,
         market: str,
         outcome: bool,
-        timestamp: Optional[str] = None,
+        timestamp: str | None = None,
     ) -> int:
         """Mark outcomes for all records matching match_id + market."""
         records = self.load_all()
@@ -607,7 +606,7 @@ def build_clv_records_from_prediction(
     home_team: str,
     away_team: str,
     prediction: dict,
-    opening_odds: Optional[dict] = None,
+    opening_odds: dict | None = None,
 ) -> list[CLVRecord]:
     """
     Build CLVRecord list from a published prediction dict.

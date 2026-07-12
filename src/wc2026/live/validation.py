@@ -27,10 +27,7 @@ Score NLL should decrease monotonically on average as match progresses.
 from __future__ import annotations
 
 import logging
-import math
-from typing import Optional
 
-import numpy as np
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -149,8 +146,8 @@ def write_live_replay_report(
         "",
         "## Overall metrics",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Matches replayed | {overall.get('n_matches', 0)} |",
         f"| Mean score NLL (all checkpoints) | {overall.get('mean_score_nll', 'N/A')} |",
         f"| Mean 1X2 RPS | {overall.get('mean_1x2_rps', 'N/A')} |",

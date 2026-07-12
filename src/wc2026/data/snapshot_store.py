@@ -4,9 +4,13 @@ Every snapshot row gets: observed_at, ingestion_run_id, raw_payload_hash, endpoi
 Never overwrites historical rows.
 """
 from __future__ import annotations
-import hashlib, json, uuid
+
+import hashlib
+import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq

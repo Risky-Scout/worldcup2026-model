@@ -10,9 +10,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import datetime, timezone
-from typing import Optional
 
-import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
@@ -23,16 +21,8 @@ from wc2026.data.schemas import (
     MatchEvent,
     MatchMomentum,
     MatchShot,
-    MatchTeamForm,
     Odds,
-    PlayerMatchStat,
     TeamMatchStat,
-    parse_events,
-    parse_matches,
-    parse_momentum,
-    parse_odds,
-    parse_shots,
-    parse_team_stats,
 )
 from wc2026.data.storage import write_table
 
@@ -110,7 +100,7 @@ class DatasetBuilder:
         try:
             from wc2026.data.odds_snapshot_store import OddsSnapshotStore
             _store = OddsSnapshotStore()
-            _store.append_snapshot(raw_odds, observed_at=datetime.utcnow())
+            _store.append_snapshot(raw_odds, observed_at=datetime.now(timezone.utc))
         except Exception as e:
             log.warning("OddsSnapshotStore append failed: %s", e)
 

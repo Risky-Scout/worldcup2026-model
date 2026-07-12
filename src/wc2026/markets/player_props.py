@@ -29,9 +29,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Optional
 
-import numpy as np
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -116,9 +114,9 @@ class PlayerPropsMarket:
     def build_props_from_prediction(
         self,
         match_prediction: dict,
-        player_stats_df: Optional[pd.DataFrame] = None,
-        lineup_df: Optional[pd.DataFrame] = None,
-        bdl_props: Optional[list[dict]] = None,
+        player_stats_df: pd.DataFrame | None = None,
+        lineup_df: pd.DataFrame | None = None,
+        bdl_props: list[dict] | None = None,
     ) -> dict[str, dict[str, dict]]:
         """
         Build model-implied props and compare to market.
@@ -260,7 +258,7 @@ class PlayerPropsMarket:
 
             # ── anytime_goal ─────────────────────────────────────────────
             # Scale player xG by actual match xG intensity vs WC average
-            WC_AVG_TEAM_XG = 1.30
+            WC_AVG_TEAM_XG = 1.45
             xg_scale = team_match_xg / WC_AVG_TEAM_XG if WC_AVG_TEAM_XG > 0 else 1.0
             scaled_xg_rate = xg_rate_90 * xg_scale
             model_prob_goal = _poisson_at_least_one(scaled_xg_rate, minutes)

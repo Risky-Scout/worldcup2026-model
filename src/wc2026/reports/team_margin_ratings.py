@@ -3,9 +3,10 @@ Team Margin Ratings report generator.
 Writes reports/team_strength/team_margin_ratings.csv and team_margin_components.csv
 """
 from __future__ import annotations
-from pathlib import Path
-import pandas as pd
 
+from pathlib import Path
+
+import pandas as pd
 from src.wc2026.ratings.team_margin import TeamMarginRating
 
 REPORT_DIR = Path("reports/team_strength")

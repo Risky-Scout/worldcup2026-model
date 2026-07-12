@@ -54,19 +54,14 @@ validate_internal_consistency()
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
 
 import numpy as np
 from penaltyblog.models import FootballProbabilityGrid, create_dixon_coles_grid
 from scipy.stats import poisson
 
-from wc2026.config import PMF_MAX_GOALS, TAIL_WARN_THRESHOLD
+from wc2026.config import PMF_MAX_GOALS
 
 log = logging.getLogger(__name__)
 _EPS = 1e-12
@@ -383,10 +378,8 @@ class JointScorePMF(ABC):
             errors.append(f"Draw={fpg.draw:.6f} != diagonal sum={diag_sum:.6f}")
 
         # (6) 1X2 = PMF sums
-        I, J = np.indices(grid.shape)
-        hw_pmf = float(grid[I > J].sum())
-        dr_pmf = float(grid[I == J].sum())
-        aw_pmf = float(grid[I < J].sum())
+        idx_i, idx_j = np.indices(grid.shape)
+        hw_pmf = float(grid[idx_i > idx_j].sum())
         if not np.isclose(fpg.home_win, hw_pmf, atol=1e-4):
             errors.append(f"home_win mismatch: fpg={fpg.home_win:.6f} pmf={hw_pmf:.6f}")
 
@@ -409,7 +402,7 @@ class JointScorePMF(ABC):
         self,
         max_goals: int = PMF_MAX_GOALS,
         top_n: int = 15,
-        odds_timestamp: Optional[str] = None,
+        odds_timestamp: str | None = None,
         lineups_known: bool = False,
         prediction_mode: str = "model",
     ) -> dict:
@@ -689,7 +682,7 @@ class MarketReconciledScorePMF(FiniteGridPMF):
         kl_divergence: float,
         constraint_violations: dict,
         converged: bool,
-        odds_timestamp: Optional[str] = None,
+        odds_timestamp: str | None = None,
     ) -> None:
         fpg = FootballProbabilityGrid(
             goal_matrix=reconciled_grid,
@@ -715,8 +708,8 @@ def market_implied_pmf(
     home_win: float,
     draw: float,
     away_win: float,
-    over_2_5: Optional[float] = None,
-    under_2_5: Optional[float] = None,
+    over_2_5: float | None = None,
+    under_2_5: float | None = None,
     model_name: str = "market_implied",
     max_goals: int = PMF_MAX_GOALS,
 ) -> FiniteGridPMF:

@@ -44,13 +44,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from scipy.stats import poisson
 
+from .hazard import expected_goals_remaining
 from .state import MatchState
-from .hazard import expected_goals_remaining, compute_live_rates
 
 
 def _pregame_win_probs(lh: float, la: float, max_goals: int = 8) -> tuple[float, float, float]:
@@ -120,7 +119,7 @@ class LivePMFResult:
     derived_markets: dict
 
     # First-half markets (None when minute > 45 — already settled)
-    first_half_markets: Optional[dict] = None
+    first_half_markets: dict | None = None
 
     # Calibration
     calibration_temperature: float = _DEFAULT_TEMP
@@ -134,9 +133,9 @@ class LivePMFResult:
     prior_anchor_weight: float = 0.0   # how much the quality anchor pulled this snapshot
     # Live market anchor — populated only when live_home_win_odds is set on MatchState
     live_market_anchor_weight: float = 0.0
-    live_market_home_win_prob: Optional[float] = None   # no-vig market implied probability
-    live_market_draw_prob: Optional[float] = None
-    live_market_away_win_prob: Optional[float] = None
+    live_market_home_win_prob: float | None = None   # no-vig market implied probability
+    live_market_draw_prob: float | None = None
+    live_market_away_win_prob: float | None = None
 
     def to_dict(self) -> dict:
         d = {
@@ -210,14 +209,14 @@ class LivePMFPredictor:
     def predict(
         self,
         state: MatchState,
-        pregame_lh: Optional[float] = None,
-        pregame_la: Optional[float] = None,
+        pregame_lh: float | None = None,
+        pregame_la: float | None = None,
         momentum_df=None,
-        home_defensive_depth: Optional[float] = None,
-        away_defensive_depth: Optional[float] = None,
+        home_defensive_depth: float | None = None,
+        away_defensive_depth: float | None = None,
         home_passes_ft: float = 0.0,
         away_passes_ft: float = 0.0,
-    ) -> "LivePMFResult":
+    ) -> LivePMFResult:
         """
         Compute the live score PMF for a given match state.
 
@@ -428,9 +427,9 @@ class LivePMFPredictor:
         #   - We keep 85–100% model probability throughout
 
         market_anchor_weight: float = 0.0
-        m_hw: Optional[float] = None
-        m_dr: Optional[float] = None
-        m_aw: Optional[float] = None
+        m_hw: float | None = None
+        m_dr: float | None = None
+        m_aw: float | None = None
 
         lo_h = state.live_home_win_odds if hasattr(state, "live_home_win_odds") else None
         lo_d = state.live_draw_odds if hasattr(state, "live_draw_odds") else None
@@ -612,14 +611,14 @@ class LivePMFPredictor:
     def predict_from_bdl(
         self,
         bdl_match: dict,
-        bdl_stats: Optional[list] = None,
+        bdl_stats: list | None = None,
         pregame_lh: float = 1.35,
         pregame_la: float = 1.00,
-        bdl_shots: Optional[list] = None,
+        bdl_shots: list | None = None,
         events_df=None,
         momentum_df=None,
-        avg_positions: Optional[list] = None,
-    ) -> Optional["LivePMFResult"]:
+        avg_positions: list | None = None,
+    ) -> LivePMFResult | None:
         """
         Build a MatchState from a BDL match dict and call predict().
 
@@ -693,7 +692,8 @@ class LivePMFPredictor:
                 fh_away = bdl_match.get("first_half_away_score")
                 # Estimate elapsed time from kickoff datetime (used for halftime guard
                 # and as a clock fallback when BDL provides no clock data at all)
-                from datetime import datetime as _dt, timezone as _tz
+                from datetime import datetime as _dt
+                from datetime import timezone as _tz
                 ko_str = bdl_match.get("datetime") or bdl_match.get("date_time_utc", "")
                 try:
                     ko_dt = _dt.fromisoformat(str(ko_str).replace("Z", "+00:00"))
@@ -758,8 +758,8 @@ class LivePMFPredictor:
                             (m_ev["time_minute"] <= clock_min)
                         )
                         rc_events = m_ev[rc_mask]
-                        home_rc = int((rc_events["is_home"] == True).sum())
-                        away_rc = int((rc_events["is_home"] == False).sum())
+                        home_rc = int((rc_events["is_home"]).sum())
+                        away_rc = int((not rc_events["is_home"]).sum())
                 except Exception as _rc_exc:
                     log.debug("Red card extraction failed: %s", _rc_exc)
 
@@ -854,8 +854,8 @@ class LivePMFPredictor:
             )
 
             # ── Compute defensive block depth from avg_positions ──────────
-            home_defensive_depth: Optional[float] = None
-            away_defensive_depth: Optional[float] = None
+            home_defensive_depth: float | None = None
+            away_defensive_depth: float | None = None
             if avg_positions:
                 h_xs = [
                     float(r["avg_x"]) for r in avg_positions

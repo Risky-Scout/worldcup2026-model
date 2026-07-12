@@ -1,5 +1,5 @@
 from src.wc2026.ratings.team_margin import TeamMarginRating
-from datetime import datetime
+from datetime import datetime, timezone
 
 def test_to_dict_has_all_fields():
     r = TeamMarginRating(
@@ -34,7 +34,7 @@ def test_egm_to_lambdas():
     )
     ctx = MatchContextAdjustment(
         match_id=100, home_team_id=1, away_team_id=2,
-        prediction_timestamp=datetime.utcnow(),
+        prediction_timestamp=datetime.now(timezone.utc),
     )
     lh, la, diag = egm_components_to_lambdas(home, away, ctx, base_goals=1.3)
     assert lh > 0 and la > 0

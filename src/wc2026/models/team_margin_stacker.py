@@ -10,21 +10,21 @@ Primary target: regulation-time goal difference.
 Model choices: Ridge, ElasticNet, HuberRegressor (start simple).
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
 
 try:
     from sklearn.linear_model import Ridge
-    from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
     _HAS_SKLEARN = True
 except ImportError:
     _HAS_SKLEARN = False
 
-from src.wc2026.ratings.team_margin import TeamMarginRating
 
 
 @dataclass
@@ -84,9 +84,9 @@ class TeamMarginStacker:
     def __init__(self, alpha: float = 1.0, min_train_matches: int = 10):
         self.alpha = alpha
         self.min_train_matches = min_train_matches
-        self._pure_pipeline: Optional[object] = None
-        self._market_pipeline: Optional[object] = None
-        self.coefs: Optional[StackerCoefficients] = None
+        self._pure_pipeline: object | None = None
+        self._market_pipeline: object | None = None
+        self.coefs: StackerCoefficients | None = None
 
     def _build_pipeline(self) -> object:
         if not _HAS_SKLEARN:
@@ -100,7 +100,7 @@ class TeamMarginStacker:
         self,
         features_df: pd.DataFrame,
         n_folds: int = 3,
-    ) -> "TeamMarginStacker":
+    ) -> TeamMarginStacker:
         """
         features_df must have columns:
           match_id, datetime, target_gd,
@@ -180,7 +180,7 @@ class TeamMarginStacker:
             pure_intercept=float(self._pure_pipeline.named_steps["model"].intercept_),
             market_coefs=m_coefs,
             market_intercept=float(self._market_pipeline.named_steps["model"].intercept_),
-            training_cutoff=datetime.utcnow(),
+            training_cutoff=datetime.now(timezone.utc),
             n_training_matches=len(df),
             pure_val_mae=avg_p_mae,
             market_val_mae=avg_m_mae,

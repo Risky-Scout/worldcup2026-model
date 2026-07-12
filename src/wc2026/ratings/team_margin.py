@@ -8,17 +8,17 @@ Positive EGM → stronger than average.
 Negative EGM → weaker than average.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
 
 
 @dataclass
 class TeamMarginRating:
     team_id: int
     team_name: str
-    abbreviation: Optional[str]
-    confederation: Optional[str]
+    abbreviation: str | None
+    confederation: str | None
 
     # Core EGM
     neutral_egm: float              # production-selected version
@@ -30,24 +30,24 @@ class TeamMarginRating:
     market_strength_egm: float      # includes de-vigged market ability
 
     # Individual EGM components (None if component not available)
-    market_component_egm: Optional[float] = None
-    pi_component_egm: Optional[float] = None
-    elo_component_egm: Optional[float] = None
-    massey_component_egm: Optional[float] = None
-    colley_component_egm: Optional[float] = None
-    fifa_component_egm: Optional[float] = None
-    qualifying_component_egm: Optional[float] = None
-    xg_process_component_egm: Optional[float] = None
-    player_component_egm: Optional[float] = None
-    goalkeeper_component_egm: Optional[float] = None
-    form_component_egm: Optional[float] = None
-    futures_component_egm: Optional[float] = None
+    market_component_egm: float | None = None
+    pi_component_egm: float | None = None
+    elo_component_egm: float | None = None
+    massey_component_egm: float | None = None
+    colley_component_egm: float | None = None
+    fifa_component_egm: float | None = None
+    qualifying_component_egm: float | None = None
+    xg_process_component_egm: float | None = None
+    player_component_egm: float | None = None
+    goalkeeper_component_egm: float | None = None
+    form_component_egm: float | None = None
+    futures_component_egm: float | None = None
 
     # Uncertainty and metadata
     uncertainty_egm: float = 0.0
     sample_size_effective: float = 0.0
     sources_used: list[str] = field(default_factory=list)
-    asof_timestamp: datetime = field(default_factory=datetime.utcnow)
+    asof_timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     model_version: str = "v0.1-shadow"
 
     def to_dict(self) -> dict:
@@ -81,7 +81,7 @@ class TeamMarginRating:
         }
 
     @classmethod
-    def stub(cls, team_id: int, team_name: str, confederation: str | None = None) -> "TeamMarginRating":
+    def stub(cls, team_id: int, team_name: str, confederation: str | None = None) -> TeamMarginRating:
         """
         Return a fallback rating for teams with insufficient data.
         Uses confederation prior if available, global fallback otherwise.

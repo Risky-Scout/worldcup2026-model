@@ -2,8 +2,11 @@
 Point-in-time safe as-of join utilities.
 """
 from __future__ import annotations
+
 from datetime import datetime
+
 import pandas as pd
+
 
 def asof_records(
     df: pd.DataFrame,
@@ -34,7 +37,6 @@ def asof_records(
         ts = ts.tz_convert("UTC")
     mask = df[observed_at_col] <= ts
     if max_staleness_seconds is not None:
-        from datetime import timedelta
         stale_cutoff = ts - pd.Timedelta(seconds=max_staleness_seconds)
         mask = mask & (df[observed_at_col] >= stale_cutoff)
     if match_id is not None and match_id_col in df.columns:

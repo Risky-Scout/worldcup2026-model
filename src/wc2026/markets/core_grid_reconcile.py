@@ -48,12 +48,10 @@ Hard constraints
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import poisson
 
 log = logging.getLogger(__name__)
 
@@ -170,7 +168,7 @@ class CoreGridSLSQPReconciler:
 
     CORE_N = 8   # 8×8 = 64 optimized variables
 
-    def __init__(self, weights: Optional[dict] = None):
+    def __init__(self, weights: dict | None = None):
         self.weights = {**_DEFAULT_WEIGHTS, **(weights or {})}
 
     def reconcile(
@@ -472,12 +470,13 @@ def compare_reconciliation_methods(
     }
     """
     from .exact_score_reconcile import (
-        build_market_implied_pmf, apply_correct_score_adjustment,
         _sanitize_pmf,
+        apply_correct_score_adjustment,
+        build_market_implied_pmf,
     )
 
     n = max(max_goals, prior_pmf.shape[0])
-    results: dict[str, Optional[CoreGridResult]] = {}
+    results: dict[str, CoreGridResult | None] = {}
 
     # ── Method 1: market_implied ──────────────────────────────────────────
     mip = prior_pmf  # fallback
@@ -497,8 +496,10 @@ def compare_reconciliation_methods(
     alpha = min(blend_alpha, 0.85)
     p = prior_pmf[:n, :n].copy()
     m = mip[:n, :n].copy()
-    p = np.clip(p, 0, None); p /= p.sum()
-    m = np.clip(m, 0, None); m /= m.sum()
+    p = np.clip(p, 0, None)
+    p /= p.sum()
+    m = np.clip(m, 0, None)
+    m /= m.sum()
     blend = alpha * m + (1.0 - alpha) * p
     blend /= blend.sum()
     if mc.has_correct_score and mc.n_cs_outcomes >= 3:
@@ -631,7 +632,7 @@ def _sanitize_core(core: np.ndarray, N: int) -> np.ndarray:
 def _pmf_to_result(pmf: np.ndarray, mc, method: str) -> CoreGridResult:
     """Wrap a plain PMF array in a CoreGridResult for comparison."""
     N = CoreGridSLSQPReconciler.CORE_N
-    n = pmf.shape[0]
+    pmf.shape[0]
     tail_mass = float(max(0.0, 1.0 - pmf[:N, :N].sum()))
     tail_pmf = _extract_tail(pmf, N)
     cr = CoreGridResult(

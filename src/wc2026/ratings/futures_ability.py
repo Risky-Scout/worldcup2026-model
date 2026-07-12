@@ -5,8 +5,9 @@ Process: de-vig futures market → infer latent strength as slow-moving prior.
 Do not directly multiply match lambdas by raw title probability.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+
 import numpy as np
 import pandas as pd
 
@@ -25,7 +26,7 @@ class FuturesAbility:
 def compute_futures_ability(
     futures_df: pd.DataFrame,
     market_type: str = "tournament_winner",
-) -> "dict[int, FuturesAbility]":
+) -> dict[int, FuturesAbility]:
     """
     futures_df: from /odds/futures, columns: subject.id, subject.name,
     vendor, american_odds, decimal_odds, market_type, updated_at

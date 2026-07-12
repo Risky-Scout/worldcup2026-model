@@ -4,7 +4,7 @@ Tests for ShadowEGMRunner.
 import json
 import tempfile
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import pytest
 
@@ -16,7 +16,7 @@ def _minimal_pred():
         match_id=1001,
         home_team="USA",
         away_team="Brazil",
-        prediction_timestamp=datetime.utcnow().isoformat(),
+        prediction_timestamp=datetime.now(timezone.utc).isoformat(),
         home_neutral_egm=0.1,
         away_neutral_egm=0.5,
         home_pure_strength_egm=0.1,
@@ -75,7 +75,7 @@ def test_no_generic_home_advantage_in_shadow():
     away = TeamMarginRating.stub(2, "Argentina")
     ctx = MatchContextAdjustment(
         match_id=999, home_team_id=1, away_team_id=2,
-        prediction_timestamp=datetime.utcnow(),
+        prediction_timestamp=datetime.now(timezone.utc),
         # All adjustments = 0
     )
     lh, la, _ = egm_components_to_lambdas(home, away, ctx, base_goals=1.3)

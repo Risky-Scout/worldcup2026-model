@@ -5,12 +5,12 @@ Key: BDL `home_team` is administrative (not true home-field advantage).
 True host effect comes from stadium.country == team country_code.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
-from math import radians, cos, sin, asin, sqrt
-from typing import Optional
-import pandas as pd
+from math import asin, cos, radians, sin, sqrt
 
+import pandas as pd
 
 HOST_COUNTRIES_2026 = {"USA", "CAN", "MEX", "US", "CA", "MX"}
 
@@ -223,9 +223,9 @@ def compute_match_context(
     match_row: dict,
     home_team_country_code: str,
     away_team_country_code: str,
-    stadium_row: Optional[dict],
-    home_standing: Optional[dict],
-    away_standing: Optional[dict],
+    stadium_row: dict | None,
+    home_standing: dict | None,
+    away_standing: dict | None,
     home_match_dates: list[str],
     away_match_dates: list[str],
     prediction_timestamp: datetime,
@@ -243,9 +243,8 @@ def compute_match_context(
     home_team_id = int((match_row.get("home_team") or {}).get("id", 0))
     away_team_id = int((match_row.get("away_team") or {}).get("id", 0))
 
-    stadium_country = ""
     if stadium_row:
-        stadium_country = str(stadium_row.get("country", ""))
+        str(stadium_row.get("country", ""))
 
     # True host check (NOT just admin home_team field)
     h_code = str(home_team_country_code).upper()

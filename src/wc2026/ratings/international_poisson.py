@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 import math
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -24,7 +23,7 @@ log = logging.getLogger(__name__)
 _HALF_LIFE_YEARS = 3.0
 _DECAY_RATE = math.log(2.0) / _HALF_LIFE_YEARS  # per-year decay constant
 
-_WC_AVG = 1.30  # goal average used as league-average baseline
+_WC_AVG = 1.45  # goal average used as league-average baseline (WC2026 observed: 1.45/team)
 
 # Extra aliases for WC 2026 team name normalization not covered by former_names.csv
 EXTRA_ALIASES: dict[str, str] = {
@@ -88,9 +87,9 @@ def _compute_decay_weight(match_date: pd.Timestamp, reference_date: pd.Timestamp
 
 
 def fit_international_poisson(
-    csv_path: Optional[Path] = None,
-    former_names_path: Optional[Path] = None,
-    reference_date: Optional[pd.Timestamp] = None,
+    csv_path: Path | None = None,
+    former_names_path: Path | None = None,
+    reference_date: pd.Timestamp | None = None,
 ) -> dict[str, dict[str, float]]:
     """
     Fit a simple bivariate Poisson on the Kaggle international results dataset.
@@ -230,9 +229,9 @@ def fit_international_poisson(
 
 
 def load_international_abilities(
-    csv_path: Optional[Path] = None,
-    former_names_path: Optional[Path] = None,
-    reference_date: Optional[pd.Timestamp] = None,
+    csv_path: Path | None = None,
+    former_names_path: Path | None = None,
+    reference_date: pd.Timestamp | None = None,
 ) -> dict[str, dict[str, float]]:
     """Convenience wrapper — same as fit_international_poisson."""
     return fit_international_poisson(

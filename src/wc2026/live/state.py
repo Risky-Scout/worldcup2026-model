@@ -18,7 +18,6 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class MatchStatus(str, Enum):
@@ -56,28 +55,28 @@ class MatchEvent:
     clock_display: str      # e.g. "45+3", "67", "90+5"
     event_type: EventType
     team: str               # "home" | "away"
-    player_id: Optional[int] = None
-    player_name: Optional[str] = None
-    detail: Optional[str] = None    # e.g. "penalty", "VAR cancel", sub-in name
+    player_id: int | None = None
+    player_name: str | None = None
+    detail: str | None = None    # e.g. "penalty", "VAR cancel", sub-in name
 
 
 @dataclass
 class TeamLiveStats:
     """Live team statistics at a given moment."""
-    shots_total: Optional[int] = None
-    shots_on_target: Optional[int] = None
-    xg: Optional[float] = None          # cumulative xG
-    xgot: Optional[float] = None        # xG on target
-    big_chances: Optional[int] = None
-    corners: Optional[int] = None
-    possession_pct: Optional[float] = None
-    fouls: Optional[int] = None
-    offsides: Optional[int] = None
+    shots_total: int | None = None
+    shots_on_target: int | None = None
+    xg: float | None = None          # cumulative xG
+    xgot: float | None = None        # xG on target
+    big_chances: int | None = None
+    corners: int | None = None
+    possession_pct: float | None = None
+    fouls: int | None = None
+    offsides: int | None = None
     yellow_cards: int = 0
     red_cards: int = 0
     players_sent_off: int = 0           # effectively 10 if 1, etc.
     # Formation/shape proxies
-    attack_momentum_score: Optional[float] = None   # from BDL momentum feed
+    attack_momentum_score: float | None = None   # from BDL momentum feed
 
 
 @dataclass
@@ -93,7 +92,7 @@ class MatchState:
                       (0-45*60 for first half, 45*60 - 90*60 for second half).
     added_time_1h   : stoppage added to first half (None if not yet announced)
     added_time_2h   : stoppage added to second half
-    
+
     Score semantics
     ---------------
     home_goals, away_goals : regulation score only.
@@ -105,16 +104,16 @@ class MatchState:
     away_team: str
     season: int
     stage: str                              # "group", "R16", "QF", "SF", "F"
-    venue: Optional[str] = None
+    venue: str | None = None
 
     # Clock
     status: MatchStatus = MatchStatus.PREMATCH
     clock_seconds: int = 0                  # seconds in current half
     clock_display: str = "0"
     match_seconds: int = 0                  # total regulation seconds
-    added_time_1h: Optional[int] = None
-    added_time_2h: Optional[int] = None
-    snapshot_time: Optional[dt.datetime] = None  # wall-clock when snapshot taken
+    added_time_1h: int | None = None
+    added_time_2h: int | None = None
+    snapshot_time: dt.datetime | None = None  # wall-clock when snapshot taken
 
     # Regulation score
     home_goals: int = 0
@@ -134,8 +133,8 @@ class MatchState:
     events: tuple[MatchEvent, ...] = field(default_factory=tuple)
 
     # Live stats
-    home_stats: Optional[TeamLiveStats] = None
-    away_stats: Optional[TeamLiveStats] = None
+    home_stats: TeamLiveStats | None = None
+    away_stats: TeamLiveStats | None = None
 
     # Lineup availability
     lineup_available: bool = False
@@ -143,17 +142,17 @@ class MatchState:
     away_effective_players: int = 11
 
     # Pre-match prior (from the pregame PMF engine)
-    pregame_home_win_prob: Optional[float] = None
-    pregame_draw_prob: Optional[float] = None
-    pregame_away_win_prob: Optional[float] = None
-    pregame_lh: Optional[float] = None    # pregame expected home goals
-    pregame_la: Optional[float] = None    # pregame expected away goals
+    pregame_home_win_prob: float | None = None
+    pregame_draw_prob: float | None = None
+    pregame_away_win_prob: float | None = None
+    pregame_lh: float | None = None    # pregame expected home goals
+    pregame_la: float | None = None    # pregame expected away goals
 
     # Live odds snapshot (for CLV / live market comparison)
-    live_home_win_odds: Optional[float] = None  # decimal odds
-    live_draw_odds: Optional[float] = None
-    live_away_win_odds: Optional[float] = None
-    live_odds_timestamp: Optional[dt.datetime] = None
+    live_home_win_odds: float | None = None  # decimal odds
+    live_draw_odds: float | None = None
+    live_away_win_odds: float | None = None
+    live_odds_timestamp: dt.datetime | None = None
 
     # Data quality flags
     missing_data_warnings: tuple[str, ...] = field(default_factory=tuple)
@@ -213,7 +212,7 @@ class MatchState:
     def total_goal_events(self) -> int:
         return sum(1 for e in self.events if e.event_type in (EventType.GOAL, EventType.OWN_GOAL))
 
-    def with_goal(self, team: str, event: Optional[MatchEvent] = None) -> "MatchState":
+    def with_goal(self, team: str, event: MatchEvent | None = None) -> MatchState:
         """Return new MatchState with one additional regulation goal."""
         new_events = self.events + ((event,) if event else ())
         if team == "home":

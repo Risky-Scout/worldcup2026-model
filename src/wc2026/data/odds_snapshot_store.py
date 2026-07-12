@@ -9,11 +9,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
-import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -131,7 +129,7 @@ class OddsSnapshotStore:
         self,
         match_id: int,
         prediction_timestamp: datetime,
-        max_staleness_hours: Optional[float] = None,
+        max_staleness_hours: float | None = None,
         exclude_backfill: bool = True,
     ) -> pd.DataFrame:
         """Return rows where observed_at <= prediction_timestamp."""
@@ -366,7 +364,7 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
-def _parse_ts(raw) -> Optional[datetime]:
+def _parse_ts(raw) -> datetime | None:
     if raw is None:
         return None
     try:
@@ -379,7 +377,7 @@ def _parse_ts(raw) -> Optional[datetime]:
         return None
 
 
-def _safe_int(v) -> Optional[int]:
+def _safe_int(v) -> int | None:
     if v is None:
         return None
     try:

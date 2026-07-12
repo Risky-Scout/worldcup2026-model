@@ -1,7 +1,7 @@
 """Canonical market derivation engine — single source of truth for all PMF-derived markets."""
 from __future__ import annotations
+
 import numpy as np
-from typing import Optional
 
 _DEFAULT_AH_LINES = [round(x * 0.25, 2) for x in range(-12, 13)]  # -3.0 to +3.0
 _DEFAULT_TOTAL_LINES = [0.5, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]

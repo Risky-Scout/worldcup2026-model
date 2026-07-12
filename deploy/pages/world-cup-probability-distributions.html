@@ -183,9 +183,9 @@ footer{text-align:center;padding:32px 28px;color:var(--text-muted);font-family:'
 
 <div class="explainer-bar">
   <div class="explain-pill"><span class="swatch" style="background:linear-gradient(135deg,#0a0e1a,#d4af37);"></span>Joint PMF heatmap — darker = lower probability</div>
-  <div class="explain-pill"><span class="swatch" style="background:rgba(212,175,55,.35);"></span>Home win probability</div>
-  <div class="explain-pill"><span class="swatch" style="background:rgba(88,101,130,.3);"></span>Draw probability</div>
-  <div class="explain-pill"><span class="swatch" style="background:rgba(96,165,250,.3);"></span>Away win probability</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(212,175,55,.35);"></span>Home win (American odds)</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(88,101,130,.3);"></span>Draw (American odds)</div>
+  <div class="explain-pill"><span class="swatch" style="background:rgba(96,165,250,.3);"></span>Away win (American odds)</div>
   <div class="explain-pill"><span class="swatch" style="background:rgba(74,222,128,.4);"></span>Value bet detected (edge &gt; 4%)</div>
 </div>
 
@@ -314,16 +314,16 @@ function buildBarChart(values, labels, color, maxVal, opts={}){
     const w=maxV>0?(v/maxV*100):0;
     const isHl=highlightFn&&highlightFn(i,v);
     const fillColor=isHl?'var(--green)':color;
-    const pctStr=pct(v,v>=0.01?1:2);
+    const oddsStr=american(v);
     const inside=w>28;
     html+=`<div class="bar-row">
       <span class="bar-label" style="color:${isHl?'var(--green)':'var(--text-dim)'}">${labels[i]}</span>
       <div class="bar-track">
         <div class="bar-fill" style="width:${w}%;background:${fillColor}20;border-right:2px solid ${fillColor};">
-          ${inside?`<span class="bar-val inside" style="color:${fillColor}">${pctStr}</span>`:''}
+          ${inside?`<span class="bar-val inside" style="color:${fillColor}">${oddsStr}</span>`:''}
         </div>
       </div>
-      ${!inside?`<span class="bar-val outside">${pctStr}</span>`:''}
+      ${!inside?`<span class="bar-val outside">${oddsStr}</span>`:''}
     </div>`;
   });
   html+='</div>';
@@ -339,18 +339,16 @@ function buildScoreRanking(scorelines, edges, matchCtx){
     const key=`${s.home_goals}-${s.away_goals}`;
     const isVal=valueMarkets.has(key);
     const w=maxP>0?(s.probability/maxP*100):0;
-    const pctStr=pct(s.probability,2);
-    const fairDec=american(s.probability);
+    const oddsStr=american(s.probability);
     const inside=w>35;
     html+=`<div class="score-rank-row">
       <span class="score-badge ${isVal?'value':''}" title="${isVal?'Value bet detected':''}">${key}${isVal?' ⚡':''}</span>
       <div class="score-rank-track">
         <div class="score-rank-fill" style="width:${w}%;background:${isVal?'rgba(74,222,128,.25)':'rgba(212,175,55,.2)'};border-right:2px solid ${isVal?'var(--green)':'var(--gold)'};">
-          <span class="pct" style="color:${isVal?'var(--green)':'var(--gold)'}">${pctStr}</span>
-          ${inside?`<span class="fair">${fairDec}</span>`:''}
+          ${inside?`<span class="pct" style="color:${isVal?'var(--green)':'var(--gold)'}">${oddsStr}</span>`:''}
         </div>
       </div>
-      ${!inside?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;">${fairDec}</span>`:''}
+      ${!inside?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);min-width:38px;">${oddsStr}</span>`:''}
     </div>`;
   });
   return html;
@@ -369,10 +367,10 @@ function buildOUGrid(dm){
     const under=1-over;
     html+=`<div class="ou-card">
       <div class="ou-line">O/U ${line}</div>
-      <div class="ou-over">${pct(over,1)}</div>
+      <div class="ou-over">${american(over)}</div>
       <div class="ou-mini">Over</div>
       <div style="height:4px;"></div>
-      <div class="ou-under">${pct(under,1)}</div>
+      <div class="ou-under">${american(under)}</div>
       <div class="ou-mini">Under</div>
     </div>`;
   });
@@ -399,7 +397,7 @@ function buildGDChart(gd, homeTeam, awayTeam){
       <div class="gd-track">
         <div class="gd-fill ${cls}" style="width:${w}%;"></div>
       </div>
-      <span class="gd-val">${pct(p,1)}</span>
+      <span class="gd-val">${american(p)}</span>
     </div>`;
   }
   html+='</div>';
@@ -437,14 +435,14 @@ function buildMatchCard(m, idx){
   const hwW=Math.round(hw*100), drW=Math.round(dr*100), awW=Math.round(aw*100);
   const winBar=`
     <div class="win-bar">
-      <div class="win-seg home" style="width:${hwW}%">${hwW>=12?hwW+'%':''}</div>
-      <div class="win-seg draw" style="width:${drW}%">${drW>=10?drW+'%':''}</div>
-      <div class="win-seg away" style="width:${awW}%">${awW>=12?awW+'%':''}</div>
+      <div class="win-seg home" style="width:${hwW}%">${hwW>=12?american(hw):''}</div>
+      <div class="win-seg draw" style="width:${drW}%">${drW>=10?american(dr):''}</div>
+      <div class="win-seg away" style="width:${awW}%">${awW>=12?american(aw):''}</div>
     </div>
     <div class="win-labels">
-      <span>${esc(m.home_team)} ${pct(hw)}</span>
-      <span class="center">Draw ${pct(dr)}</span>
-      <span>${pct(aw)} ${esc(m.away_team)}</span>
+      <span>${esc(m.home_team)} ${american(hw)}</span>
+      <span class="center">Draw ${american(dr)}</span>
+      <span>${american(aw)} ${esc(m.away_team)}</span>
     </div>`;
 
   // Header
@@ -486,22 +484,22 @@ function buildMatchCard(m, idx){
         <div class="heatmap-wrap">${grid.length?buildHeatmap(grid,m.home_team,m.away_team):'<span style="color:var(--text-muted)">Grid not available</span>'}</div>
       </div>
       <div class="chart-cell">
-        <div class="chart-title">1X2 Win Probabilities</div>
-        <div class="chart-subtitle">Model's probability for each regulation-time outcome. Derived by summing the joint PMF over all home-win, draw, and away-win cells.</div>
+        <div class="chart-title">1X2 Win Odds</div>
+        <div class="chart-subtitle">Model's fair American odds for each regulation-time outcome. Derived by summing the joint PMF over all home-win, draw, and away-win cells.</div>
         ${winBar}
         <div style="height:16px;"></div>
         <div class="chart-title">Both Teams to Score (BTTS)</div>
         <div class="chart-subtitle">P(Home ≥ 1) × P(Away ≥ 1) — i.e. both teams score at least one goal in regulation.</div>
         <div class="btts-pair">
-          <div class="btts-card"><div class="btts-val yes">${pct(bttsY)}</div><div class="btts-label">Yes · Both Score</div></div>
-          <div class="btts-card"><div class="btts-val no">${pct(bttsN)}</div><div class="btts-label">No · One or Zero</div></div>
+          <div class="btts-card"><div class="btts-val yes">${american(bttsY)}</div><div class="btts-label">Yes · Both Score</div></div>
+          <div class="btts-card"><div class="btts-val no">${american(bttsN)}</div><div class="btts-label">No · One or Zero</div></div>
         </div>
         <div style="height:16px;"></div>
         <div class="chart-title">Clean Sheet Probability</div>
         <div class="chart-subtitle">P(opposing team scores 0 goals).</div>
         <div class="btts-pair">
-          <div class="btts-card"><div class="btts-val" style="color:var(--gold)">${pct(homeCS)}</div><div class="btts-label">${esc(m.home_team.split(' ').pop())} CS</div></div>
-          <div class="btts-card"><div class="btts-val" style="color:var(--blue)">${pct(awayCS)}</div><div class="btts-label">${esc(m.away_team.split(' ').pop())} CS</div></div>
+          <div class="btts-card"><div class="btts-val" style="color:var(--gold)">${american(homeCS)}</div><div class="btts-label">${esc(m.home_team.split(' ').pop())} CS</div></div>
+          <div class="btts-card"><div class="btts-val" style="color:var(--blue)">${american(awayCS)}</div><div class="btts-label">${esc(m.away_team.split(' ').pop())} CS</div></div>
         </div>
       </div>
     </div>
@@ -529,17 +527,17 @@ function buildMatchCard(m, idx){
     <div class="chart-row r3">
       <div class="chart-cell">
         <div class="chart-title">Top ${TOP_SCORES} Most Likely Scorelines</div>
-        <div class="chart-subtitle">Ranked by model probability.${isCircularMode(m)?'':' ⚡ indicates a value bet where the model edge exceeds 4% and the CI lower bound beats the market implied probability.'} Fair odds in American format shown beside each bar.</div>
+        <div class="chart-subtitle">Ranked by model probability. All odds shown in American format (e.g. +150 = underdog, -200 = favorite).${isCircularMode(m)?'':' ⚡ indicates a value bet where the model edge exceeds 4% and the CI lower bound beats the market implied probability.'}</div>
         ${buildScoreRanking(scores,edges,m)}
       </div>
       <div class="chart-cell">
         <div class="chart-title">Goal Difference Distribution</div>
-        <div class="chart-subtitle">P(H − A = d). Positive = home advantage, negative = away win margin. <span style="color:var(--gold)">Gold</span> = home favoured, <span style="color:var(--blue)">blue</span> = away favoured, grey = draw.</div>
+        <div class="chart-subtitle">American odds for each goal difference outcome. Positive = home wins by that margin, negative = away wins. <span style="color:var(--gold)">Gold</span> = home favoured, <span style="color:var(--blue)">blue</span> = away favoured, grey = draw.</div>
         ${buildGDChart(derived.gd,m.home_team,m.away_team)}
       </div>
       <div class="chart-cell">
         <div class="chart-title">All Over/Under Lines</div>
-        <div class="chart-subtitle">Over/Under probabilities for every standard line. All derived from the total goals distribution above — no separate model needed.</div>
+        <div class="chart-subtitle">American odds for every standard O/U line. Derived from the total goals distribution — no separate model needed.</div>
         ${buildOUGrid(dm)}
       </div>
     </div>

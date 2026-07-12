@@ -7,13 +7,13 @@ lineup_adjustment_log = sum_i P(start_i) * E(minutes_i)/90 * (player_value_i - r
 Does NOT use generic "striker out = -10%" rules.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
 import numpy as np
 import pandas as pd
-
-from src.wc2026.features.player_strength import PlayerEfficiencyRating, _POSITION_GROUPS
+from src.wc2026.features.player_strength import _POSITION_GROUPS, PlayerEfficiencyRating
 
 
 def injury_impact_score(players: list[dict]) -> float:
@@ -36,8 +36,8 @@ def injury_impact_score(players: list[dict]) -> float:
 
 def compute_injury_lambda_factor(
     team_name: str,
-    injuries_df: "pd.DataFrame | None",
-    rosters_df: "pd.DataFrame | None" = None,
+    injuries_df: pd.DataFrame | None,
+    rosters_df: pd.DataFrame | None = None,
 ) -> float:
     """
     Compute multiplicative injury penalty for a team's attack lambda.
@@ -112,7 +112,7 @@ def compute_lineup_adjustment(
     match_id: int,
     lineups_df: pd.DataFrame,
     injuries_df: pd.DataFrame,
-    player_ratings: "dict[int, PlayerEfficiencyRating]",
+    player_ratings: dict[int, PlayerEfficiencyRating],
     prediction_timestamp: datetime,
 ) -> LineupStrengthState:
     """
@@ -133,8 +133,8 @@ def compute_lineup_adjustment(
 
     # Get starters
     if has_confirmed:
-        starters = lineup[lineup["is_starter"] == True]["player_id"].tolist() if "is_starter" in lineup.columns else []
-        subs = lineup[lineup.get("is_substitute", pd.Series(False, index=lineup.index)) == True]["player_id"].tolist()
+        starters = lineup[lineup["is_starter"]]["player_id"].tolist() if "is_starter" in lineup.columns else []
+        subs = lineup[lineup.get("is_substitute", pd.Series(False, index=lineup.index))]["player_id"].tolist()
     else:
         starters = []
         subs = []

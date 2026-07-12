@@ -1,6 +1,6 @@
 # Production Readiness Assessment
 
-**Generated**: 2026-07-05T17:42:26Z
+**Generated**: 2026-07-12T16:25:59Z
 
 ## Status: PRE-GAME PMF READY — LIVE BETTING NOT YET APPROVED
 
@@ -51,7 +51,7 @@ penaltyblog ratings, and confederation strength — no team defaults to Elo=1500
 | Champion | Model | NLL | Used for |
 |----------|-------|-----|---------|
 | diagnostic_champion | pi_rating | 3.0046 | Audit only |
-| pure_model_champion | negative_binomial | 4.4369 if available | Parametric prior |
+| pure_model_champion | negative_binomial | 4.4370 if available | Parametric prior |
 | rating_champion | negative_binomial | N/A | Composite prior |
 | market_champion | market_implied | N/A | Direct market inference |
 | **publish_champion** | **market_reconciled** | — | **Published predictions** |

@@ -1,9 +1,9 @@
 """Current market PMF: build joint score PMF from BDL odds snapshot."""
 from __future__ import annotations
+
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -17,15 +17,15 @@ class CurrentMarketPMF:
     home_lambda: float
     away_lambda: float
     rho: float
-    dispersion_proxy: Optional[float]
+    dispersion_proxy: float | None
     reconstruction_error: dict
     vendor_count: int
     market_quality: float
     staleness_flags: dict
     overround: dict
     de_vig_method: str
-    observed_at: Optional[datetime]
-    odds_as_of: Optional[datetime]
+    observed_at: datetime | None
+    odds_as_of: datetime | None
     implementation: str = "simple"  # "simple" or "full"
 
 
@@ -49,13 +49,13 @@ def _shin_devig(probs: list[float]) -> list[float]:
         return [p / total for p in probs] if total > 0 else probs
 
 
-def build_market_pmf_simple(snapshot_df: pd.DataFrame) -> Optional[CurrentMarketPMF]:
+def build_market_pmf_simple(snapshot_df: pd.DataFrame) -> CurrentMarketPMF | None:
     """Build PMF from 1X2 + O/U 2.5 only (Shin de-vig, goal_expectancy_extended)."""
     if snapshot_df is None or snapshot_df.empty:
         return None
 
     try:
-        from penaltyblog.models import goal_expectancy_extended, create_dixon_coles_grid
+        from penaltyblog.models import create_dixon_coles_grid, goal_expectancy_extended
     except ImportError:
         log.error("penaltyblog not available")
         return None
@@ -172,7 +172,7 @@ def build_market_pmf_simple(snapshot_df: pd.DataFrame) -> Optional[CurrentMarket
     )
 
 
-def build_market_pmf_full(snapshot_df: pd.DataFrame) -> Optional[CurrentMarketPMF]:
+def build_market_pmf_full(snapshot_df: pd.DataFrame) -> CurrentMarketPMF | None:
     """Full market surface PMF fit using SLSQP. Falls back to simple on failure."""
     if snapshot_df is None or snapshot_df.empty:
         return build_market_pmf_simple(snapshot_df)
@@ -196,6 +196,7 @@ def build_market_pmf_full(snapshot_df: pd.DataFrame) -> Optional[CurrentMarketPM
             return simple
 
         from scipy.optimize import minimize
+
         from wc2026.markets.canonical_grid import CanonicalGrid
 
         # Build initial PMF from simple, then optimize to fit spread constraints

@@ -10,9 +10,9 @@ incentive state. The adjustment is suppressed in PRESENTATION_SAFE_MODE
 because the constants are not validated from historical evidence.
 """
 from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -59,7 +59,7 @@ def compute_group_incentives(
 
         row = team_rows.iloc[0]
         pts = int(row.get("points", 0))
-        played = int(row.get("played", 0))
+        int(row.get("played", 0))
         remaining_games = len([f for f in remaining_fixtures if team.lower() in [str(t).lower() for t in f]])
 
         # Simple heuristics for incentive state

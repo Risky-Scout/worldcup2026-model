@@ -5,9 +5,10 @@ Raw Pi rating scale is NOT assumed to equal EGM.
 We fit: EGM ≈ intercept + slope * pi_diff using rolling-origin regression.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
 
@@ -61,7 +62,7 @@ def calibrate_pi_to_egm(
     matches_df: pd.DataFrame,
     ratings: dict[str, dict],
     min_samples: int = 10,
-) -> Optional[PiCalibration]:
+) -> PiCalibration | None:
     """
     Calibrate Pi composite difference → regulation-time goal difference.
     Uses OLS. Returns None if insufficient data.
@@ -89,7 +90,7 @@ def calibrate_pi_to_egm(
     return PiCalibration(
         slope=slope,
         intercept=intercept,
-        training_cutoff=datetime.utcnow(),
+        training_cutoff=datetime.now(timezone.utc),
         effective_sample_size=len(rows),
         r_squared=float(r2),
     )
@@ -99,7 +100,7 @@ def team_pi_egm(
     team: str,
     opponent: str,
     ratings: dict[str, dict],
-    calib: Optional[PiCalibration],
+    calib: PiCalibration | None,
 ) -> float:
     """Convert Pi difference to EGM for a specific match-up."""
     if calib is None or team not in ratings or opponent not in ratings:

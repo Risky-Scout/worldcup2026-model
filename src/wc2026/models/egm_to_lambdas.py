@@ -4,10 +4,10 @@ Convert TeamMarginRating + MatchContextAdjustment → (lambda_home, lambda_away)
 This is the bridge between the EGM layer and the existing PMF machinery.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from math import exp
-from typing import Optional
 
 from src.wc2026.ratings.team_margin import TeamMarginRating
 
@@ -82,7 +82,7 @@ def egm_components_to_lambdas(
     home_rating: TeamMarginRating,
     away_rating: TeamMarginRating,
     context: MatchContextAdjustment,
-    base_goals: float = 1.30,
+    base_goals: float = 1.45,
 ) -> tuple[float, float, dict]:
     """
     Returns (lambda_home, lambda_away, diagnostics_dict).

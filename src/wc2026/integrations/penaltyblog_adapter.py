@@ -4,8 +4,6 @@ Do not import penaltyblog directly anywhere else in production code.
 All penaltyblog calls go through this adapter.
 """
 from __future__ import annotations
-from typing import Optional
-import numpy as np
 
 # ── ratings ──────────────────────────────────────────────────────────────
 try:
@@ -108,7 +106,7 @@ def create_dixon_coles_grid(lambda_home: float, lambda_away: float, rho: float =
     return _create_dc_grid(lambda_home, lambda_away, rho=rho, max_goals=max_goals)
 
 
-def goal_expectancy_1x2(p_home: float, p_draw: float, p_away: float) -> Optional[dict]:
+def goal_expectancy_1x2(p_home: float, p_draw: float, p_away: float) -> dict | None:
     if not HAS_GOAL_EXP:
         return None
     try:
@@ -119,7 +117,7 @@ def goal_expectancy_1x2(p_home: float, p_draw: float, p_away: float) -> Optional
 
 def goal_expectancy_1x2_ou25(
     p_home: float, p_draw: float, p_away: float, p_over_25: float
-) -> Optional[dict]:
+) -> dict | None:
     if not HAS_GOAL_EXP:
         return None
     try:
@@ -128,7 +126,7 @@ def goal_expectancy_1x2_ou25(
         return None
 
 
-def calculate_no_vig_probabilities(odds: list[float], method: str = "shin") -> Optional[list[float]]:
+def calculate_no_vig_probabilities(odds: list[float], method: str = "shin") -> list[float] | None:
     """De-vig a set of decimal odds. Returns list of fair probabilities."""
     if not HAS_IMPLIED:
         # Basic additive fallback

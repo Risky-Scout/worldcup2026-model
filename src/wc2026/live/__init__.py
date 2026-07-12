@@ -10,9 +10,9 @@ predictor   LivePMFPredictor: score-state PMF updated every minute
 replay      2022 match replay engine (minute-by-minute)
 validation  Replay validation metrics and reports
 """
-from .state import MatchState, MatchStatus, EventType, MatchEvent
 from .features import LiveFeatureVector, extract_features
 from .predictor import LivePMFPredictor
+from .state import EventType, MatchEvent, MatchState, MatchStatus
 
 __all__ = [
     "MatchState", "MatchStatus", "EventType", "MatchEvent",

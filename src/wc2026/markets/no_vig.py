@@ -16,11 +16,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from penaltyblog.implied.implied import (
-    ImpliedMethod,
     OddsFormat,
     calculate_implied,
 )
@@ -33,7 +31,7 @@ class NoVigResult:
     method: str
     probabilities: list[float]
     margin: float
-    market_names: Optional[list[str]] = None
+    market_names: list[str] | None = None
 
     @property
     def home_win(self) -> float:
@@ -129,7 +127,7 @@ def consensus_no_vig_1x2(
     rows: list[dict],
     method: str = "shin",
     stale_minutes: float = 240.0,
-) -> Optional[NoVigResult]:
+) -> NoVigResult | None:
     """
     Aggregate no-vig 1X2 probabilities across multiple vendors.
 
@@ -144,6 +142,7 @@ def consensus_no_vig_1x2(
     NoVigResult with averaged probabilities, or None if no valid lines.
     """
     from datetime import datetime, timezone
+
     import dateutil.parser
 
     now = datetime.now(timezone.utc)

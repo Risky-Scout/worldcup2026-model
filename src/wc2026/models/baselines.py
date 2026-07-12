@@ -13,17 +13,15 @@ Baselines
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 from penaltyblog.models import create_dixon_coles_grid
 from penaltyblog.ratings.elo import Elo
 from penaltyblog.ratings.pi import PiRatingSystem
-from scipy.stats import poisson
 
-from wc2026.config import PMF_MAX_GOALS, RANDOM_SEED
-from wc2026.models.prediction import CalibrationStatus, ScorePMFPrediction
+from wc2026.config import PMF_MAX_GOALS
+from wc2026.models.prediction import ScorePMFPrediction
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +71,7 @@ class EqualProbabilityBaseline:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
+        match_id: int | None = None,
         **kwargs,
     ) -> ScorePMFPrediction:
         lam = _WC_AVG_GOALS_PER_TEAM
@@ -111,11 +109,11 @@ class HistoricalBaseRateBaseline:
 
     def __init__(self, max_goals: int = PMF_MAX_GOALS):
         self._max_goals = max_goals
-        self._pmf: Optional[np.ndarray] = None
+        self._pmf: np.ndarray | None = None
         self._avg_home_goals = _WC_AVG_GOALS_PER_TEAM
         self._avg_away_goals = _WC_AVG_GOALS_PER_TEAM
 
-    def fit(self, df: pd.DataFrame) -> "HistoricalBaseRateBaseline":
+    def fit(self, df: pd.DataFrame) -> HistoricalBaseRateBaseline:
         """
         Estimate base-rate PMF from historical match data.
 
@@ -150,7 +148,7 @@ class HistoricalBaseRateBaseline:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
+        match_id: int | None = None,
         **kwargs,
     ) -> ScorePMFPrediction:
         if self._pmf is None:
@@ -198,7 +196,7 @@ class EloBaseline:
         self._max_goals = max_goals
         self.fitted = False
 
-    def fit(self, df: pd.DataFrame) -> "EloBaseline":
+    def fit(self, df: pd.DataFrame) -> EloBaseline:
         """Update Elo ratings in chronological order."""
         df = df.sort_values("match_datetime").dropna(subset=["home_goals", "away_goals"])
         for _, row in df.iterrows():
@@ -212,7 +210,7 @@ class EloBaseline:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
+        match_id: int | None = None,
         **kwargs,
     ) -> ScorePMFPrediction:
         try:
@@ -274,7 +272,7 @@ class PiRatingBaseline:
         self._max_goals = max_goals
         self.fitted = False
 
-    def fit(self, df: pd.DataFrame) -> "PiRatingBaseline":
+    def fit(self, df: pd.DataFrame) -> PiRatingBaseline:
         """Update Pi ratings in chronological order using goal difference."""
         df = df.sort_values("match_datetime").dropna(subset=["home_goals", "away_goals"])
         for _, row in df.iterrows():
@@ -290,7 +288,7 @@ class PiRatingBaseline:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
+        match_id: int | None = None,
         **kwargs,
     ) -> ScorePMFPrediction:
         try:

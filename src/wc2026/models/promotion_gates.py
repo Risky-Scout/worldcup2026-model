@@ -46,7 +46,6 @@ import logging
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -204,7 +203,7 @@ def validate_gate_3(
 
 
 def validate_gate_4(
-    validation_report_path: Optional[Path] = Path(
+    validation_report_path: Path | None = Path(
         "reports/team_strength/rolling_origin_validation.json"
     ),
 ) -> GateResult:
@@ -269,7 +268,7 @@ def validate_gate_4(
 
 def run_all_gates(
     production_diff_path: Path = Path("reports/live_shadow/production_diff.csv"),
-    validation_report_path: Optional[Path] = Path(
+    validation_report_path: Path | None = Path(
         "reports/team_strength/rolling_origin_validation.json"
     ),
 ) -> dict:

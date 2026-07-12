@@ -17,14 +17,12 @@ This is the "gold standard" market-implied PMF because:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 from penaltyblog.models import create_dixon_coles_grid, goal_expectancy_extended
 
 from wc2026.config import PMF_MAX_GOALS
 from wc2026.markets.consensus import ConsensusMarkets
-from wc2026.markets.no_vig import strip_vig_1x2, strip_vig_total
 from wc2026.models.joint_pmf import FiniteGridPMF
 
 log = logging.getLogger(__name__)
@@ -35,7 +33,7 @@ def build_market_pmf(
     markets: ConsensusMarkets,
     max_goals: int = PMF_MAX_GOALS,
     method: str = "multiplicative",
-) -> Optional[FiniteGridPMF]:
+) -> FiniteGridPMF | None:
     """
     Build a market-implied PMF from BDL consensus market probabilities.
 
@@ -62,8 +60,8 @@ def build_market_pmf(
     aw = markets.away_win
 
     # Get over/under 2.5 if available
-    over25: Optional[float] = None
-    under25: Optional[float] = None
+    over25: float | None = None
+    under25: float | None = None
     for line_str in ["2.5", "2.0"]:
         if line_str in markets.totals:
             over25, under25 = markets.totals[line_str]

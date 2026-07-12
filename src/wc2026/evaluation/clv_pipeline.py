@@ -16,14 +16,13 @@ Only runs when WC_USE_NEW_CLV_REPORTING=True (default True in config).
 Does NOT alter any public WizardOfOdds output.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
+
 import logging
-import json
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
-import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -48,11 +47,11 @@ class CLVRecord:
     current_fair_probability: float
     fair_clv: float
     same_line_clv: float
-    horizon_hours: Optional[float]
-    vendor: Optional[str]
+    horizon_hours: float | None
+    vendor: str | None
     prediction_timestamp: str
-    closing_timestamp: Optional[str]
-    stage: Optional[str]
+    closing_timestamp: str | None
+    stage: str | None
     notes: str = ""
 
 
@@ -248,7 +247,7 @@ def _get_closing_fair_prob(
     match_close: pd.DataFrame,
     market_type: str,
     side: str,
-) -> Optional[float]:
+) -> float | None:
     """Extract closing fair probability for a specific market/side."""
     if market_type in ("moneyline", "1x2", "1X2"):
         home_odds_col = "moneyline_home_odds"

@@ -45,10 +45,9 @@ Adjustment layers applied after blending:
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
-import datetime as dt
 
 import numpy as np
 import pandas as pd
@@ -58,8 +57,8 @@ log = logging.getLogger(__name__)
 _EPS = 1e-9
 
 # ── Global WC averages ────────────────────────────────────────────────────
-_WC_AVG_ATTACK = 1.30   # expected goals scored vs average opponent, neutral venue
-_WC_AVG_DEFENSE = 1.30  # same as attack by symmetry at average
+_WC_AVG_ATTACK = 1.45   # expected goals scored vs average opponent, neutral venue (WC2026 observed: 1.45/team)
+_WC_AVG_DEFENSE = 1.45  # same as attack by symmetry at average
 
 # ── Confederation baseline attack lambdas ────────────────────────────────
 _CONFEDERATION_ATTACK = {
@@ -191,7 +190,7 @@ _FIFA_POINTS: dict[str, float] = {
 _FIFA_GLOBAL_MEDIAN = 1400.0     # approximate median for WC-qualifying nations
 _FIFA_LAMBDA_EXPONENT = 0.30     # dampening factor (ranking spread > goal-scoring spread)
 
-def _fifa_to_lambda(points: Optional[float], wc_avg: float = _WC_AVG_ATTACK) -> Optional[float]:
+def _fifa_to_lambda(points: float | None, wc_avg: float = _WC_AVG_ATTACK) -> float | None:
     """Convert FIFA points to a goal-scoring lambda estimate."""
     if points is None:
         return None
@@ -286,50 +285,50 @@ class TeamPrior:
     appeared_2018: bool = False
     appeared_2022: bool = False
     n_wc_matches: int = 0
-    bdl_team_id: Optional[int] = None
+    bdl_team_id: int | None = None
     confederation: str = "GLOBAL"
 
     # ── Rating inputs ─────────────────────────────────────────────────────
-    penaltyblog_elo: Optional[float] = None
-    penaltyblog_pi: Optional[float] = None
-    massey_rating: Optional[float] = None
-    massey_offence: Optional[float] = None
-    massey_defence: Optional[float] = None
-    colley_rating: Optional[float] = None
+    penaltyblog_elo: float | None = None
+    penaltyblog_pi: float | None = None
+    massey_rating: float | None = None
+    massey_offence: float | None = None
+    massey_defence: float | None = None
+    colley_rating: float | None = None
 
     # ── Market-implied strength ───────────────────────────────────────────
-    market_implied_attack: Optional[float] = None    # avg lambda scored over group matches
-    market_implied_defense: Optional[float] = None   # avg lambda conceded over group matches
+    market_implied_attack: float | None = None    # avg lambda scored over group matches
+    market_implied_defense: float | None = None   # avg lambda conceded over group matches
     n_market_matches: int = 0
-    market_odds_timestamp: Optional[str] = None
+    market_odds_timestamp: str | None = None
 
     # ── Prior inputs (converted to lambda scale) ──────────────────────────
-    elo_attack_lambda: Optional[float] = None
-    elo_defense_lambda: Optional[float] = None
-    pi_attack_lambda: Optional[float] = None
-    pi_defense_lambda: Optional[float] = None
-    massey_attack_lambda: Optional[float] = None
-    massey_defense_lambda: Optional[float] = None
-    confederation_attack: Optional[float] = None
-    confederation_defense: Optional[float] = None
+    elo_attack_lambda: float | None = None
+    elo_defense_lambda: float | None = None
+    pi_attack_lambda: float | None = None
+    pi_defense_lambda: float | None = None
+    massey_attack_lambda: float | None = None
+    massey_defense_lambda: float | None = None
+    confederation_attack: float | None = None
+    confederation_defense: float | None = None
 
     # ── FIFA ranking prior ────────────────────────────────────────────────
     # FIFA March 2026 rankings / points (source: FIFA.com official rankings)
     # Points → lambda via: lambda = WC_AVG * (pts / GLOBAL_MEDIAN_PTS)^0.3
     # The 0.3 exponent dampens the conversion (rankings overstate differences).
-    fifa_ranking: Optional[int] = None        # rank 1–211
-    fifa_points: Optional[float] = None       # FIFA points (0–2000)
-    fifa_attack_lambda: Optional[float] = None
-    fifa_defense_lambda: Optional[float] = None
+    fifa_ranking: int | None = None        # rank 1–211
+    fifa_points: float | None = None       # FIFA points (0–2000)
+    fifa_attack_lambda: float | None = None
+    fifa_defense_lambda: float | None = None
 
     # ── Qualifying performance prior ──────────────────────────────────────
     # Avg goals scored and conceded per game in WC 2026 qualifying
-    qualifying_goals_scored_per_game: Optional[float] = None
-    qualifying_goals_conceded_per_game: Optional[float] = None
+    qualifying_goals_scored_per_game: float | None = None
+    qualifying_goals_conceded_per_game: float | None = None
     qualifying_n_games: int = 0
-    qualifying_win_rate: Optional[float] = None
-    qualifying_attack_lambda: Optional[float] = None
-    qualifying_defense_lambda: Optional[float] = None
+    qualifying_win_rate: float | None = None
+    qualifying_attack_lambda: float | None = None
+    qualifying_defense_lambda: float | None = None
 
     # ── Host/venue adjustment ─────────────────────────────────────────────
     is_host: bool = False
@@ -342,8 +341,8 @@ class TeamPrior:
     uncertainty: str = "HIGH"      # LOW / MEDIUM / HIGH
     sources_used: list = field(default_factory=list)
     source_weights: dict = field(default_factory=dict)
-    fallback_reason: Optional[str] = None
-    source_timestamp: Optional[str] = None
+    fallback_reason: str | None = None
+    source_timestamp: str | None = None
 
     # ── WC2026 live tournament adjustment ─────────────────────────────────
     # Multiplicative adjustment applied after all blending, based on actual
@@ -424,7 +423,7 @@ class CompositeTeamPrior:
     # weak/debutant teams).  Reassess after ≥20 completed WC2026 matches.
     DEFAULT_MARKET_WEIGHT: float = 0.20
 
-    def __init__(self, market_weight: Optional[float] = None):
+    def __init__(self, market_weight: float | None = None):
         """
         Parameters
         ----------
@@ -441,21 +440,21 @@ class CompositeTeamPrior:
         self._market_weight: float = market_weight
         self._priors: dict[str, TeamPrior] = {}
         self._fitted = False
-        self._fit_timestamp: Optional[str] = None
-        self._host_att_bonus_override: Optional[float] = None
+        self._fit_timestamp: str | None = None
+        self._host_att_bonus_override: float | None = None
 
     def fit(
         self,
         matches_df: pd.DataFrame,
         odds_df: pd.DataFrame,
-        markets_df: Optional[pd.DataFrame] = None,
-        team_stats_df: Optional[pd.DataFrame] = None,
-        team_form_df: Optional[pd.DataFrame] = None,
-        injuries_df: Optional[pd.DataFrame] = None,
-        futures_df: Optional[pd.DataFrame] = None,
-        rosters_df: Optional[pd.DataFrame] = None,
-        best_players_df: Optional[pd.DataFrame] = None,
-    ) -> "CompositeTeamPrior":
+        markets_df: pd.DataFrame | None = None,
+        team_stats_df: pd.DataFrame | None = None,
+        team_form_df: pd.DataFrame | None = None,
+        injuries_df: pd.DataFrame | None = None,
+        futures_df: pd.DataFrame | None = None,
+        rosters_df: pd.DataFrame | None = None,
+        best_players_df: pd.DataFrame | None = None,
+    ) -> CompositeTeamPrior:
         """
         Fit all rating systems and extract market-implied lambdas.
 
@@ -681,9 +680,15 @@ class CompositeTeamPrior:
                 total = 0.0
                 n = 0
                 for ch in form_str.upper():
-                    if ch == "W":   total += 3; n += 1
-                    elif ch == "D": total += 1; n += 1
-                    elif ch == "L": total += 0; n += 1
+                    if ch == "W":
+                        total += 3
+                        n += 1
+                    elif ch == "D":
+                        total += 1
+                        n += 1
+                    elif ch == "L":
+                        total += 0
+                        n += 1
                 return (total / (n * 3)) if n > 0 else 0.5
 
             # Keep most recent 3, compute mean rating per team
@@ -961,7 +966,7 @@ class CompositeTeamPrior:
     def _apply_tournament_adjustment(
         self,
         matches_df: pd.DataFrame,
-        team_stats_df: Optional[pd.DataFrame] = None,
+        team_stats_df: pd.DataFrame | None = None,
     ) -> None:
         """
         Adjust each team's final_attack_lambda and final_defense_lambda based on
@@ -1190,7 +1195,7 @@ class CompositeTeamPrior:
             for _, row in team_injuries.iterrows():
                 status = str(row.get("status", "")).upper()
                 pos = str(row.get("player_position", row.get("position", ""))).upper()
-                name = str(row.get("player_name", "unknown"))
+                str(row.get("player_name", "unknown"))
                 avg_r = row.get("avg_rating")
                 try:
                     avg_r_f = float(avg_r) if avg_r is not None else 7.0
@@ -1306,7 +1311,7 @@ class CompositeTeamPrior:
             ts_latest = max(ts_list) if ts_list else None
 
             try:
-                from penaltyblog.models import goal_expectancy_extended, goal_expectancy
+                from penaltyblog.models import goal_expectancy, goal_expectancy_extended
                 if ou25 is not None:
                     res = goal_expectancy_extended(hw, dr, aw, ou25, 1.0 - ou25,
                                                    objective="cross_entropy")
@@ -1332,14 +1337,14 @@ class CompositeTeamPrior:
         elo_ratings: dict, pi_ratings: dict,
         massey_df: pd.DataFrame, colley_df: pd.DataFrame,
         market_lambdas: dict, odds_df: pd.DataFrame,
-        xg_att_per_game: Optional[dict] = None,
-        xg_def_per_game: Optional[dict] = None,
-        form_z_scores: Optional[dict] = None,
-        futures_win_prob: Optional[dict] = None,
-        roster_quality: Optional[dict] = None,
-        best_player_rating: Optional[dict] = None,
-        big_chances_per_game: Optional[dict] = None,
-        sot_per_game: Optional[dict] = None,
+        xg_att_per_game: dict | None = None,
+        xg_def_per_game: dict | None = None,
+        form_z_scores: dict | None = None,
+        futures_win_prob: dict | None = None,
+        roster_quality: dict | None = None,
+        best_player_rating: dict | None = None,
+        big_chances_per_game: dict | None = None,
+        sot_per_game: dict | None = None,
     ) -> TeamPrior:
         conf = _TEAM_CONFEDERATION.get(team, "GLOBAL")
         conf_att = _CONFEDERATION_ATTACK.get(conf, _WC_AVG_ATTACK)
@@ -1508,7 +1513,6 @@ class CompositeTeamPrior:
         _form_z = (form_z_scores or {}).get(team)
         if _form_z is not None and np.isfinite(_form_z):
             _form_adj = float(np.clip(_form_z * 0.05, -0.05, 0.05))
-            _form_att = composite_att * (1.0 + _form_adj) if False else None  # computed post-blend
             # Store z-score for post-blend application (see below)
             if "form_wc2026" not in sources:
                 sources.append("form_wc2026")
@@ -1604,7 +1608,7 @@ class CompositeTeamPrior:
         # This prevents a single nan source (e.g. xG not provided by BDL) from
         # poisoning the entire blend even when market_implied is valid.
         att_total_w = sum(w for _, _, w in att_inputs)
-        def_total_w = sum(w for _, _, w in def_inputs)
+        sum(w for _, _, w in def_inputs)
         _att_result = _nanweighted([(w, v) for _, v, w in att_inputs])
         _def_result = _nanweighted([(w, v) for _, v, w in def_inputs])
         if _att_result is None:
@@ -1680,15 +1684,15 @@ class CompositeTeamPrior:
 def build_composite_prior(
     matches_df: pd.DataFrame,
     odds_df: pd.DataFrame,
-    markets_df: Optional[pd.DataFrame] = None,
-    market_weight: Optional[float] = None,
-    team_stats_df: Optional[pd.DataFrame] = None,
-    host_att_bonus: Optional[float] = None,
-    team_form_df: Optional[pd.DataFrame] = None,
-    injuries_df: Optional[pd.DataFrame] = None,
-    futures_df: Optional[pd.DataFrame] = None,
-    rosters_df: Optional[pd.DataFrame] = None,
-    best_players_df: Optional[pd.DataFrame] = None,
+    markets_df: pd.DataFrame | None = None,
+    market_weight: float | None = None,
+    team_stats_df: pd.DataFrame | None = None,
+    host_att_bonus: float | None = None,
+    team_form_df: pd.DataFrame | None = None,
+    injuries_df: pd.DataFrame | None = None,
+    futures_df: pd.DataFrame | None = None,
+    rosters_df: pd.DataFrame | None = None,
+    best_players_df: pd.DataFrame | None = None,
 ) -> CompositeTeamPrior:
     """Convenience function: fit and return a CompositeTeamPrior.
 
@@ -1731,7 +1735,7 @@ def build_composite_prior(
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
-def _compute_shot_quality(team_name: str, shots_df: "pd.DataFrame | None") -> float:
+def _compute_shot_quality(team_name: str, shots_df: pd.DataFrame | None) -> float:
     """
     Compute per-team shot quality index = mean(xGOT/xG) over completed 2026 matches.
 
@@ -1751,7 +1755,7 @@ def _compute_shot_quality(team_name: str, shots_df: "pd.DataFrame | None") -> fl
     return float(np.clip(ratio, 0.85, 1.20))
 
 
-def _nanweighted(pairs: list) -> "Optional[float]":
+def _nanweighted(pairs: list) -> float | None:
     """
     Weighted average of (weight, value) pairs, skipping nan/None values.
 
@@ -1800,11 +1804,11 @@ def predict_match_from_composite(
         lam_h = att_home * def_away / WC_avg
         lam_a = att_away * def_home / WC_avg
 
-    Where WC_avg = 1.30 is the global average goals per team per game.
+    Where WC_avg = 1.45 is the global average goals per team per game (WC2026 observed).
 
     Example: Mexico (att=1.63, def=0.864) vs SA (att=0.918, def=1.505)
-        lam_h = 1.63 * 1.505 / 1.30 = 1.888  (Mexico scores)
-        lam_a = 0.918 * 0.864 / 1.30 = 0.610  (SA scores)
+        lam_h = 1.63 * 1.505 / 1.45 = 1.691  (Mexico scores)
+        lam_a = 0.918 * 0.864 / 1.45 = 0.547  (SA scores)
     This gives Mexico ~65% home-win, close to the BDL 6-vendor market 67.5%.
 
     Parameters

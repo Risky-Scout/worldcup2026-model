@@ -24,14 +24,13 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from wc2026.config import DATA_VERSION, PROCESSED_DIR, RAW_DIR, DATA_DIR
+from wc2026.config import DATA_DIR, DATA_VERSION, PROCESSED_DIR, RAW_DIR
 
 log = logging.getLogger(__name__)
 

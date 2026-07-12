@@ -46,11 +46,9 @@ Missingness flags (0/1)
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Optional
 
-from .state import MatchState, TeamLiveStats
+from .state import MatchState
 
 _EPS = 1e-6
 
@@ -115,9 +113,9 @@ class LiveFeatureVector:
 
 def extract_features(
     state: MatchState,
-    pregame_lh: Optional[float] = None,
-    pregame_la: Optional[float] = None,
-    pregame_home_win: Optional[float] = None,
+    pregame_lh: float | None = None,
+    pregame_la: float | None = None,
+    pregame_home_win: float | None = None,
 ) -> LiveFeatureVector:
     """
     Extract a LiveFeatureVector from a MatchState.

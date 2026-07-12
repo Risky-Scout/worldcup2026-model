@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from wc2026.markets.no_vig import NoVigResult, strip_vig_1x2, strip_vig_total
+from wc2026.markets.no_vig import strip_vig_1x2, strip_vig_total
 
 log = logging.getLogger(__name__)
 
@@ -31,15 +30,15 @@ class ConsensusMarkets:
     """Aggregated consensus market probabilities for one match."""
 
     match_id: int
-    odds_timestamp: Optional[str] = None  # UTC ISO timestamp of the most recent line used
+    odds_timestamp: str | None = None  # UTC ISO timestamp of the most recent line used
     n_vendors_1x2: int = 0
     n_vendors_total: int = 0
 
     # 1X2 consensus (no-vig)
-    home_win: Optional[float] = None
-    draw: Optional[float] = None
-    away_win: Optional[float] = None
-    margin_1x2: Optional[float] = None
+    home_win: float | None = None
+    draw: float | None = None
+    away_win: float | None = None
+    margin_1x2: float | None = None
 
     # Totals consensus (no-vig), keyed by line e.g. "2.5"
     totals: dict[str, tuple[float, float]] = field(default_factory=dict)
@@ -167,8 +166,9 @@ def build_consensus(
 
 def _filter_stale(rows: list[dict], now, stale_minutes: float) -> list[dict]:
     """Return rows whose updated_at is within stale_minutes of now."""
-    import dateutil.parser
     from datetime import timezone
+
+    import dateutil.parser
 
     fresh = []
     for r in rows:

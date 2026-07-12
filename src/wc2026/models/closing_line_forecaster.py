@@ -1,8 +1,8 @@
 """Closing-line forecaster: predict where the market will close from pre-match structural features."""
 from __future__ import annotations
+
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
@@ -49,7 +49,7 @@ class ClosePrediction:
     predicted_close_home_lambda: float
     predicted_close_away_lambda: float
     predicted_close_rho: float
-    predicted_close_pmf: Optional[np.ndarray]
+    predicted_close_pmf: np.ndarray | None
     uncertainty_home: float
     uncertainty_away: float
     feature_coefficients: dict
@@ -65,7 +65,7 @@ class ClosingLineForecaster:
 
     def _make_model(self):
         try:
-            from sklearn.linear_model import Ridge, HuberRegressor, ElasticNet
+            from sklearn.linear_model import ElasticNet, HuberRegressor, Ridge
         except ImportError:
             raise ImportError("scikit-learn required. Run: pip install scikit-learn>=1.4")
 

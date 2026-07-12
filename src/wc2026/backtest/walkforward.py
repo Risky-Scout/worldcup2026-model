@@ -25,19 +25,14 @@ refit_every : re-fit models every N matches (default 1 = every match).
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from wc2026 import DATA_VERSION, MODEL_VERSION
 from wc2026.calibration.score_pmf import CalibrationMetrics, evaluate_pmf_predictions
 from wc2026.config import PREDICTIONS_DIR, RANDOM_SEED
 from wc2026.models.baselines import (
@@ -47,7 +42,6 @@ from wc2026.models.baselines import (
     PiRatingBaseline,
 )
 from wc2026.models.ladder import (
-    ALL_MODELS,
     TIER1_MODELS,
     ModelLadder,
 )
@@ -65,11 +59,11 @@ class WalkForwardResult:
 
     run_timestamp: str
     model_name: str
-    season_filter: Optional[list[int]]
+    season_filter: list[int] | None
     n_predictions: int
     n_train_matches_final: int
     metrics: CalibrationMetrics
-    predictions_path: Optional[Path]
+    predictions_path: Path | None
     per_match: pd.DataFrame = field(default_factory=pd.DataFrame)
 
     def to_dict(self) -> dict:
@@ -130,8 +124,8 @@ class WalkForwardEngine:
 
     def run(
         self,
-        start_from_idx: Optional[int] = None,
-        season_filter: Optional[list[int]] = None,
+        start_from_idx: int | None = None,
+        season_filter: list[int] | None = None,
         save: bool = True,
     ) -> list[WalkForwardResult]:
         """
@@ -175,7 +169,6 @@ class WalkForwardEngine:
                 model_rows[b] = []
 
         # We re-fit every `refit_every` steps. Track last refit index.
-        last_refit: dict[str, int] = {}
         fitted_ladders: dict[int, ModelLadder] = {}
 
         for step, pred_idx in enumerate(predict_indices):
@@ -190,7 +183,7 @@ class WalkForwardEngine:
             away_team = match_row["away_team"]
             actual_h = int(match_row["home_goals"])
             actual_a = int(match_row["away_goals"])
-            neutral = bool(match_row.get("is_neutral", 1))
+            bool(match_row.get("is_neutral", 1))
 
             # ── penaltyblog models ──────────────────────────────────────
             refit_key = pred_idx // self._refit_every

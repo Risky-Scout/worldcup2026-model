@@ -14,7 +14,6 @@ Sources hierarchy:
   7. global_fallback  — WC average (0.0 EGM)
 """
 from __future__ import annotations
-from dataclasses import dataclass
 
 # Confederation prior version: v1.0 (2026-06-18)
 # Source: manual calibration from 2006–2022 World Cup average goal margins

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -33,12 +32,10 @@ from penaltyblog.models import (
     PoissonGoalsModel,
     WeibullCopulaGoalsModel,
     ZeroInflatedPoissonGoalsModel,
-    create_dixon_coles_grid,
-    dixon_coles_weights,
 )
 
 from wc2026.config import DC_WEIGHT_XI, PMF_MAX_GOALS, RANDOM_SEED
-from wc2026.models.prediction import CalibrationStatus, ScorePMFPrediction
+from wc2026.models.prediction import ScorePMFPrediction
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +104,7 @@ class ModelLadder:
     # Fitting
     # -----------------------------------------------------------------------
 
-    def fit(self, models: list[str] | None = None) -> "ModelLadder":
+    def fit(self, models: list[str] | None = None) -> ModelLadder:
         """
         Fit specified models (default: all Tier 1 + Tier 2 if include_bayesian).
         Returns self.
@@ -231,10 +228,10 @@ class ModelLadder:
         model_name: str,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
-        season: Optional[int] = None,
-        stage: Optional[str] = None,
-        venue: Optional[str] = None,
+        match_id: int | None = None,
+        season: int | None = None,
+        stage: str | None = None,
+        venue: str | None = None,
         neutral_venue: bool = True,
     ) -> ScorePMFPrediction:
         """Return ScorePMFPrediction for a single model."""
@@ -299,10 +296,10 @@ class ModelLadder:
         model_name: str,
         home_teams: list[str],
         away_teams: list[str],
-        match_ids: Optional[list[int]] = None,
-        seasons: Optional[list] = None,
-        stages: Optional[list[str]] = None,
-        venues: Optional[list[str]] = None,
+        match_ids: list[int] | None = None,
+        seasons: list | None = None,
+        stages: list[str] | None = None,
+        venues: list[str] | None = None,
     ) -> list[ScorePMFPrediction]:
         """
         Batch-predict using penaltyblog's predict_many() for efficiency.

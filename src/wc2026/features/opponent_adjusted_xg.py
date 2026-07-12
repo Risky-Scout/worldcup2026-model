@@ -13,9 +13,10 @@ All adjusted for opponent quality. Time-decayed. Shrunk to confederation/global 
 Returns EGM-scale contribution.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
 
@@ -23,7 +24,7 @@ import pandas as pd
 @dataclass
 class TeamProcessRating:
     team_id: int
-    team_name: Optional[str]
+    team_name: str | None
 
     xg_for_per90: float
     xg_against_per90: float
@@ -53,11 +54,11 @@ class TeamProcessRating:
 
 def build_team_process_ratings(
     team_match_stats_df: pd.DataFrame,
-    match_shots_df: "pd.DataFrame | None" = None,
-    prediction_timestamp: "datetime | None" = None,
+    match_shots_df: pd.DataFrame | None = None,
+    prediction_timestamp: datetime | None = None,
     decay_halflife_days: float = 180.0,
     min_matches: int = 3,
-) -> "dict[int, TeamProcessRating]":
+) -> dict[int, TeamProcessRating]:
     """
     Build team-level process ratings from BDL /team_match_stats.
 
@@ -80,7 +81,7 @@ def build_team_process_ratings(
     def _safe(col: str) -> pd.Series:
         return pd.to_numeric(df.get(col, pd.Series(np.nan, index=df.index)), errors="coerce").fillna(0.0)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     def _decay_weight(row) -> float:
         if "observed_at" in df.columns and pd.notna(row.get("observed_at")):
@@ -158,7 +159,7 @@ def build_team_process_ratings(
             discipline_risk=float(fouls / 20.0 + yc / 3.0),
             sample_matches=n,
             effective_weight=float(shrink_w),
-            asof_timestamp=prediction_timestamp or datetime.utcnow(),
+            asof_timestamp=prediction_timestamp or datetime.now(timezone.utc),
         )
 
     return result

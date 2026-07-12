@@ -10,11 +10,11 @@ Process:
 6. Accumulate across matches with time decay for team-level market ability.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+
 import numpy as np
-import pandas as pd
 
 try:
     from penaltyblog.models import goal_expectancy, goal_expectancy_extended
@@ -23,9 +23,9 @@ except ImportError:
     _HAS_PENALTYBLOG_GE = False
 
 try:
-    from penaltyblog.implied import calculate_implied
-    _HAS_IMPLIED = True
-except ImportError:
+    import importlib.util as _ilu
+    _HAS_IMPLIED = _ilu.find_spec("penaltyblog") is not None
+except Exception:
     _HAS_IMPLIED = False
 
 
@@ -38,7 +38,7 @@ class MatchMarketEGM:
     market_lambda_away: float
     market_egm: float
     market_total: float
-    market_rho: Optional[float]
+    market_rho: float | None
     vendor_count: int
     method_used: str     # "goal_expectancy_extended" | "goal_expectancy" | "fallback"
     observed_at: str
@@ -59,7 +59,7 @@ def compute_match_market_egm(
     away_team_id: int,
     odds_rows: list[dict],
     observed_at: str,
-) -> Optional[MatchMarketEGM]:
+) -> MatchMarketEGM | None:
     """
     odds_rows: list of dicts with BDL top-level odds fields for this match.
     Uses the first vendor that has complete 1X2 data.
@@ -68,7 +68,7 @@ def compute_match_market_egm(
         return None
 
     # Try each vendor for complete 1X2 + O/U 2.5
-    best: Optional[dict] = None
+    best: dict | None = None
     for row in odds_rows:
         try:
             _devig_1x2(
@@ -148,7 +148,7 @@ def compute_team_market_ability(
     """
     if not match_egms:
         return 0.0
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     values, weights = [], []
     for m in match_egms:
         if m.home_team_id == team_id:

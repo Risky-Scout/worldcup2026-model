@@ -6,27 +6,22 @@ It loads trained models, fetches market data, calibrates, and produces JSON.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from wc2026 import DATA_VERSION, MODEL_VERSION
 from wc2026.backtest.walkforward import WalkForwardEngine
-from wc2026.calibration.score_pmf import ScorePMFCalibrator, evaluate_pmf_predictions
+from wc2026.calibration.score_pmf import ScorePMFCalibrator
 from wc2026.config import PREDICTIONS_DIR, PUBLISHED_DIR
-from wc2026.data.dataset import DatasetBuilder
-from wc2026.data.providers.bdl import BDLProvider
 from wc2026.data.storage import read_table, table_exists
 from wc2026.markets.consensus import build_consensus
 from wc2026.markets.reconcile import reconcile_pmf
-from wc2026.models.baselines import EloBaseline, EqualProbabilityBaseline
+from wc2026.models.baselines import EqualProbabilityBaseline
 from wc2026.models.ladder import TIER1_MODELS, ModelLadder
 from wc2026.models.prediction import ScorePMFPrediction
 
@@ -55,17 +50,17 @@ class PredictionEngine:
         self._data_version = data_version
         self._model_version = model_version
         self._include_bayesian = include_bayesian
-        self._ladder: Optional[ModelLadder] = None
-        self._stacker: Optional[object] = None  # TeamMarginStacker — fitted in fit_models()
+        self._ladder: ModelLadder | None = None
+        self._stacker: object | None = None  # TeamMarginStacker — fitted in fit_models()
         self._calibrators: dict[str, ScorePMFCalibrator] = {}
-        self._matches_df: Optional[pd.DataFrame] = None
-        self._odds_df: Optional[pd.DataFrame] = None
+        self._matches_df: pd.DataFrame | None = None
+        self._odds_df: pd.DataFrame | None = None
 
     # -----------------------------------------------------------------------
     # Setup
     # -----------------------------------------------------------------------
 
-    def load_data(self) -> "PredictionEngine":
+    def load_data(self) -> PredictionEngine:
         """Load processed dataset tables."""
         if not table_exists("matches", self._data_version):
             raise FileNotFoundError(
@@ -83,7 +78,7 @@ class PredictionEngine:
         )
         return self
 
-    def fit_models(self, refit: bool = True) -> "PredictionEngine":
+    def fit_models(self, refit: bool = True) -> PredictionEngine:
         """Fit the model ladder and Ridge meta-learner on completed historical matches."""
         if self._matches_df is None:
             self.load_data()
@@ -183,7 +178,7 @@ class PredictionEngine:
         else:
             log.info("TeamMarginStacker fitted (no coefs — insufficient data for CV)")
 
-    def calibrate(self, min_matches: int = 20) -> "PredictionEngine":
+    def calibrate(self, min_matches: int = 20) -> PredictionEngine:
         """
         Run walk-forward calibration and fit temperature scalers.
 
@@ -231,10 +226,10 @@ class PredictionEngine:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int] = None,
-        season: Optional[int] = 2026,
-        stage: Optional[str] = None,
-        venue: Optional[str] = None,
+        match_id: int | None = None,
+        season: int | None = 2026,
+        stage: str | None = None,
+        venue: str | None = None,
         neutral_venue: bool = True,
     ) -> dict:
         """
@@ -273,10 +268,6 @@ class PredictionEngine:
             predictions["equal_probability"] = EqualProbabilityBaseline().predict(
                 home_team, away_team, match_id=match_id
             )
-
-        predictions["equal_probability"] = EqualProbabilityBaseline().predict(
-            home_team, away_team, match_id=match_id
-        )
 
         market_data = None
         if self._odds_df is not None and match_id is not None:
@@ -326,21 +317,20 @@ class PredictionEngine:
         self,
         home_team: str,
         away_team: str,
-        match_id: Optional[int],
-        season: Optional[int],
-        stage: Optional[str],
-        venue: Optional[str],
+        match_id: int | None,
+        season: int | None,
+        stage: str | None,
+        venue: str | None,
     ) -> dict:
         """Full composite-prior + SLSQP prediction for arbitrary matchups."""
-        from wc2026.ratings.composite import build_composite_prior
-        from wc2026.models.baselines import EloBaseline
-        from wc2026.models.joint_pmf import from_lambdas
-        from wc2026.markets.exact_score_reconcile import (
-            extract_constraints, reconcile,
-        )
-        from wc2026.markets.edge import compute_edge_report
         from wc2026.config import PROCESSED_DIR
-        import numpy as np
+        from wc2026.markets.edge import compute_edge_report
+        from wc2026.markets.exact_score_reconcile import (
+            extract_constraints,
+            reconcile,
+        )
+        from wc2026.models.joint_pmf import from_lambdas
+        from wc2026.ratings.composite import build_composite_prior
 
         matches_df = self._matches_df
         odds_df = self._odds_df if self._odds_df is not None else pd.DataFrame()
@@ -357,8 +347,8 @@ class PredictionEngine:
         # learned blending to adjust the composite lambdas.  The stacker
         # predicts the expected home goal difference (home_gd); we use that
         # to nudge comp_lh and comp_la symmetrically around the base total.
-        comp_lh = home_prior.final_attack_lambda * away_prior.final_defense_lambda / 1.30
-        comp_la = away_prior.final_attack_lambda * home_prior.final_defense_lambda / 1.30
+        comp_lh = home_prior.final_attack_lambda * away_prior.final_defense_lambda / 1.45
+        comp_la = away_prior.final_attack_lambda * home_prior.final_defense_lambda / 1.45
 
         stacker = getattr(self, "_stacker", None)
         if stacker is not None:
@@ -428,7 +418,8 @@ class PredictionEngine:
         if mc.has_1x2:
             try:
                 mkt = {"home_win": mc.home_win, "draw": mc.draw, "away_win": mc.away_win}
-                if mc.btts_yes: mkt["btts_yes"] = mc.btts_yes
+                if mc.btts_yes:
+                    mkt["btts_yes"] = mc.btts_yes
                 er = compute_edge_report(publish_pmf, mkt, pl_lh, pl_la,
                     match_id=str(match_id or ""), home_team=home_team, away_team=away_team,
                     prediction_mode=rec.publish_mode)
@@ -484,7 +475,7 @@ class PredictionEngine:
             },
             "consistency_checks": [],
             "warnings": [] if rec.publish_mode == "market_reconciled" else
-                        [f"No market odds — using composite_rating_pmf (pure_model)"],
+                        ["No market odds — using composite_rating_pmf (pure_model)"],
         }
 
     def predict_date(
@@ -536,7 +527,6 @@ class PredictionEngine:
 
         try:
             from wc2026.config import PROCESSED_DIR
-            from wc2026.data.storage import read_table
 
             matches_df = self._matches_df
             odds_df = self._odds_df if self._odds_df is not None else pd.DataFrame()
@@ -560,7 +550,6 @@ class PredictionEngine:
         markets_df: pd.DataFrame,
     ) -> dict:
         """Delegate to the full pipeline's prediction functions."""
-        import sys
         import importlib
         # Import the pipeline module's prediction helpers
         pipeline_module = None
@@ -589,9 +578,9 @@ class PredictionEngine:
         if pipeline_module is not None:
             # Use full composite prior + reconciliation
             try:
-                from wc2026.ratings.composite import build_composite_prior
-                from wc2026.models.ladder import ModelLadder
                 from wc2026.models.baselines import EloBaseline
+                from wc2026.models.ladder import ModelLadder
+                from wc2026.ratings.composite import build_composite_prior
 
                 hist = matches_df[matches_df["status"] == "completed"].dropna(
                     subset=["home_goals", "away_goals"]
@@ -742,8 +731,8 @@ class PredictionEngine:
 
 def _compute_model_market_diff(
     pred: ScorePMFPrediction,
-    market: Optional[object],
-) -> Optional[dict]:
+    market: object | None,
+) -> dict | None:
     if market is None or not market.has_1x2:
         return None
     dm = pred.derived_markets
@@ -756,7 +745,7 @@ def _compute_model_market_diff(
 
 def _collect_warnings(
     predictions: dict[str, ScorePMFPrediction],
-    market: Optional[object],
+    market: object | None,
 ) -> list[str]:
     warnings = []
     for name, pred in predictions.items():

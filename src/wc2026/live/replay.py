@@ -50,13 +50,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from .state import MatchState, MatchStatus, MatchEvent, EventType, TeamLiveStats
 from .predictor import LivePMFPredictor, LivePMFResult
+from .state import MatchState, MatchStatus
 
 log = logging.getLogger(__name__)
 
@@ -113,15 +112,15 @@ class ReplayCheckpoint:
     warnings: list = field(default_factory=list)
 
     # 4B — First-half actual scores and PMF probabilities
-    fh_home_actual: Optional[int] = None
-    fh_away_actual: Optional[int] = None
-    fh_hw_prob: Optional[float] = None
-    fh_draw_prob: Optional[float] = None
-    fh_aw_prob: Optional[float] = None
-    fh_over_0_5_prob: Optional[float] = None
-    fh_btts_prob: Optional[float] = None
-    fh_ignorance_score: Optional[float] = None   # Log Loss per penaltyblog
-    fh_brier_score: Optional[float] = None
+    fh_home_actual: int | None = None
+    fh_away_actual: int | None = None
+    fh_hw_prob: float | None = None
+    fh_draw_prob: float | None = None
+    fh_aw_prob: float | None = None
+    fh_over_0_5_prob: float | None = None
+    fh_btts_prob: float | None = None
+    fh_ignorance_score: float | None = None   # Log Loss per penaltyblog
+    fh_brier_score: float | None = None
 
     def to_dict(self) -> dict:
         d = {k: v for k, v in self.__dict__.items() if not isinstance(v, list)}
@@ -143,17 +142,17 @@ class MatchReplayer:
     Applies the live predictor at each state and evaluates against actual outcome.
     """
 
-    def __init__(self, predictor: Optional[LivePMFPredictor] = None):
+    def __init__(self, predictor: LivePMFPredictor | None = None):
         self.predictor = predictor or LivePMFPredictor()
 
     def replay(
         self,
         match_row: pd.Series,
-        events_df: Optional[pd.DataFrame] = None,
-        stats_df: Optional[pd.DataFrame] = None,
+        events_df: pd.DataFrame | None = None,
+        stats_df: pd.DataFrame | None = None,
         pregame_lh: float = 1.35,
         pregame_la: float = 1.00,
-        momentum_df: Optional[pd.DataFrame] = None,
+        momentum_df: pd.DataFrame | None = None,
     ) -> list[ReplayCheckpoint]:
         """
         Replay a completed match and return checkpoints.
@@ -204,8 +203,8 @@ class MatchReplayer:
                 if len(m_stats) == 0:
                     m_stats = stats_df[stats_df["match_id"].astype(str) == match_id]
                 if len(m_stats) > 0:
-                    h_raw = m_stats[m_stats["is_home"] == True]
-                    a_raw = m_stats[m_stats["is_home"] == False]
+                    h_raw = m_stats[m_stats["is_home"]]
+                    a_raw = m_stats[not m_stats["is_home"]]
                     if len(h_raw) > 0 and len(a_raw) > 0:
                         h_r = h_raw.iloc[0]
                         a_r = a_raw.iloc[0]
@@ -283,12 +282,12 @@ class MatchReplayer:
         match_id: str,
         final_hg: int,
         final_ag: int,
-        events_df: Optional[pd.DataFrame],
+        events_df: pd.DataFrame | None,
     ) -> list[tuple[int, str]]:
         """
         Return list of (minute, team) tuples for all goals.
         'team' is 'home' or 'away'.
-        
+
         Falls back to synthetic uniform distribution if no event data.
         """
         if events_df is not None and len(events_df) > 0:
@@ -320,7 +319,7 @@ class MatchReplayer:
     def _build_card_timeline(
         self,
         match_id: str,
-        events_df: Optional[pd.DataFrame],
+        events_df: pd.DataFrame | None,
         card_type: str = "red_card",
     ) -> list[tuple[int, str]]:
         """Return list of (minute, team) for red cards."""
@@ -371,8 +370,8 @@ class MatchReplayer:
         final_ag: int,
         pregame_lh: float,
         pregame_la: float,
-        fh_home_actual: Optional[int] = None,
-        fh_away_actual: Optional[int] = None,
+        fh_home_actual: int | None = None,
+        fh_away_actual: int | None = None,
     ) -> ReplayCheckpoint:
         """Build a ReplayCheckpoint from a prediction result and actual outcome."""
         h0 = state.home_goals
@@ -506,11 +505,11 @@ def _rps_1x2(ph: float, pd: float, pa: float,
 
 def run_2022_replay(
     matches_df: pd.DataFrame,
-    events_df: Optional[pd.DataFrame] = None,
-    stats_df: Optional[pd.DataFrame] = None,
-    pregame_lambdas: Optional[dict] = None,
-    output_path: Optional[str] = None,
-    momentum_df: Optional[pd.DataFrame] = None,
+    events_df: pd.DataFrame | None = None,
+    stats_df: pd.DataFrame | None = None,
+    pregame_lambdas: dict | None = None,
+    output_path: str | None = None,
+    momentum_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Run the full 2022 World Cup replay and return a DataFrame of checkpoints.
@@ -534,7 +533,7 @@ def run_2022_replay(
     # Normalize BDL event columns to the internal schema expected by MatchReplayer.
     # BDL uses: incident_type, incident_class, time_minute, is_home
     # Internal expects: type, clock_minute, team
-    events_norm: Optional[pd.DataFrame] = None
+    events_norm: pd.DataFrame | None = None
     if events_df is not None and len(events_df) > 0:
         ev = events_df.copy()
         # Rename incident_type → type if needed

@@ -9,11 +9,7 @@ immediately during parsing — no silent pandas corruption.
 """
 from __future__ import annotations
 
-from datetime import datetime
-from typing import List, Optional
-
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Shared sub-objects
@@ -27,9 +23,9 @@ class Season(BaseModel):
 class TeamSummary(BaseModel):
     id: int
     name: str
-    abbreviation: Optional[str] = None
-    country_code: Optional[str] = None
-    confederation: Optional[str] = None
+    abbreviation: str | None = None
+    country_code: str | None = None
+    confederation: str | None = None
 
 
 class Group(BaseModel):
@@ -40,52 +36,52 @@ class Group(BaseModel):
 class Stadium(BaseModel):
     id: int
     name: str
-    city: Optional[str] = None
-    country: Optional[str] = None
-    capacity: Optional[int] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    city: str | None = None
+    country: str | None = None
+    capacity: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class Stage(BaseModel):
     id: int
     name: str
-    order: Optional[int] = None
+    order: int | None = None
 
 
 class TeamSource(BaseModel):
     type: str
-    source_match_id: Optional[int] = None
-    source_match_number: Optional[int] = None
-    source_group_id: Optional[int] = None
-    source_group_name: Optional[str] = None
-    placeholder: Optional[str] = None
-    description: Optional[str] = None
+    source_match_id: int | None = None
+    source_match_number: int | None = None
+    source_group_id: int | None = None
+    source_group_name: str | None = None
+    placeholder: str | None = None
+    description: str | None = None
 
 
 class Referee(BaseModel):
     id: int
     name: str
-    country_code: Optional[str] = None
-    country_name: Optional[str] = None
+    country_code: str | None = None
+    country_name: str | None = None
 
 
 class Manager(BaseModel):
     id: int
     name: str
-    short_name: Optional[str] = None
+    short_name: str | None = None
 
 
 class Player(BaseModel):
     id: int
     name: str
-    short_name: Optional[str] = None
-    position: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    country_code: Optional[str] = None
-    country_name: Optional[str] = None
-    height_cm: Optional[int] = None
-    jersey_number: Optional[str] = None
+    short_name: str | None = None
+    position: str | None = None
+    date_of_birth: str | None = None
+    country_code: str | None = None
+    country_name: str | None = None
+    height_cm: int | None = None
+    jersey_number: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -94,109 +90,109 @@ class Player(BaseModel):
 
 class Match(BaseModel):
     id: int
-    match_number: Optional[int] = None
-    datetime: Optional[str] = None
+    match_number: int | None = None
+    datetime: str | None = None
     status: str
-    season: Optional[Season] = None
-    stage: Optional[Stage] = None
-    group: Optional[Group] = None
-    stadium: Optional[Stadium] = None
-    home_team: Optional[TeamSummary] = None
-    away_team: Optional[TeamSummary] = None
-    home_team_source: Optional[TeamSource] = None
-    away_team_source: Optional[TeamSource] = None
-    home_score: Optional[int] = None
-    away_score: Optional[int] = None
-    home_score_penalties: Optional[int] = None
-    away_score_penalties: Optional[int] = None
-    first_half_home_score: Optional[int] = None
-    first_half_away_score: Optional[int] = None
-    second_half_home_score: Optional[int] = None
-    second_half_away_score: Optional[int] = None
-    extra_time_home_score: Optional[int] = None
-    extra_time_away_score: Optional[int] = None
-    has_extra_time: Optional[bool] = None
-    has_penalty_shootout: Optional[bool] = None
-    round_number: Optional[int] = None
-    round_name: Optional[str] = None
-    home_formation: Optional[str] = None
-    away_formation: Optional[str] = None
-    referee: Optional[Referee] = None
-    home_manager: Optional[Manager] = None
-    away_manager: Optional[Manager] = None
+    season: Season | None = None
+    stage: Stage | None = None
+    group: Group | None = None
+    stadium: Stadium | None = None
+    home_team: TeamSummary | None = None
+    away_team: TeamSummary | None = None
+    home_team_source: TeamSource | None = None
+    away_team_source: TeamSource | None = None
+    home_score: int | None = None
+    away_score: int | None = None
+    home_score_penalties: int | None = None
+    away_score_penalties: int | None = None
+    first_half_home_score: int | None = None
+    first_half_away_score: int | None = None
+    second_half_home_score: int | None = None
+    second_half_away_score: int | None = None
+    extra_time_home_score: int | None = None
+    extra_time_away_score: int | None = None
+    has_extra_time: bool | None = None
+    has_penalty_shootout: bool | None = None
+    round_number: int | None = None
+    round_name: str | None = None
+    home_formation: str | None = None
+    away_formation: str | None = None
+    referee: Referee | None = None
+    home_manager: Manager | None = None
+    away_manager: Manager | None = None
 
 
 class TeamMatchStat(BaseModel):
     match_id: int
     team_id: int
     is_home: bool
-    possession_pct: Optional[float] = None
-    expected_goals: Optional[float] = None
-    big_chances: Optional[int] = None
-    big_chances_missed: Optional[int] = None
-    shots_total: Optional[int] = None
-    shots_on_target: Optional[int] = None
-    shots_off_target: Optional[int] = None
-    shots_blocked: Optional[int] = None
-    shots_inside_box: Optional[int] = None
-    shots_outside_box: Optional[int] = None
-    hit_woodwork: Optional[int] = None
-    corners: Optional[int] = None
-    offsides: Optional[int] = None
-    fouls: Optional[int] = None
-    yellow_cards: Optional[int] = None
-    passes_total: Optional[int] = None
-    passes_accurate: Optional[int] = None
-    passes_final_third: Optional[int] = None
-    long_balls_total: Optional[int] = None
-    long_balls_accurate: Optional[int] = None
-    crosses_total: Optional[int] = None
-    crosses_accurate: Optional[int] = None
-    tackles: Optional[int] = None
-    interceptions: Optional[int] = None
-    clearances: Optional[int] = None
-    saves: Optional[int] = None
-    dribbles_completed: Optional[int] = None
-    dribbles_total: Optional[int] = None
+    possession_pct: float | None = None
+    expected_goals: float | None = None
+    big_chances: int | None = None
+    big_chances_missed: int | None = None
+    shots_total: int | None = None
+    shots_on_target: int | None = None
+    shots_off_target: int | None = None
+    shots_blocked: int | None = None
+    shots_inside_box: int | None = None
+    shots_outside_box: int | None = None
+    hit_woodwork: int | None = None
+    corners: int | None = None
+    offsides: int | None = None
+    fouls: int | None = None
+    yellow_cards: int | None = None
+    passes_total: int | None = None
+    passes_accurate: int | None = None
+    passes_final_third: int | None = None
+    long_balls_total: int | None = None
+    long_balls_accurate: int | None = None
+    crosses_total: int | None = None
+    crosses_accurate: int | None = None
+    tackles: int | None = None
+    interceptions: int | None = None
+    clearances: int | None = None
+    saves: int | None = None
+    dribbles_completed: int | None = None
+    dribbles_total: int | None = None
 
 
 class MatchShot(BaseModel):
     id: int
     match_id: int
-    player_id: Optional[int] = None
-    team_id: Optional[int] = None
-    is_home: Optional[bool] = None
-    shot_type: Optional[str] = None
-    situation: Optional[str] = None
-    body_part: Optional[str] = None
-    goal_type: Optional[str] = None
-    xg: Optional[float] = None
-    xgot: Optional[float] = None
-    player_x: Optional[float] = None
-    player_y: Optional[float] = None
-    time_minute: Optional[int] = None
-    added_time: Optional[int] = None
-    time_seconds: Optional[int] = None
+    player_id: int | None = None
+    team_id: int | None = None
+    is_home: bool | None = None
+    shot_type: str | None = None
+    situation: str | None = None
+    body_part: str | None = None
+    goal_type: str | None = None
+    xg: float | None = None
+    xgot: float | None = None
+    player_x: float | None = None
+    player_y: float | None = None
+    time_minute: int | None = None
+    added_time: int | None = None
+    time_seconds: int | None = None
 
 
 class MatchEvent(BaseModel):
     id: int
     match_id: int
-    incident_type: Optional[str] = None
-    incident_class: Optional[str] = None
-    time_minute: Optional[int] = None
-    added_time: Optional[int] = None
-    period: Optional[str] = None
-    is_home: Optional[bool] = None
-    player: Optional[Player] = None
-    assist_player: Optional[Player] = None
-    player_in: Optional[Player] = None
-    player_out: Optional[Player] = None
-    home_score: Optional[int] = None
-    away_score: Optional[int] = None
-    shootout_sequence: Optional[int] = None
-    shootout_description: Optional[str] = None
-    rescinded: Optional[bool] = None
+    incident_type: str | None = None
+    incident_class: str | None = None
+    time_minute: int | None = None
+    added_time: int | None = None
+    period: str | None = None
+    is_home: bool | None = None
+    player: Player | None = None
+    assist_player: Player | None = None
+    player_in: Player | None = None
+    player_out: Player | None = None
+    home_score: int | None = None
+    away_score: int | None = None
+    shootout_sequence: int | None = None
+    shootout_description: str | None = None
+    rescinded: bool | None = None
 
 
 class MatchMomentum(BaseModel):
@@ -210,12 +206,12 @@ class MarketOutcome(BaseModel):
     key: str
     name: str
     type: str
-    side: Optional[str] = None
-    line_value: Optional[str] = None
-    handicap: Optional[str] = None
-    american_odds: Optional[int] = None
-    decimal_odds: Optional[float] = None
-    updated_at: Optional[str] = None
+    side: str | None = None
+    line_value: str | None = None
+    handicap: str | None = None
+    american_odds: int | None = None
+    decimal_odds: float | None = None
+    updated_at: str | None = None
 
 
 class MarketLine(BaseModel):
@@ -225,52 +221,52 @@ class MarketLine(BaseModel):
     type: str
     period: str
     scope: str
-    team_side: Optional[str] = None
-    line_value: Optional[str] = None
-    updated_at: Optional[str] = None
-    outcomes: List[MarketOutcome] = Field(default_factory=list)
+    team_side: str | None = None
+    line_value: str | None = None
+    updated_at: str | None = None
+    outcomes: list[MarketOutcome] = Field(default_factory=list)
 
 
 class Odds(BaseModel):
     id: int
     match_id: int
     vendor: str
-    moneyline_home_odds: Optional[int] = None
-    moneyline_away_odds: Optional[int] = None
-    moneyline_draw_odds: Optional[int] = None
-    spread_home_value: Optional[str] = None
-    spread_home_odds: Optional[int] = None
-    spread_away_value: Optional[str] = None
-    spread_away_odds: Optional[int] = None
-    total_value: Optional[str] = None
-    total_over_odds: Optional[int] = None
-    total_under_odds: Optional[int] = None
-    updated_at: Optional[str] = None
-    markets: List[MarketLine] = Field(default_factory=list)
+    moneyline_home_odds: int | None = None
+    moneyline_away_odds: int | None = None
+    moneyline_draw_odds: int | None = None
+    spread_home_value: str | None = None
+    spread_home_odds: int | None = None
+    spread_away_value: str | None = None
+    spread_away_odds: int | None = None
+    total_value: str | None = None
+    total_over_odds: int | None = None
+    total_under_odds: int | None = None
+    updated_at: str | None = None
+    markets: list[MarketLine] = Field(default_factory=list)
 
 
 class GroupStanding(BaseModel):
-    season: Optional[Season] = None
+    season: Season | None = None
     team: TeamSummary
-    group: Optional[Group] = None
-    position: Optional[int] = None
-    played: Optional[int] = None
-    won: Optional[int] = None
-    drawn: Optional[int] = None
-    lost: Optional[int] = None
-    goals_for: Optional[int] = None
-    goals_against: Optional[int] = None
-    goal_difference: Optional[int] = None
-    points: Optional[int] = None
+    group: Group | None = None
+    position: int | None = None
+    played: int | None = None
+    won: int | None = None
+    drawn: int | None = None
+    lost: int | None = None
+    goals_for: int | None = None
+    goals_against: int | None = None
+    goal_difference: int | None = None
+    points: int | None = None
 
 
 class MatchTeamForm(BaseModel):
     match_id: int
     team_id: int
     is_home: bool
-    avg_rating: Optional[float] = None
-    position: Optional[int] = None
-    value: Optional[str] = None
+    avg_rating: float | None = None
+    position: int | None = None
+    value: str | None = None
 
 
 class MatchLineup(BaseModel):
@@ -279,9 +275,9 @@ class MatchLineup(BaseModel):
     player: Player
     is_starter: bool
     is_substitute: bool
-    shirt_number: Optional[int] = None
-    position: Optional[str] = None
-    formation: Optional[str] = None
+    shirt_number: int | None = None
+    position: str | None = None
+    formation: str | None = None
 
 
 class PlayerMatchStat(BaseModel):
@@ -289,25 +285,25 @@ class PlayerMatchStat(BaseModel):
     player_id: int
     team_id: int
     is_home: bool
-    rating: Optional[float] = None
-    minutes_played: Optional[int] = None
-    expected_goals: Optional[float] = None
-    expected_assists: Optional[float] = None
-    goals: Optional[int] = None
-    assists: Optional[int] = None
-    shots_on_target: Optional[int] = None
-    passes_total: Optional[int] = None
-    passes_accurate: Optional[int] = None
-    key_passes: Optional[int] = None
-    tackles: Optional[int] = None
-    tackles_won: Optional[int] = None
-    interceptions: Optional[int] = None
-    duels_won: Optional[int] = None
-    duels_lost: Optional[int] = None
-    fouls_committed: Optional[int] = None
-    was_fouled: Optional[int] = None
-    touches: Optional[int] = None
-    saves: Optional[int] = None
+    rating: float | None = None
+    minutes_played: int | None = None
+    expected_goals: float | None = None
+    expected_assists: float | None = None
+    goals: int | None = None
+    assists: int | None = None
+    shots_on_target: int | None = None
+    passes_total: int | None = None
+    passes_accurate: int | None = None
+    key_passes: int | None = None
+    tackles: int | None = None
+    tackles_won: int | None = None
+    interceptions: int | None = None
+    duels_won: int | None = None
+    duels_lost: int | None = None
+    fouls_committed: int | None = None
+    was_fouled: int | None = None
+    touches: int | None = None
+    saves: int | None = None
 
 
 # ---------------------------------------------------------------------------

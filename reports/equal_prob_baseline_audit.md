@@ -1,6 +1,6 @@
 # Equal-Probability Baseline Audit
 
-**Generated**: 2026-07-05T17:42:26Z
+**Generated**: 2026-07-12T16:25:59Z
 
 ## What equal_probability actually is
 
@@ -20,7 +20,7 @@ The result is a symmetric Bivariate Poisson PMF that peaks at 1-1.
 
 ## Why it beats parametric models on 128-match OOF NLL
 
-**OOF NLL: 3.0219** vs. negative_binomial 4.4369
+**OOF NLL: 3.0219** vs. negative_binomial 4.4370
 
 This is a **James-Stein / small-sample phenomenon**:
 

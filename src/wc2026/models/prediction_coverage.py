@@ -7,10 +7,14 @@ Missing data increases uncertainty; it never prevents a prediction.
 Abstention is ONLY for the CLV/betting edge layer, not for the base prediction.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from wc2026.ratings.team_margin import TeamMarginRating
 
 log = logging.getLogger(__name__)
 
@@ -126,7 +130,7 @@ def build_match_prediction(
     away_sources: list[str],
     home_uncertainty: float,
     away_uncertainty: float,
-    prediction_timestamp: Optional[datetime] = None,
+    prediction_timestamp: datetime | None = None,
 ) -> FullMatchPrediction:
     """
     Build a complete match prediction from EGM components.
@@ -157,7 +161,7 @@ def build_match_prediction(
 
     all_sources = list(dict.fromkeys(home_sources + away_sources))
 
-    ts = prediction_timestamp or datetime.utcnow()
+    ts = prediction_timestamp or datetime.now(timezone.utc)
 
     return FullMatchPrediction(
         match_id=match_id,
@@ -183,9 +187,9 @@ def build_match_prediction(
 
 def ensure_prediction_coverage(
     scheduled_matches: list[dict],
-    available_team_ratings: dict[int, "TeamMarginRating"],  # type: ignore
+    available_team_ratings: dict[int, TeamMarginRating],
     total_anchor: float = WC_TOTAL_BASELINE,
-    prediction_timestamp: Optional[datetime] = None,
+    prediction_timestamp: datetime | None = None,
 ) -> list[FullMatchPrediction]:
     """
     Guarantee a prediction for every scheduled match.
@@ -200,7 +204,6 @@ def ensure_prediction_coverage(
     Returns: list of FullMatchPrediction, one per scheduled match, NEVER skipping.
     """
     from src.wc2026.ratings.team_margin import TeamMarginRating
-    from src.wc2026.ratings.fallback_prior import build_fallback_egm, compute_uncertainty
 
     predictions = []
 

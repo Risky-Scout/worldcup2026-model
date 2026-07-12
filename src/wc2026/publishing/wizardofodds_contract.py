@@ -17,7 +17,6 @@ Rules enforced by this module:
 from __future__ import annotations
 
 import copy
-from typing import Any
 
 # ---------------------------------------------------------------------------
 # Approved namespaces for new additive keys

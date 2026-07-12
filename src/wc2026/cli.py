@@ -24,8 +24,8 @@ from pathlib import Path
 
 import click
 
-from wc2026 import DATA_VERSION, MODEL_VERSION
-from wc2026.config import PREDICTIONS_DIR, PUBLISHED_DIR, REPORTS_DIR
+from wc2026 import DATA_VERSION
+from wc2026.config import PREDICTIONS_DIR, PUBLISHED_DIR
 
 _logging_configured = False
 
@@ -117,6 +117,7 @@ def build_dataset(ctx, seasons, data_version):
     """Validate, normalise, and write versioned Parquet tables."""
     _setup_logging(ctx.obj.get("verbose", False))
     import os
+
     from wc2026.data.dataset import DatasetBuilder
     from wc2026.data.providers.bdl import BDLProvider
 
@@ -234,9 +235,9 @@ def predict_match(ctx, home, away, season, stage, data_version, out):
 def predict_date(ctx, date, season, data_version, out):
     """Predict all matches on a given date."""
     _setup_logging(ctx.obj.get("verbose", False))
-    from wc2026.engine import PredictionEngine
-    from wc2026.config import PUBLISHED_DIR
     import json as _json
+
+    from wc2026.engine import PredictionEngine
     # Fast path: serve pre-computed published JSON without fitting models
     cached = PUBLISHED_DIR / f"{date}.json"
     if cached.exists():
@@ -307,10 +308,11 @@ def publish_today(ctx, season, data_version):
     # then compares them against any available closing-line snapshots.
     # This runs every publish so CLV accumulates a real dataset over the tournament.
     try:
-        from wc2026.evaluation.clv_pipeline import run_clv_pipeline
-        from wc2026.data.odds_snapshot_store import OddsSnapshotStore
-        from wc2026.config import PUBLISHED_DIR, DATA_DIR
         import json as _json
+
+        from wc2026.config import DATA_DIR, PUBLISHED_DIR
+        from wc2026.data.odds_snapshot_store import OddsSnapshotStore
+        from wc2026.evaluation.clv_pipeline import run_clv_pipeline
 
         pub_path = PUBLISHED_DIR / f"{today}.json"
         if pub_path.exists():
@@ -381,8 +383,6 @@ def schedule(ctx, date):
     import json
     from datetime import datetime, timezone
     from zoneinfo import ZoneInfo
-    from pathlib import Path
-    from wc2026.config import PUBLISHED_DIR
 
     _setup_logging(ctx.obj.get("verbose", False))
 
@@ -476,9 +476,10 @@ def schedule(ctx, date):
 def results(ctx, date, show_all):
     """Show completed match results alongside pre-game predictions."""
     import json
+
     import pandas as pd
-    from pathlib import Path
-    from wc2026.config import PROCESSED_DIR, PUBLISHED_DIR
+
+    from wc2026.config import PROCESSED_DIR
 
     _setup_logging(ctx.obj.get("verbose", False))
 
@@ -572,7 +573,7 @@ def simulate(ctx, n, group, winner, markdown, save):
     sys.path.insert(0, str(scripts_dir))
 
     if winner:
-        from simulate_groups import run_full_tournament_simulation, render_winner_text
+        from simulate_groups import render_winner_text, run_full_tournament_simulation
         click.echo(f"Running {n:,} full tournament simulations...", err=True)
         sim = run_full_tournament_simulation(n_sims=n)
         if save:
@@ -595,7 +596,7 @@ def simulate(ctx, n, group, winner, markdown, save):
             click.echo(render_winner_text(sim))
         return
 
-    from simulate_groups import run_simulation, render_text, render_markdown
+    from simulate_groups import render_markdown, render_text, run_simulation
     click.echo(f"Running {n:,} simulations...", err=True)
     sim = run_simulation(n_sims=n)
 
@@ -622,8 +623,6 @@ def calibration(ctx, market):
     """Show running calibration metrics on completed 2026 World Cup matches."""
     import json
     import math
-    from pathlib import Path
-    from wc2026.config import PUBLISHED_DIR
 
     _setup_logging(ctx.obj.get("verbose", False))
 
@@ -760,7 +759,7 @@ def calibration(ctx, market):
 def standings(ctx, group):
     """Show current group standings from the latest BDL snapshot."""
     import json
-    from pathlib import Path
+
     from wc2026.config import DATA_DIR
 
     _setup_logging(ctx.obj.get("verbose", False))
@@ -813,7 +812,7 @@ def standings(ctx, group):
         group_rows = [r for r in recs_2026 if r["group"]["name"] == gname]
         if not group_rows:
             continue
-        has_played = any(r["played"] > 0 for r in group_rows)
+        any(r["played"] > 0 for r in group_rows)
         click.echo(f"\n  {gname}")
         click.echo(f"  {'Pos':<4} {'Team':<26} {'P':>2} {'W':>2} {'D':>2} {'L':>2} {'GF':>3} {'GA':>3} {'GD':>4} {'Pts':>4}")
         click.echo("  " + "-" * 60)
@@ -873,7 +872,7 @@ def audit(ctx, data_version):
         if missing_odds_ts > 0:
             warnings.append(f"{missing_odds_ts} OOF rows missing prediction_timestamp")
     else:
-        click.echo(f"  ✗ OOF predictions: NOT FOUND. Run `make backtest` first.")
+        click.echo("  ✗ OOF predictions: NOT FOUND. Run `make backtest` first.")
         warnings.append("OOF predictions not found. Cannot verify no-leakage calibration.")
 
     # Check OOF leakage
@@ -888,7 +887,6 @@ def audit(ctx, data_version):
     click.echo("Published artifacts:")
     import glob
     import json
-    from wc2026.config import PUBLISHED_DIR
     published_files = sorted(glob.glob(str(PUBLISHED_DIR / "*.json")))
     click.echo(f"  Published JSONs: {len(published_files)}")
     n_pmf_valid = 0
@@ -943,8 +941,8 @@ def audit(ctx, data_version):
     click.echo("Composite prior:")
     try:
         from wc2026.data.storage import read_table
-        matches_df = read_table("matches", data_version)
-        odds_df = read_table("odds", data_version) if table_exists("odds", data_version) else None
+        read_table("matches", data_version)
+        read_table("odds", data_version) if table_exists("odds", data_version) else None
         from wc2026.ratings.composite import _FIFA_POINTS
         click.echo(f"  ✓ FIFA points table: {len(_FIFA_POINTS)} teams")
         from wc2026.ratings.composite import _QUALIFYING_STATS

@@ -1,8 +1,8 @@
 """Fair CLV reporting with correct quarter-line settlement and cluster bootstrap."""
 from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -64,8 +64,8 @@ def _cluster_bootstrap_ci(values: np.ndarray, match_ids: np.ndarray, n_reps: int
 
 def compute_clv_report(
     clv_records: pd.DataFrame,
-    closing_snapshots: Optional[pd.DataFrame] = None,
-    canonical_markets: Optional[dict] = None,
+    closing_snapshots: pd.DataFrame | None = None,
+    canonical_markets: dict | None = None,
     group_by: list[str] | None = None,
 ) -> pd.DataFrame:
     """

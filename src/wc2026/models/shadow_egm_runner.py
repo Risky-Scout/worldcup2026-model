@@ -11,12 +11,13 @@ Does NOT modify public WizardOfOdds predictions.
 Only activated when WC_EGM_SHADOW_MODE=True (default) or WC_EGM_LAYER_ENABLED=True.
 """
 from __future__ import annotations
+
+import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-import json
-import logging
-from typing import Optional
+
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -52,8 +53,8 @@ class ShadowMatchPrediction:
     egm_lambda_away: float
 
     # Live model lambdas for comparison
-    live_lambda_home: Optional[float]
-    live_lambda_away: Optional[float]
+    live_lambda_home: float | None
+    live_lambda_away: float | None
 
     # Diagnostics
     sources_used: list[str] = field(default_factory=list)
@@ -119,7 +120,7 @@ class ShadowEGMRunner:
         runner.persist(shadow_pred)
     """
 
-    def __init__(self, base_goals: float = 1.30):
+    def __init__(self, base_goals: float = 1.45):
         self.base_goals = base_goals
         self._stacker = None
         self._rating_fitter = None
@@ -149,25 +150,26 @@ class ShadowEGMRunner:
         team_stats_df: pd.DataFrame,
         futures_df: pd.DataFrame,
         match_row: dict,
-        stadium_row: Optional[dict],
-        home_standing: Optional[dict],
-        away_standing: Optional[dict],
+        stadium_row: dict | None,
+        home_standing: dict | None,
+        away_standing: dict | None,
         home_match_dates: list[str],
         away_match_dates: list[str],
-        live_lambda_home: Optional[float],
-        live_lambda_away: Optional[float],
-        prediction_timestamp: Optional[datetime] = None,
+        live_lambda_home: float | None,
+        live_lambda_away: float | None,
+        prediction_timestamp: datetime | None = None,
     ) -> ShadowMatchPrediction:
         import numpy as np
-        from src.wc2026.ratings.team_margin import TeamMarginRating
-        from src.wc2026.models.egm_to_lambdas import (
-            egm_components_to_lambdas, MatchContextAdjustment, margin_total_to_lambdas,
-        )
-        from src.wc2026.ratings.market_ability import compute_match_market_egm
         from src.wc2026.features.match_context import compute_match_context
-        from src.wc2026.features.player_strength import build_player_ratings
         from src.wc2026.features.opponent_adjusted_xg import build_team_process_ratings
+        from src.wc2026.features.player_strength import build_player_ratings
+        from src.wc2026.models.egm_to_lambdas import (
+            egm_components_to_lambdas,
+            margin_total_to_lambdas,
+        )
         from src.wc2026.ratings.futures_ability import compute_futures_ability
+        from src.wc2026.ratings.market_ability import compute_match_market_egm
+        from src.wc2026.ratings.team_margin import TeamMarginRating
 
         ts = prediction_timestamp or datetime.now(timezone.utc)
 
@@ -337,7 +339,6 @@ class ShadowEGMRunner:
         return self._stacker
 
     def _build_training_rows(self, matches_df, process_ratings, player_ratings, futures_ability):
-        import numpy as np
         rows = []
         completed = (
             matches_df.dropna(subset=["home_goals", "away_goals"])
@@ -357,7 +358,7 @@ class ShadowEGMRunner:
             })
         return rows
 
-    def persist(self, pred: ShadowMatchPrediction, date_str: Optional[str] = None) -> Path:
+    def persist(self, pred: ShadowMatchPrediction, date_str: str | None = None) -> Path:
         """Write shadow prediction to disk. Returns file path."""
         ds = date_str or datetime.now().strftime("%Y-%m-%d")
         out_path = SHADOW_DIR / f"shadow_{ds}.jsonl"
@@ -365,7 +366,7 @@ class ShadowEGMRunner:
             f.write(json.dumps(pred.to_dict()) + "\n")
         return out_path
 
-    def persist_team_ratings(self, ratings: list, date_str: Optional[str] = None) -> Path:
+    def persist_team_ratings(self, ratings: list, date_str: str | None = None) -> Path:
         """Write team margin ratings to disk."""
         ds = date_str or datetime.now().strftime("%Y-%m-%d")
         out_path = TEAM_MARGIN_DIR / f"team_margin_ratings_{ds}.json"

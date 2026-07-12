@@ -29,12 +29,9 @@ Instead we use:
 from __future__ import annotations
 
 import logging
-import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
-from scipy.optimize import minimize
 
 log = logging.getLogger(__name__)
 
@@ -50,32 +47,32 @@ class MarketConstraints:
     """All no-vig probabilities extracted from BDL for one match."""
 
     # ── 1X2 ─────────────────────────────────────────────────────────────
-    home_win: Optional[float] = None
-    draw: Optional[float] = None
-    away_win: Optional[float] = None
+    home_win: float | None = None
+    draw: float | None = None
+    away_win: float | None = None
     n_vendors_1x2: int = 0
 
     # ── Totals (no-vig over probabilities) ──────────────────────────────
-    over_0_5: Optional[float] = None
-    over_1_5: Optional[float] = None
-    over_2_5: Optional[float] = None
-    over_3_5: Optional[float] = None
-    over_4_5: Optional[float] = None
-    over_5_5: Optional[float] = None
-    over_6_5: Optional[float] = None
+    over_0_5: float | None = None
+    over_1_5: float | None = None
+    over_2_5: float | None = None
+    over_3_5: float | None = None
+    over_4_5: float | None = None
+    over_5_5: float | None = None
+    over_6_5: float | None = None
 
     # ── BTTS ─────────────────────────────────────────────────────────────
-    btts_yes: Optional[float] = None
-    btts_no: Optional[float] = None
+    btts_yes: float | None = None
+    btts_no: float | None = None
 
     # ── Draw no bet ─────────────────────────────────────────────────────
-    dnb_home: Optional[float] = None
-    dnb_away: Optional[float] = None
+    dnb_home: float | None = None
+    dnb_away: float | None = None
 
     # ── Double chance ────────────────────────────────────────────────────
-    dc_1x: Optional[float] = None
-    dc_x2: Optional[float] = None
-    dc_12: Optional[float] = None
+    dc_1x: float | None = None
+    dc_x2: float | None = None
+    dc_12: float | None = None
 
     # ── Correct score {(h, a): prob} ─────────────────────────────────────
     correct_score: dict = field(default_factory=dict)
@@ -87,7 +84,7 @@ class MarketConstraints:
     ah_market: dict = field(default_factory=dict)
 
     # ── Odds freshness ────────────────────────────────────────────────────
-    odds_timestamp: Optional[str] = None
+    odds_timestamp: str | None = None
     stale: bool = False
 
     @property
@@ -292,7 +289,7 @@ def extract_constraints(
                 if not dec_odds_list:
                     continue
                 avg_dec = float(np.mean(dec_odds_list))
-                raw_over_p = 1.0 / avg_dec
+                1.0 / avg_dec
             except Exception:
                 continue
             attr = line_map.get(float(line) if line is not None else -1)
@@ -453,7 +450,7 @@ def build_market_implied_pmf(
     under_25 = (1.0 - over_25) if over_25 is not None else None
 
     try:
-        from penaltyblog.models import goal_expectancy_extended, create_dixon_coles_grid
+        from penaltyblog.models import create_dixon_coles_grid, goal_expectancy_extended
         if over_25 is not None:
             result = goal_expectancy_extended(hw, dr, aw, over_25, under_25,
                                               objective="cross_entropy")
@@ -634,8 +631,8 @@ class ReconciliationResult:
 
     # Mode PMFs (n×n numpy arrays)
     pure_model_pmf: np.ndarray
-    market_implied_pmf: Optional[np.ndarray]
-    market_reconciled_pmf: Optional[np.ndarray]
+    market_implied_pmf: np.ndarray | None
+    market_reconciled_pmf: np.ndarray | None
 
     # Lambdas for each mode
     pure_model_lambda_home: float = 0.0
@@ -644,7 +641,7 @@ class ReconciliationResult:
     market_implied_lambda_away: float = 0.0
 
     # Quality
-    market_constraints: Optional[MarketConstraints] = None
+    market_constraints: MarketConstraints | None = None
     market_quality: float = 0.0
     market_blend_alpha: float = 0.0
     publish_mode: str = "pure_model"
@@ -777,8 +774,10 @@ def reconcile(
         # Fallback to safe blend
         try:
             n = min(max_goals, pure_model_pmf.shape[0], mip.shape[0])
-            pm = np.clip(pure_model_pmf[:n, :n], 0, None); pm /= pm.sum()
-            mi = np.clip(mip[:n, :n], 0, None); mi /= mi.sum()
+            pm = np.clip(pure_model_pmf[:n, :n], 0, None)
+            pm /= pm.sum()
+            mi = np.clip(mip[:n, :n], 0, None)
+            mi /= mi.sum()
             reconciled = alpha * mi + (1.0 - alpha) * pm
             reconciled /= reconciled.sum()
             reconciled = _sanitize_pmf(reconciled)
