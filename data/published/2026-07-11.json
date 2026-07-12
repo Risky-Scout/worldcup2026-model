@@ -1740,6 +1740,13 @@
           "shots": {}
         },
         "player_props_top_value": []
+      },
+      "result": {
+        "home_goals": 3,
+        "away_goals": 1,
+        "result_label": "3-1",
+        "outcome": "home_win",
+        "model_prob_exact_score": 0.049151
       }
     },
     {
