@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from math import exp
 
+import numpy as np
 from src.wc2026.ratings.team_margin import TeamMarginRating
 
 
@@ -54,9 +55,12 @@ def margin_total_to_lambdas(
     lambda_home = (total + margin) / 2
     lambda_away = (total - margin) / 2
     """
+    min_l = 0.05
+    # Clamp margin so neither lambda goes below min_l before splitting
+    margin = float(np.clip(margin, -(total - 2 * min_l), total - 2 * min_l))
     home = (total + margin) / 2.0
     away = (total - margin) / 2.0
-    return max(home, 0.05), max(away, 0.05)
+    return max(home, min_l), max(away, min_l)
 
 
 def egm_with_total_anchor(

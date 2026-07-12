@@ -159,7 +159,9 @@ def compute_team_market_ability(
             continue
         try:
             obs = datetime.fromisoformat(m.observed_at.replace("Z", "+00:00"))
-            days_ago = (now - obs.replace(tzinfo=None)).days
+            if obs.tzinfo is None:
+                obs = obs.replace(tzinfo=timezone.utc)
+            days_ago = max((now - obs).days, 0)
         except Exception:
             days_ago = 0
         w = np.exp(-np.log(2) * days_ago / decay_halflife_days)

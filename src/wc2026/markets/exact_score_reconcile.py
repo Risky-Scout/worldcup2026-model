@@ -560,8 +560,8 @@ def _sanitize_pmf(pmf: np.ndarray, max_plausible_goals: int = 8) -> np.ndarray:
     """
     p = pmf.copy()
     n = p.shape[0]
-    # Cap probability for implausible scores (total >= 9)
-    implausible_threshold = 9
+    # Cap probability for implausible scores (total >= max_plausible_goals)
+    implausible_threshold = max_plausible_goals
     cap_value = 1e-6
     freed_mass = 0.0
     for h in range(n):

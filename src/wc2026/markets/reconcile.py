@@ -73,6 +73,13 @@ def reconcile_pmf(
         lambda_btts=lambda_btts,
     )
 
+    # Recompute expected goals from the reconciled PMF so they stay consistent
+    pmf = result.calibrated_pmf
+    n = pmf.shape[0]
+    goal_range = np.arange(n)
+    rec_xg_home = float(np.sum(pmf * goal_range[:, None]))
+    rec_xg_away = float(np.sum(pmf * goal_range[None, :]))
+
     new_pred = ScorePMFPrediction(
         match_id=base_pred.match_id,
         home_team=base_pred.home_team,
@@ -82,10 +89,10 @@ def reconcile_pmf(
         venue=base_pred.venue,
         model_name=f"{base_pred.model_name}+market_reconciled",
         max_goals=base_pred.max_goals,
-        score_pmf=result.calibrated_pmf,
-        tail_mass=base_pred.tail_mass,
-        expected_home_goals=base_pred.expected_home_goals,
-        expected_away_goals=base_pred.expected_away_goals,
+        score_pmf=pmf,
+        tail_mass=0.0,  # reconciled PMF is renormalized to sum=1; tail absorbed
+        expected_home_goals=rec_xg_home,
+        expected_away_goals=rec_xg_away,
         calibration_status=CalibrationStatus.MARKET_CALIBRATED,
         uncertainty=base_pred.uncertainty,
         warnings=base_pred.warnings + result.warnings,

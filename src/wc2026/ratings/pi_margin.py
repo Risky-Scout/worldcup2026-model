@@ -43,17 +43,20 @@ def fit_pi_ratings(
     if not _HAS_PI:
         return {}
     pi = PiRatingSystem(k=k)
-    for _, row in matches_df.sort_values("datetime").iterrows():
+    dt_col = "datetime" if "datetime" in matches_df.columns else "match_datetime"
+    for _, row in matches_df.sort_values(dt_col).iterrows():
         gd = int(row["home_goals"]) - int(row["away_goals"])
         pi.update_ratings(str(row["home_team"]), str(row["away_team"]), gd)
     ratings = {}
     for team in set(matches_df["home_team"]).union(set(matches_df["away_team"])):
-        r = pi.get_ratings(team)
+        r = pi.team_ratings.get(team)
         if r is not None:
+            home_r = float(r.get("home", 0.0))
+            away_r = float(r.get("away", 0.0))
             ratings[team] = {
-                "pi_home_rating": r.get("home", 0.0),
-                "pi_away_rating": r.get("away", 0.0),
-                "pi_composite": (r.get("home", 0.0) + r.get("away", 0.0)) / 2,
+                "pi_home_rating": home_r,
+                "pi_away_rating": away_r,
+                "pi_composite": float(pi.get_team_rating(team)),
             }
     return ratings
 

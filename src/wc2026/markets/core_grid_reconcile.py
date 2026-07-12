@@ -206,10 +206,15 @@ class CoreGridSLSQPReconciler:
         tail_event_buckets = _compute_tail_buckets(tail_pmf)
 
         # Target core sum: 1 - tail_mass (keep tail fixed)
-        target_core_sum = max(1.0 - tail_mass_prior, 0.9999)
+        # Only guard against negative; don't introduce phantom tail when tail_mass_prior=0
+        target_core_sum = max(1.0 - tail_mass_prior, 1e-9)
 
         # Normalize core prior to sum to target_core_sum
-        q_core_norm = q_core / q_core.sum() * target_core_sum
+        _core_sum = q_core.sum()
+        if _core_sum <= _EPS:
+            q_core_norm = np.full_like(q_core, target_core_sum / (q_core.size or 1))
+        else:
+            q_core_norm = q_core / _core_sum * target_core_sum
         q_flat = q_core_norm.flatten()   # 64 variables
 
         # Build per-cell bounds

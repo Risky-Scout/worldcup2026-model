@@ -86,9 +86,15 @@ def build_consensus(
     stale_minutes : staleness threshold
     """
     from datetime import datetime, timezone
+    # Normalize match_id type to avoid silent empty-match on int/str mismatch
+    try:
+        _match_id_int = int(match_id)
+        _col = odds_df["match_id"].astype(int) if not odds_df.empty else odds_df["match_id"]
+        rows = odds_df[_col == _match_id_int].to_dict("records")
+    except (TypeError, ValueError):
+        rows = odds_df[odds_df["match_id"] == match_id].to_dict("records")
+        _match_id_int = match_id
     consensus = ConsensusMarkets(match_id=match_id)
-
-    rows = odds_df[odds_df["match_id"] == match_id].to_dict("records")
     if not rows:
         consensus.warnings.append("No odds rows found for this match.")
         return consensus

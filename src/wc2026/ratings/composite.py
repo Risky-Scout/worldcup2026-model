@@ -1098,7 +1098,7 @@ class CompositeTeamPrior:
             elo = Elo(k=20, home_field_advantage=100)
             for _, row in hist.iterrows():
                 hg, ag = int(row["home_goals"]), int(row["away_goals"])
-                result = 2 if hg > ag else (1 if hg == ag else 0)  # penaltyblog: 0=away, 1=draw, 2=home
+                result = 0 if hg > ag else (1 if hg == ag else 2)  # penaltyblog: 0=home win, 1=draw, 2=away win
                 elo.update_ratings(str(row["home_team"]), str(row["away_team"]), result)
             return dict(elo.ratings)
         except Exception as exc:
@@ -1176,7 +1176,7 @@ class CompositeTeamPrior:
         GK special case: OUT GK also applies a defensive penalty (mult 0.92).
         key_player_out is flagged when any player with avg_rating > 7.5 is OUT.
         """
-        _GK_OUT_DEF = 0.92
+        _GK_OUT_DEF = 1.08   # GK out → ~8% more goals conceded (higher defense_lambda)
         _CAP_FLOOR = 0.75
         _SQUAD_TOTAL_RATING = 77.0  # approximate 11-player squad at 7.0 avg
 
@@ -1222,7 +1222,7 @@ class CompositeTeamPrior:
             att_mult = max(1.0 - norm_impact * 0.15, _CAP_FLOOR)
             def_mult = 1.0
             if gk_out:
-                def_mult = min(def_mult, _GK_OUT_DEF)
+                def_mult = max(def_mult, _GK_OUT_DEF)  # raise defense_lambda (concede more)
 
             old_att = tp.final_attack_lambda
             old_def = tp.final_defense_lambda
@@ -1411,7 +1411,9 @@ class CompositeTeamPrior:
             lam_massey = max(lam_massey, 0.3)
             tp.massey_attack_lambda = round(float(lam_massey), 4)
             massey_def_centered = float(tp.massey_defence or 0.0)
-            tp.massey_defense_lambda = round(float(max(_WC_AVG_DEFENSE - massey_def_centered * 0.4, 0.3)), 4)
+            # penaltyblog Massey: negative defence = better (fewer goals conceded)
+            # defense_lambda = goals conceded; stronger defence → lower lambda
+            tp.massey_defense_lambda = round(float(max(_WC_AVG_DEFENSE + massey_def_centered * 0.4, 0.3)), 4)
 
         # ── Market-implied ───────────────────────────────────────────────
         ml = market_lambdas.get(team)
@@ -1539,7 +1541,8 @@ class CompositeTeamPrior:
         if _roster_q is not None and _roster_q > 0:
             # roster_quality is normalized to mean=1.0; apply as fractional boost
             roster_att_mult = 1.0 + float(np.clip((_roster_q - 1.0) * 0.08, -0.08, 0.08))
-            roster_def_mult = 1.0 + float(np.clip((_roster_q - 1.0) * 0.07, -0.07, 0.07))
+            # Strong roster → fewer goals conceded (lower defense_lambda)
+            roster_def_mult = 1.0 - float(np.clip((_roster_q - 1.0) * 0.07, -0.07, 0.07))
             if "roster_quality" not in sources:
                 sources.append("roster_quality")
         else:
@@ -1574,8 +1577,8 @@ class CompositeTeamPrior:
 
         if tp.pi_attack_lambda is not None:
             # Pi is goal-margin sensitive → higher weight than Elo for score PMF estimation.
-            # No-market: 0.40 of remaining; with-market: 0.50 of remaining (unchanged).
-            pi_w = remaining_w * (0.50 if not using_market_in_blend else 0.50)
+            # No-market: 0.40 of remaining; with-market: 0.50 of remaining.
+            pi_w = remaining_w * (0.40 if not using_market_in_blend else 0.50)
             att_inputs.append(("penaltyblog_pi", tp.pi_attack_lambda, pi_w))
             def_inputs.append(("penaltyblog_pi", tp.pi_defense_lambda, pi_w))
             sources.append("penaltyblog_pi")

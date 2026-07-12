@@ -57,9 +57,17 @@ def confederation_prior_egm(confederation: str | None) -> float:
         return CONFEDERATION_PRIORS["unknown"]
     # Normalize common variants
     conf = str(confederation).upper().strip()
-    for key in CONFEDERATION_PRIORS:
-        if key.upper() in conf or conf in key.upper():
-            return CONFEDERATION_PRIORS[key]
+    # Exact match first
+    if conf in CONFEDERATION_PRIORS:
+        return CONFEDERATION_PRIORS[conf]
+    # Common aliases
+    _ALIASES = {"AFC": "AFC", "CAF": "CAF", "CONCACAF": "CONCACAF",
+                "CONMEBOL": "CONMEBOL", "OFC": "OFC", "UEFA": "UEFA",
+                "ASIA": "AFC", "AFRICA": "CAF", "EUROPE": "UEFA",
+                "NORTH AMERICA": "CONCACAF", "SOUTH AMERICA": "CONMEBOL"}
+    for alias, canon in _ALIASES.items():
+        if alias in conf:
+            return CONFEDERATION_PRIORS[canon]
     return CONFEDERATION_PRIORS["unknown"]
 
 
