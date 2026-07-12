@@ -1,4 +1,14 @@
-"""Group stage incentive adjustment at the PMF level."""
+"""Group stage incentive adjustment at the PMF level.
+
+NOTE: 2026 WC FORMAT — 12 groups of 4 teams.
+  Top 2 from each group advance automatically (24 teams).
+  Best 8 of 12 third-place teams also advance (8 teams).
+  Total 32 teams enter the knockout bracket.
+
+This module applies a heuristic rho/lambda adjustment based on group
+incentive state. The adjustment is suppressed in PRESENTATION_SAFE_MODE
+because the constants are not validated from historical evidence.
+"""
 from __future__ import annotations
 import logging
 from dataclasses import dataclass
@@ -91,7 +101,16 @@ def adjust_pmf_for_group_incentives(
     """
     Adjust PMF for group stage incentives at the distribution level.
     Returns (adjusted_pmf, adjusted_lh, adjusted_la, adjusted_rho).
+
+    Suppressed when PRESENTATION_SAFE_MODE or SUPPRESS_DRAW_BOOST is active,
+    because the adjustment constants are not validated from historical evidence.
     """
+    try:
+        from wc2026.config import PRESENTATION_SAFE_MODE, SUPPRESS_DRAW_BOOST
+        if PRESENTATION_SAFE_MODE or SUPPRESS_DRAW_BOOST:
+            return pmf, lh, la, rho
+    except ImportError:
+        pass
     try:
         from penaltyblog.models import create_dixon_coles_grid
     except ImportError:

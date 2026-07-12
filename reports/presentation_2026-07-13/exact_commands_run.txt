@@ -1,0 +1,22 @@
+# Exact commands run — 2026-07-12T07:23:38Z
+
+# Create hardening branch
+git checkout -b emergency/presentation-hardening-2026-07-13
+
+# Run full test suite (baseline)
+python -m pytest tests/ -q --tb=short
+
+# Run presentation hardening tests
+python -m pytest tests/test_presentation_hardening.py -v
+
+# Generate presentation package (this script)
+python scripts/prepare_presentation_publish.py \
+    --as-of 2026-07-13 \
+    --presentation-safe-mode \
+    --output-dir reports/presentation_2026-07-13
+
+# To run pipeline in safe mode:
+WC_PRESENTATION_SAFE_MODE=true python scripts/run_real_pipeline.py
+
+# Rollback (if needed):
+git checkout main

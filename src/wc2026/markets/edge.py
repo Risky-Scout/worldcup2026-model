@@ -71,10 +71,13 @@ class MarketEdge:
     edge: float            # (model_prob - market_prob) / market_prob
     fair_odds_decimal: float
     market_odds_decimal: float
-    ci_lower_90: float     # 90% CI lower bound on model_prob
-    ci_upper_90: float     # 90% CI upper bound on model_prob
-    half_kelly: float      # recommended half-Kelly fraction (capped)
-    value_flag: bool       # True if passes all filter criteria
+    # NOTE: these are NOT statistical confidence intervals. They are a sensitivity
+    # analysis produced by perturbing λ ± LAMBDA_UNCERTAINTY_FRAC (default ±12%).
+    # They reflect model sensitivity to λ uncertainty, not frequentist coverage.
+    lambda_sensitivity_lower: float  # lower bound at λ ± 12% (renamed from ci_lower_90)
+    lambda_sensitivity_upper: float  # upper bound at λ ± 12% (renamed from ci_upper_90)
+    half_kelly: float      # recommended half-Kelly fraction (capped; disabled for market_reconciled)
+    value_flag: bool       # True if passes all filter criteria (never True for market_reconciled)
     value_reason: str      # human-readable reason for value_flag
 
     def to_dict(self) -> dict:
@@ -85,8 +88,9 @@ class MarketEdge:
             "edge_pct": round(self.edge * 100, 2),
             "fair_odds": round(self.fair_odds_decimal, 3),
             "market_odds": round(self.market_odds_decimal, 3),
-            "ci_90_lower": round(self.ci_lower_90, 5),
-            "ci_90_upper": round(self.ci_upper_90, 5),
+            # Sensitivity range (not a CI): see LAMBDA_UNCERTAINTY_FRAC constant
+            "lambda_sensitivity_lower": round(self.lambda_sensitivity_lower, 5),
+            "lambda_sensitivity_upper": round(self.lambda_sensitivity_upper, 5),
             "half_kelly_pct": round(self.half_kelly * 100, 3),
             "value_flag": self.value_flag,
             "value_reason": self.value_reason,
@@ -234,23 +238,38 @@ def compute_market_edges(
     lh: float,
     la: float,
     uncertainty: float = LAMBDA_UNCERTAINTY_FRAC,
+    prediction_mode: str = "market_reconciled",
 ) -> list[MarketEdge]:
     """
     Compute edge for each available market.
 
     Parameters
     ----------
-    pmf          Normalized 2D numpy array (home_goals × away_goals)
-    market_probs Dict of market_name → no-vig market probability, e.g.:
-                   {"home_win": 0.52, "draw": 0.28, "away_win": 0.20,
-                    "over_2_5": 0.61, "btts_yes": 0.48, ...}
-    lh, la       Pre-game attack lambdas (home, away)
-    uncertainty  Fractional λ uncertainty for CI computation
+    pmf              Normalized 2D numpy array (home_goals × away_goals)
+    market_probs     Dict of market_name → no-vig market probability, e.g.:
+                       {"home_win": 0.52, "draw": 0.28, "away_win": 0.20,
+                        "over_2_5": 0.61, "btts_yes": 0.48, ...}
+    lh, la           Pre-game attack lambdas (home, away)
+    uncertainty      Fractional λ uncertainty for sensitivity range computation
+    prediction_mode  Publish mode — when "market_reconciled" (or "market_implied"),
+                     circular edge detection fires: value_flag is forced to False
+                     and Kelly is set to 0 because the PMF was shaped by the same
+                     market data being compared. Only structural-model PMFs may
+                     generate value_flag=True outputs.
 
     Returns
     -------
     List of MarketEdge objects, sorted by edge descending
     """
+    # Circular edge guard: market-reconciled / market-implied PMFs cannot produce
+    # an independent edge signal vs the same market inputs used to construct them.
+    _circular_mode = prediction_mode in ("market_reconciled", "market_implied")
+    if _circular_mode:
+        log.debug(
+            "compute_market_edges: prediction_mode=%s — "
+            "value_flag forced to False (circular edge guard active)",
+            prediction_mode,
+        )
     n = pmf.shape[0]
     edges: list[MarketEdge] = []
 
@@ -369,8 +388,18 @@ def compute_market_edges(
         edge = (model_p - mkt_prob) / mkt_prob if mkt_prob > 0 else 0.0
         fair_odds = _prob_to_decimal_odds(model_p)
         mkt_odds = _prob_to_decimal_odds(mkt_prob)
-        kelly = _half_kelly(model_p, mkt_odds)
-        v_flag, v_reason = _value_flag(edge, model_p, mkt_prob, ci_lo)
+
+        if _circular_mode:
+            # Circular edge: zero Kelly, force value_flag=False
+            kelly = 0.0
+            v_flag = False
+            v_reason = (
+                f"CIRCULAR_EDGE_SUPPRESSED: prediction_mode={prediction_mode}; "
+                "PMF was shaped by the same market inputs — edge is not independent"
+            )
+        else:
+            kelly = _half_kelly(model_p, mkt_odds)
+            v_flag, v_reason = _value_flag(edge, model_p, mkt_prob, ci_lo)
 
         edges.append(MarketEdge(
             market=mkt_name,
@@ -379,8 +408,8 @@ def compute_market_edges(
             edge=round(float(edge), 6),
             fair_odds_decimal=round(float(fair_odds), 4),
             market_odds_decimal=round(float(mkt_odds), 4),
-            ci_lower_90=round(float(ci_lo), 6),
-            ci_upper_90=round(float(ci_hi), 6),
+            lambda_sensitivity_lower=round(float(ci_lo), 6),
+            lambda_sensitivity_upper=round(float(ci_hi), 6),
             half_kelly=round(float(kelly), 6),
             value_flag=v_flag,
             value_reason=v_reason,
@@ -414,7 +443,8 @@ def compute_edge_report(
     prediction_mode  e.g. "market_reconciled", "pure_model"
     uncertainty    Fractional λ uncertainty (default 12%)
     """
-    edges = compute_market_edges(pmf, market_probs, lh, la, uncertainty)
+    edges = compute_market_edges(pmf, market_probs, lh, la, uncertainty,
+                                 prediction_mode=prediction_mode)
 
     value_mkts = [e for e in edges if e.value_flag]
     top = value_mkts[0].market if value_mkts else None

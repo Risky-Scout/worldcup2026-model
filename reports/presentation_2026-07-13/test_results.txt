@@ -1,0 +1,37 @@
+Test results captured at 2026-07-12T07:23:38Z
+
+Full test suite: 1915 passed, 0 failed, 103 skipped
+  (up from 1892 passed before hardening — 23 new hardening tests added)
+
+Hardening tests (tests/test_presentation_hardening.py): 23 passed, 0 failed
+  TestCircularEdgeGuard:
+    - test_market_reconciled_no_value_flag: PASS
+    - test_market_implied_no_value_flag: PASS
+    - test_market_reconciled_zero_kelly: PASS
+    - test_pure_model_may_flag_value: PASS
+    - test_circular_edge_reason_contains_mode: PASS
+  TestLambdaSensitivityFields:
+    - test_dict_has_lambda_sensitivity_keys: PASS
+    - test_dataclass_has_lambda_fields: PASS
+  TestGroupSimulatorTiebreaking:
+    - test_rank_group_no_alphabetical_bias: PASS
+    - test_rank_group_deterministic_same_seed: PASS
+    - test_rank_third_place_no_alphabetical_bias: PASS
+  TestDrawBoostSuppression:
+    - test_draw_boost_suppressed_in_presentation_mode: PASS
+    - test_draw_boost_flag_exists_in_config: PASS
+    - test_group_incentive_suppressed_in_safe_mode: PASS
+  TestWC2026Format:
+    - test_group_stage_comment_corrected: PASS
+    - test_simulate_groups_docstring_correct_format: PASS
+    - test_render_markdown_no_alphabetical_mention: PASS
+  TestUploadTimestampPreservation:
+    - test_upload_preserves_generated_at: PASS
+    - test_upload_adds_uploaded_at: PASS
+  TestPMFIntegrity:
+    - test_pmf_sums_to_one: PASS
+    - test_no_negative_values: PASS
+    - test_1x2_sums_to_one_from_pmf: PASS
+  TestProbabilityLabeling:
+    - test_woo_contract_has_publish_mode: PASS
+    - test_published_json_has_generated_at: PASS

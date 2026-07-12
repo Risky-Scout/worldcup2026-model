@@ -86,3 +86,33 @@ WC_USE_NEW_PLAYER_STRENGTH: bool = os.getenv("WC_USE_NEW_PLAYER_STRENGTH", "fals
 WC_USE_PLAYER_PROPS_SIGNALS: bool = os.getenv("WC_USE_PLAYER_PROPS_SIGNALS", "false").lower() == "true"
 WC_BREAKING_SCHEMA_CHANGES_ALLOWED: bool = os.getenv("WC_BREAKING_SCHEMA_CHANGES_ALLOWED", "false").lower() == "true"
 WC_USE_NEW_CLV_REPORTING: bool = os.getenv("WC_USE_NEW_CLV_REPORTING", "true").lower() == "true"
+
+# --------------------------------------------------------------------------
+# Presentation-safe mode — enables a collection of conservative runtime
+# guards for public-facing outputs (demo / audit / betting-adjacent use).
+#
+# When PRESENTATION_SAFE_MODE=true the pipeline enforces:
+#   • draw-boost heuristic suppressed (was mislabelled "top 3 advance")
+#   • first-half markets suppressed (0.45 λ approximation is not validated)
+#   • in-sample market-weight auto-selection disabled (use fixed default)
+#   • circular edge / Kelly output blocked for market-reconciled PMFs
+#   • lambda sensitivity ranges NOT labelled as confidence intervals
+#   • generated_at preserved; uploaded_at added separately during upload
+#
+# Activate at runtime:
+#   export WC_PRESENTATION_SAFE_MODE=true
+# or pass --presentation-safe-mode to the pipeline CLI.
+# --------------------------------------------------------------------------
+PRESENTATION_SAFE_MODE: bool = os.getenv("WC_PRESENTATION_SAFE_MODE", "false").lower() == "true"
+
+# When True, first-half markets are always suppressed regardless of safe mode.
+SUPPRESS_FIRST_HALF_MARKETS: bool = os.getenv("WC_SUPPRESS_FIRST_HALF_MARKETS", "false").lower() == "true"
+
+# When True, draw-boost heuristic is suppressed regardless of safe mode.
+SUPPRESS_DRAW_BOOST: bool = os.getenv("WC_SUPPRESS_DRAW_BOOST", "false").lower() == "true"
+
+# When True, in-sample market-weight auto-selection is disabled.
+DISABLE_AUTO_MARKET_WEIGHT: bool = os.getenv("WC_DISABLE_AUTO_MARKET_WEIGHT", "false").lower() == "true"
+
+# When True, circular edge / Kelly output is blocked for market-reconciled PMFs.
+DISABLE_CIRCULAR_EDGE: bool = os.getenv("WC_DISABLE_CIRCULAR_EDGE", "false").lower() == "true"

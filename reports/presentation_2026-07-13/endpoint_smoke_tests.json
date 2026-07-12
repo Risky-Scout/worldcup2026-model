@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-07-12T07:23:38Z",
+  "pages": [
+    {
+      "url": "https://wizardofodds.com/sports-odds/world-cup-2026-predictions/",
+      "status": "OK",
+      "http_code": 200,
+      "error": null
+    },
+    {
+      "url": "https://wizardofodds.com/sports-odds/world-cup-2026-predictions/probability-model/",
+      "status": "OK",
+      "http_code": 200,
+      "error": null
+    }
+  ],
+  "json_endpoints": [
+    {
+      "url": "See deploy/upload_predictions.py FTP paths",
+      "status": "FTP_ONLY"
+    }
+  ]
+}

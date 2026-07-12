@@ -646,12 +646,26 @@ def _group_stage_draw_adjustment(
     both teams to accept a draw (both already qualified, or draw clinches for one
     and other cannot improve by winning).
 
-    2026 WC: 4 teams per group, top 3 advance. This makes draw incentives MORE
-    common than traditional 32-team WC (where only top 2 advance).
+    2026 WC FORMAT (corrected): 12 groups of 4 teams.
+      - Top 2 from each group advance automatically (24 teams).
+      - Best 8 of the 12 third-place teams also advance (8 teams).
+      - Total 32 teams in the knockout bracket.
+    NOTE: This is NOT a "top 3 advance" format. Only the top 2 advance
+    unconditionally; third-place advancement is conditional on cross-group
+    comparison. The heuristic below was written with the wrong format assumption.
+
+    PRESENTATION_SAFE_MODE / SUPPRESS_DRAW_BOOST: suppresses this heuristic
+    entirely, because the +3pp boost is an arbitrary constant with no
+    validated empirical basis. A proper incentive adjustment requires
+    tournament-state utility simulation (see Section 6.2 of the hardening spec).
 
     Returns (home_win, draw, away_win, reason_or_empty_string).
     Empty reason means no adjustment was applied.
     """
+    from wc2026.config import PRESENTATION_SAFE_MODE, SUPPRESS_DRAW_BOOST
+    if PRESENTATION_SAFE_MODE or SUPPRESS_DRAW_BOOST:
+        return hw, dr, aw, ""
+
     DRAW_BOOST = 0.03
     MAX_DRAW_PROB = 0.40
 
@@ -2488,7 +2502,15 @@ def _predict_one_match(
     pl_lh, pl_la = _pmf_lambda(publish_pmf)
 
     # ── 5b. Compute first-half markets ────────────────────────────────────
-    first_half_markets_out = _first_half_pmf(pl_lh, pl_la)
+    # Suppressed in PRESENTATION_SAFE_MODE or when SUPPRESS_FIRST_HALF_MARKETS
+    # is set, because the 0.45×λ approximation is not validated against actual
+    # half-time score data and would be misleading in a betting context.
+    from wc2026.config import PRESENTATION_SAFE_MODE as _PSM, SUPPRESS_FIRST_HALF_MARKETS as _SFH
+    first_half_markets_out = (
+        {} if (_PSM or _SFH) else _first_half_pmf(pl_lh, pl_la)
+    )
+    if _PSM or _SFH:
+        log.debug("first_half_markets suppressed (PRESENTATION_SAFE_MODE=%s)", _PSM)
     comp_vs_market = None
     model_vs_market = None
     if mc.has_1x2:

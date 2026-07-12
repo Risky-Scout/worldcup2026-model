@@ -80,9 +80,15 @@ def upload(date: str | None = None) -> None:
         print("Skipping upload — no file to upload.")
         return
 
-    # Load and enrich with metadata
+    # Load and enrich with metadata.
+    # IMPORTANT: generated_at is preserved as the time the probabilities were
+    # calculated (set by the pipeline). Only uploaded_at is stamped here.
     doc = json.loads(json_path.read_text())
-    doc["generated_at"] = datetime.now(tz=timezone.utc).isoformat()
+    upload_ts = datetime.now(tz=timezone.utc).isoformat()
+    # Preserve original generated_at; add uploaded_at to track deployment time
+    if "generated_at" not in doc:
+        doc["generated_at"] = upload_ts  # fallback only if pipeline omitted it
+    doc["uploaded_at"] = upload_ts
     doc["date"] = date
     doc["source"] = "wc2026-model"
 

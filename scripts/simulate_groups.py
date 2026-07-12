@@ -153,18 +153,35 @@ def _simulate_group(
     return {t: {"pts": pts[t], "gf": gf[t], "ga": ga[t], "gd": gf[t] - ga[t]} for t in teams}
 
 
-def _rank_group(standings: dict[str, dict]) -> list[str]:
+def _rank_group(standings: dict[str, dict], rng: Optional[random.Random] = None) -> list[str]:
     """
-    Rank teams by: points > GD > GF > team name (no H2H for simplicity).
+    Rank teams by FIFA 2026 WC tiebreak criteria (simplified for Monte Carlo):
+      1. Points
+      2. Goal difference
+      3. Goals scored
+      4. Seeded random drawing of lots (NOT alphabetical order)
+
+    Full FIFA criteria also include head-to-head and fair play, which require
+    the full match log. For Monte Carlo simulation purposes, after GF we use
+    a seeded random permutation to avoid alphabetical bias.
+
     Returns list of team names sorted 1st→4th.
     """
+    teams = list(standings.keys())
+    # Build sort key: (pts, gd, gf) — identical tuples are resolved by
+    # a deterministic random permutation so alphabetical order never acts
+    # as a tiebreaker.
+    _rng = rng or random
+    # Assign a stable random rank to each team for the current simulation
+    random_rank = {t: _rng.random() for t in teams}
+
     return sorted(
-        standings.keys(),
+        teams,
         key=lambda t: (
             standings[t]["pts"],
             standings[t]["gd"],
             standings[t]["gf"],
-            t,  # alphabetical tiebreak
+            random_rank[t],  # seeded random lots — NOT alphabetical
         ),
         reverse=True,
     )
@@ -176,14 +193,27 @@ def _rank_group(standings: dict[str, dict]) -> list[str]:
 
 def _rank_third_place(
     third_place_records: list[dict],  # [{team, group, pts, gf, ga, gd}]
+    rng: Optional[random.Random] = None,
 ) -> list[str]:
     """
-    Sort all third-place teams and return the 8 that advance.
-    Ranking: points > GD > GF > alphabetical.
+    Sort all 12 third-place teams and return the 8 that advance.
+
+    FIFA 2026 WC ranking criteria for third-place teams:
+      1. Points
+      2. Goal difference
+      3. Goals scored
+      4. Drawing of lots (seeded random — NOT alphabetical)
+
+    NOTE: Full FIFA criteria also include fair play (yellow/red cards) which
+    are not tracked in the simulation. After GF, seeded random lots are used.
+
+    Returns list of 8 advancing team names.
     """
+    _rng = rng or random
+    random_rank = {r["team"]: _rng.random() for r in third_place_records}
     ranked = sorted(
         third_place_records,
-        key=lambda r: (r["pts"], r["gd"], r["gf"], r["team"]),
+        key=lambda r: (r["pts"], r["gd"], r["gf"], random_rank[r["team"]]),
         reverse=True,
     )
     return [r["team"] for r in ranked[:8]]
@@ -240,15 +270,19 @@ def run_simulation(n_sims: int = 50_000, seed: int = 42) -> dict:
 
     group_names = sorted(groups_map.keys())
 
-    for _ in range(n_sims):
+    # Per-simulation RNG: seeded deterministically so results are reproducible
+    # while allowing per-simulation variation in tie-resolution.
+    sim_rng = random.Random(seed)
+
+    for sim_i in range(n_sims):
         third_place_records: list[dict] = []
 
         for g in group_names:
             teams = groups_map[g]
             standings = _simulate_group(g, teams, matches_by_group[g], pmf_by_mid)
-            ranked = _rank_group(standings)
+            ranked = _rank_group(standings, rng=sim_rng)
 
-            # Top 2 advance directly
+            # Top 2 advance directly (official 2026 WC format)
             advance_direct[ranked[0]] += 1
             advance_direct[ranked[1]] += 1
 
@@ -271,8 +305,8 @@ def run_simulation(n_sims: int = 50_000, seed: int = 42) -> dict:
                 exp_gf[team].append(s["gf"])
                 exp_ga[team].append(s["ga"])
 
-        # Determine which 3rd-place teams advance
-        advancing_thirds = _rank_third_place(third_place_records)
+        # Determine which 8 of 12 third-place teams advance (best by pts/GD/GF/lots)
+        advancing_thirds = _rank_third_place(third_place_records, rng=sim_rng)
         for t in advancing_thirds:
             advance_third[t] += 1
 
@@ -354,8 +388,9 @@ def render_markdown(sim: dict) -> str:
         f"",
         f"Methodology: Monte Carlo simulation of all remaining group-stage fixtures",
         f"using published PMF predictions (market_reconciled where available).",
-        f"Tiebreaking: pts > GD > GF > alphabetical (no H2H in simulation).",
-        f"Third-place advancement: best 8 of 12 third-place teams by pts/GD/GF.",
+        f"Tiebreaking: pts > GD > GF > seeded random lots (no H2H in simulation).",
+        f"Third-place advancement: best 8 of 12 third-place teams by pts/GD/GF/lots.",
+        f"Format: 12 groups × 4 teams; top 2 advance automatically + best 8 third-place teams.",
         f"",
     ]
     for gname in sim["group_names"]:
@@ -649,6 +684,9 @@ def run_full_tournament_simulation(n_sims: int = 50_000, seed: int = 42) -> dict
     # Also track R32/R16/QF/SF/Final round exits
     round_exits: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
+    # Per-simulation RNG: seeded deterministically for reproducibility
+    sim_rng = random.Random(seed)
+
     for sim_i in range(n_sims):
         # 1. Simulate group stage
         group_qualifiers: dict[str, tuple[str, str]] = {}
@@ -659,7 +697,7 @@ def run_full_tournament_simulation(n_sims: int = 50_000, seed: int = 42) -> dict
             g_letter = g.split()[-1]  # "Group A" → "A"
             teams = groups_map[g]
             standings = _simulate_group(g, teams, matches_by_group[g], pmf_by_mid)
-            ranked = _rank_group(standings)
+            ranked = _rank_group(standings, rng=sim_rng)
             group_qualifiers[g_letter] = (ranked[0], ranked[1])
             third = ranked[2]
             third_pool[g_letter] = third
@@ -669,10 +707,10 @@ def run_full_tournament_simulation(n_sims: int = 50_000, seed: int = 42) -> dict
                 "pts": s["pts"], "gf": s["gf"], "ga": s["ga"], "gd": s["gd"],
             })
 
-        # Determine which 8 3rd-place teams advance (best by pts/GD/GF)
+        # Determine which 8 of 12 third-place teams advance (seeded random lots as final tiebreak)
         ranked_thirds = sorted(
             third_place_records,
-            key=lambda r: (r["pts"], r["gd"], r["gf"], r["team"]),
+            key=lambda r: (r["pts"], r["gd"], r["gf"], sim_rng.random()),
             reverse=True,
         )[:8]
         qualifying_third_groups = {r["group"] for r in ranked_thirds}
