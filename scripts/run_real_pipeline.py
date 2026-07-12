@@ -4361,12 +4361,20 @@ def _populate_clv_outcomes(matches_df) -> None:
 
 
 def main():
+    import argparse as _ap
+    _parser = _ap.ArgumentParser(add_help=False)
+    _parser.add_argument("--refetch", action="store_true",
+                         help="Force fresh BDL data fetch (ignore cache)")
+    _args, _ = _parser.parse_known_args()
+
     generated_at = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     log.info("═" * 60)
     log.info("WC2026 REAL DATA PIPELINE  (%s)", generated_at)
+    if _args.refetch:
+        log.info("  --refetch: forcing fresh BDL data fetch")
     log.info("═" * 60)
 
-    tables = fetch_and_build()
+    tables = fetch_and_build(force_refetch=_args.refetch)
     matches_df = tables["matches"]
     odds_df = tables.get("odds", pd.DataFrame())
     markets_df = tables.get("markets", pd.DataFrame())

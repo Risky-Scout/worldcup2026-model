@@ -76,9 +76,35 @@ def upload(date: str | None = None) -> None:
     json_path = REPO_ROOT / "data" / "published" / f"{date}.json"
 
     if not json_path.exists():
-        print(f"WARNING: No published predictions found for {date} (rest day?): {json_path}")
-        print("Skipping upload — no file to upload.")
-        return
+        print(f"INFO: No predictions for {date} (rest day) — using all_scheduled_2026.json for upcoming matches")
+        # On rest days use all_scheduled_2026.json which contains all upcoming matches
+        # across multiple dates (e.g. both SF matches, then Final, etc.)
+        all_sched_path = REPO_ROOT / "data" / "published" / "all_scheduled_2026.json"
+        if all_sched_path.exists():
+            json_path = all_sched_path
+            print(f"  Uploading all_scheduled_2026.json as wc-predictions.json")
+        else:
+            # Fall back to next available single-day file
+            from datetime import timedelta
+            published_dir = REPO_ROOT / "data" / "published"
+            today_str = date
+            next_path = None
+            next_date = None
+            for days_ahead in range(1, 14):
+                candidate_dt = datetime.strptime(today_str, "%Y-%m-%d") + timedelta(days=days_ahead)
+                candidate = candidate_dt.strftime("%Y-%m-%d")
+                candidate_path = published_dir / f"{candidate}.json"
+                if candidate_path.exists():
+                    next_path = candidate_path
+                    next_date = candidate
+                    break
+            if next_path:
+                print(f"  Found upcoming match day: {next_date} — uploading as wc-predictions.json")
+                json_path = next_path
+                date = next_date
+            else:
+                print("WARNING: No upcoming match data found. Skipping upload.")
+                return
 
     # Load and enrich with metadata.
     # IMPORTANT: generated_at is preserved as the time the probabilities were

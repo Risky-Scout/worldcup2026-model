@@ -232,7 +232,7 @@
   <div class="updated-tag" id="updated-tag">Updated &mdash;</div>
   <div class="kpis" id="kpis">
     <div class="kpi"><div class="kpi-label">Matches Today</div><div class="kpi-val" id="kpi-matches">—</div><div class="kpi-sub">scheduled</div></div>
-    <div class="kpi"><div class="kpi-label">Value Bets</div><div class="kpi-val gold" id="kpi-value">—</div><div class="kpi-sub">edge &gt; 4% confirmed by CI</div></div>
+    <div class="kpi"><div class="kpi-label">Value Bets</div><div class="kpi-val gold" id="kpi-value">—</div><div class="kpi-sub" id="kpi-value-sub">edge &gt; 4% confirmed by CI</div></div>
     <div class="kpi"><div class="kpi-label">Best Edge</div><div class="kpi-val green" id="kpi-edge">—</div><div class="kpi-sub" id="kpi-edge-sub">relative vs closing</div></div>
     <div class="kpi"><div class="kpi-label">Avg xG / Match</div><div class="kpi-val" id="kpi-xg">—</div><div class="kpi-sub">expected total goals</div></div>
   </div>
@@ -324,6 +324,19 @@ function inferGroup(m) {
   return m.group || m.stage_detail || '';
 }
 
+// ── Circular edge guard ─────────────────────────────────────────────────────
+// Market-reconciled and market-implied predictions are shaped by the same odds
+// used to compute edge. Showing "value bets" against those odds is circular —
+// the model cannot independently confirm edge it was calibrated on.
+function isCircularMode(m) {
+  const pm = m.publish_mode || (m.prediction || {}).publish_mode || '';
+  return pm === 'market_reconciled' || pm === 'market_implied';
+}
+function effectiveValueFlag(e, m) {
+  if (isCircularMode(m)) return false;
+  return e.value_flag === true;
+}
+
 // ── Data ───────────────────────────────────────────────────────────────────
 async function loadData() {
   const urls = [
@@ -351,7 +364,7 @@ function updateKPIs(matches) {
     const pred = m.prediction || {};
     const edges = (pred.edge_report || {}).edges || [];
     for (const e of edges) {
-      if (e.value_flag) {
+      if (effectiveValueFlag(e, m)) {
         valueBets++;
         if (e.edge_pct > bestEdge) { bestEdge = e.edge_pct; bestEdgeMarket = e.market; }
       }
@@ -359,8 +372,13 @@ function updateKPIs(matches) {
     totalXG += (pred.expected_home_goals || 0) + (pred.expected_away_goals || 0);
   }
 
-  document.getElementById('kpi-value').textContent = valueBets || '0';
-  if (bestEdge > -Infinity && bestEdge > 0) {
+  // If all predictions are market_reconciled/implied, hide value bets KPI
+  const hasCircularOnly = matches.length > 0 && matches.every(m => isCircularMode(m));
+  document.getElementById('kpi-value').textContent = hasCircularOnly ? '—' : (valueBets || '0');
+  document.getElementById('kpi-value-sub').textContent = hasCircularOnly
+    ? 'market-reconciled mode'
+    : 'edge > 4% confirmed by CI';
+  if (bestEdge > -Infinity && bestEdge > 0 && !hasCircularOnly) {
     document.getElementById('kpi-edge').textContent = bestEdge.toFixed(1) + '%';
     document.getElementById('kpi-edge-sub').textContent = bestEdgeMarket;
   } else {
@@ -410,7 +428,7 @@ function applyFilters(matches) {
   if (STATE.filter === 'value') {
     out = out.filter(m => {
       const edges = ((m.prediction || {}).edge_report || {}).edges || [];
-      return edges.some(e => e.value_flag);
+      return edges.some(e => effectiveValueFlag(e, m));
     });
   } else if (STATE.filter === 'completed') {
     out = out.filter(m => m.result);
@@ -452,8 +470,9 @@ function renderMatchRow(m, idx) {
     </div>
     <div class="prob-labels"><span>H</span><span>D</span><span>A</span></div>`;
 
-  // Best value edge — only show value_flag markets; never fall back to non-value edges
-  const valueEdges = edges.filter(e => e.value_flag).sort((a,b) => b.edge_pct - a.edge_pct);
+  // Best value edge — only show value_flag markets for pure_model mode;
+  // circular guard suppresses value bets for market_reconciled / market_implied
+  const valueEdges = edges.filter(e => effectiveValueFlag(e, m)).sort((a,b) => b.edge_pct - a.edge_pct);
   const topEdge = valueEdges[0] || null;
   let edgeHtml = '<span class="edge-none">—</span>';
   let kellyHtml = '';
@@ -461,7 +480,7 @@ function renderMatchRow(m, idx) {
     const cls = topEdge.edge_pct > 0 ? 'edge-pos' : 'edge-neg';
     edgeHtml = `<div class="edge-val ${cls}">${topEdge.edge_pct > 0 ? '+' : ''}${topEdge.edge_pct.toFixed(1)}%</div>
                 <div class="edge-market">${esc(topEdge.market)}</div>`;
-    if (topEdge.value_flag) {
+    if (effectiveValueFlag(topEdge, m)) {
       const kellyFrac = (topEdge.half_kelly_pct || 0) / 100;
       const betAmt = STATE.bankroll * kellyFrac * STATE.kelly * 2; // half_kelly_pct is already half
       kellyHtml = `<div class="kelly-val">${(topEdge.half_kelly_pct * STATE.kelly * 2).toFixed(2)}% · ${fmtMoney(betAmt)}</div>`;
@@ -586,19 +605,21 @@ function renderDetailRow(m, idx) {
     </div>`;
   }).join('');
 
-  // Edge breakdown (top 8)
+  // Edge breakdown (top 8); circular guard suppresses value display for market-derived modes
+  const circularMode = isCircularMode(m);
   const edgeRows = edges.slice(0, 8).map(e => {
-    const cls = e.value_flag ? 'value' : (e.edge_pct < 0 ? 'negative' : '');
+    const evf = effectiveValueFlag(e, m);
+    const cls = evf ? 'value' : (e.edge_pct < 0 ? 'negative' : '');
     const kellyFrac = (e.half_kelly_pct || 0) / 100;
     const betAmt = STATE.bankroll * kellyFrac * STATE.kelly * 2;
     return `<div class="edge-row ${cls}">
       <span class="edge-row-market">${esc(e.market)}</span>
       <span>
         <span class="edge-row-pct" style="color:${e.edge_pct > 0 ? 'var(--green)' : 'var(--red)'}">${e.edge_pct > 0 ? '+' : ''}${e.edge_pct.toFixed(1)}%</span>
-        ${e.value_flag ? `<span class="edge-row-kelly"> · ${(e.half_kelly_pct * STATE.kelly * 2).toFixed(2)}% · ${fmtMoney(betAmt)}</span>` : ''}
+        ${evf ? `<span class="edge-row-kelly"> · ${(e.half_kelly_pct * STATE.kelly * 2).toFixed(2)}% · ${fmtMoney(betAmt)}</span>` : ''}
       </span>
     </div>`;
-  }).join('');
+  }).join('') + (circularMode ? '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--text-muted);margin-top:8px;padding:6px;border:1px solid var(--border);border-radius:3px;">Market-reconciled mode: edge vs. market is circular — Kelly stakes suppressed. Edge %s shown for informational reference only.</div>' : '');
 
   // Player props section (top 3 value props)
   const topProps = (pred.player_props_top_value || []).slice(0, 3);
@@ -740,6 +761,21 @@ async function init() {
   if (data.generated_at) {
     const d = new Date(data.generated_at);
     updatedTag.innerHTML = `Updated <span>${d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span> · auto-refreshes every 5 min`;
+  }
+
+  // Update "Matches Today" KPI label based on actual match dates (not just JSON date)
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  // Use first match's ET date if available, fallback to JSON date
+  const firstMatchDate = ALL_MATCHES[0] ? (ALL_MATCHES[0].match_date_et || '') : '';
+  const dataDate = data.date || '';
+  const kpiMatchesLabel = document.querySelector('#kpis .kpi:first-child .kpi-label');
+  const kpiMatchesSub = document.querySelector('#kpis .kpi:first-child .kpi-sub');
+  if (firstMatchDate && firstMatchDate > todayET) {
+    if (kpiMatchesLabel) kpiMatchesLabel.textContent = 'Upcoming Matches';
+    if (kpiMatchesSub) kpiMatchesSub.textContent = `next: ${firstMatchDate}`;
+  } else if (dataDate && dataDate < todayET) {
+    if (kpiMatchesLabel) kpiMatchesLabel.textContent = 'Matches';
+    if (kpiMatchesSub) kpiMatchesSub.textContent = dataDate;
   }
 
   document.getElementById('footer-date').textContent = data.date || '';
