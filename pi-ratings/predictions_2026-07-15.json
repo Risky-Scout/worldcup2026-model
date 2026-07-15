@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-15T09:53:02.029044+00:00",
+  "generated_at": "2026-07-15T10:58:19.056366+00:00",
   "date": "2026-07-15",
   "n_matches": 1,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "Argentina",
       "stage": "Semifinal",
       "match_datetime": "2026-07-15 19:00",
-      "generated_at": "2026-07-15T09:53:02.028753+00:00",
+      "generated_at": "2026-07-15T10:58:19.056107+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.0333,
