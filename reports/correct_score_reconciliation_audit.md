@@ -1,6 +1,6 @@
 # Correct-Score Reconciliation Audit
 
-**Generated**: 2026-07-15T19:03:44Z
+**Generated**: 2026-07-15T19:40:11Z
 
 ## Method
 
@@ -31,10 +31,10 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |
 |-------|------------------|-----------------|-----------|
-| 1-1 | 0.1523 | 0.1520 | 0.0003 |
+| 1-1 | 0.1523 | 0.1521 | 0.0002 |
 | 1-0 | 0.1153 | 0.1059 | 0.0094 |
 | 0-1 | 0.1076 | 0.0994 | 0.0082 |
-| 0-0 | 0.1009 | 0.1198 | 0.0189 |
+| 0-0 | 0.1009 | 0.1197 | 0.0188 |
 | 2-1 | 0.0807 | 0.0785 | 0.0022 |
 | 1-2 | 0.0769 | 0.0737 | 0.0032 |
 | 2-2 | 0.0577 | 0.0505 | 0.0072 |
@@ -46,7 +46,7 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 | 3-2 | 0.0224 | 0.0177 | 0.0047 |
 | 2-3 | 0.0224 | 0.0165 | 0.0059 |
 | 0-3 | 0.0197 | 0.0224 | 0.0027 |
-| **Sum (top 15)** | **0.9375** | **0.9449** | — |
-- High-score mass (total ≥9 goals): 1.34e-05
+| **Sum (top 15)** | **0.9375** | **0.9450** | — |
+- High-score mass (total ≥9 goals): 1.33e-05
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
