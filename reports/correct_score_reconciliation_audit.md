@@ -1,6 +1,6 @@
 # Correct-Score Reconciliation Audit
 
-**Generated**: 2026-07-15T20:52:33Z
+**Generated**: 2026-07-15T21:28:25Z
 
 ## Method
 
@@ -19,34 +19,38 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 
 | Metric | Value |
 |--------|-------|
-| Total 2026 matches predicted | 1 |
+| Total 2026 matches predicted | 2 |
 | Matches with any CS data | 1 |
 | Matches with 1 CS vendor | 1 |
 | Matches with 2+ CS vendors | 0 |
 
 ## Per-match correct-score audit
 
-### England vs Argentina
-- CS outcomes: 24  |  CS vendors: 1  |  Publish mode: market_reconciled
+### France vs England
+- CS outcomes: 28  |  CS vendors: 1  |  Publish mode: market_reconciled
 
 | Score | Market P (no-vig) | Published PMF P | Abs Error |
 |-------|------------------|-----------------|-----------|
-| 1-1 | 0.1523 | 0.1521 | 0.0002 |
-| 1-0 | 0.1153 | 0.1059 | 0.0094 |
-| 0-1 | 0.1076 | 0.0994 | 0.0082 |
-| 0-0 | 0.1009 | 0.1197 | 0.0188 |
-| 2-1 | 0.0807 | 0.0785 | 0.0022 |
-| 1-2 | 0.0769 | 0.0737 | 0.0032 |
-| 2-2 | 0.0577 | 0.0505 | 0.0072 |
-| 2-0 | 0.0538 | 0.0656 | 0.0118 |
-| 0-2 | 0.0504 | 0.0588 | 0.0084 |
-| 3-1 | 0.0288 | 0.0303 | 0.0015 |
-| 1-3 | 0.0260 | 0.0266 | 0.0006 |
-| 3-0 | 0.0224 | 0.0270 | 0.0046 |
-| 3-2 | 0.0224 | 0.0177 | 0.0047 |
-| 2-3 | 0.0224 | 0.0165 | 0.0059 |
-| 0-3 | 0.0197 | 0.0224 | 0.0027 |
-| **Sum (top 15)** | **0.9375** | **0.9450** | — |
-- High-score mass (total ≥9 goals): 1.33e-05
+| 1-1 | 0.1302 | 0.1198 | 0.0104 |
+| 2-1 | 0.0977 | 0.0912 | 0.0065 |
+| 1-0 | 0.0868 | 0.0817 | 0.0051 |
+| 2-2 | 0.0710 | 0.0667 | 0.0043 |
+| 0-1 | 0.0710 | 0.0659 | 0.0052 |
+| 1-2 | 0.0710 | 0.0660 | 0.0050 |
+| 2-0 | 0.0601 | 0.0584 | 0.0018 |
+| 0-0 | 0.0601 | 0.0565 | 0.0036 |
+| 3-1 | 0.0411 | 0.0415 | 0.0004 |
+| 0-2 | 0.0391 | 0.0366 | 0.0025 |
+| 3-2 | 0.0372 | 0.0344 | 0.0028 |
+| 3-0 | 0.0340 | 0.0339 | 0.0001 |
+| 1-3 | 0.0279 | 0.0265 | 0.0014 |
+| 2-3 | 0.0279 | 0.0254 | 0.0025 |
+| 4-1 | 0.0191 | 0.0193 | 0.0002 |
+| **Sum (top 15)** | **0.8744** | **0.8239** | — |
+- High-score mass (total ≥9 goals): 1.22e-04
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
 - PMF validation: ✅ PASS
+
+### Spain vs Argentina
+- CS outcomes: 0  |  CS vendors: 0  |  Publish mode: market_reconciled
+- No correct-score data available for this match.
