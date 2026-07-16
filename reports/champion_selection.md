@@ -1,13 +1,13 @@
 # Champion Policy (Real BDL Data)
 
-**Generated**: 2026-07-16T01:09:21Z
+**Generated**: 2026-07-16T01:45:54Z
 
 ## Six champion tiers
 
 | Champion Type | Model | NLL | Use Case |
 |--------------|-------|-----|----------|
 | diagnostic_champion | pi_rating | 3.0046 | Audit only — NEVER published |
-| pure_model_champion | negative_binomial | 4.436939719630617 | Parametric model for matches without odds |
+| pure_model_champion | negative_binomial | 4.436939720954314 | Parametric model for matches without odds |
 | rating_champion | negative_binomial | composite_rating_pmf | Market-implied priors for all 48 teams |
 | parametric_champion | negative_binomial | 4.4369 | Alias for pure_model — parametric prior |
 | market_champion | market_implied | N/A | Pure-market PMF from BDL consensus |
@@ -55,4 +55,4 @@ New teams (no 2018/2022 WC history) use composite_rating_pmf, not Elo=1500.
 | 7 | bivariate_poisson | 106 | 4.9404 | 0.3122 | 0.8554 | 0.3180 | 3.000 | parametric prior |
 | 8 | poisson | 106 | 5.1621 | 0.3089 | 0.8441 | 0.2991 | 3.000 | parametric prior |
 | 9 | zero_inflated_poisson | 106 | 5.1658 | 0.3081 | 0.8397 | 0.2702 | 3.000 | parametric prior |
-| 10 | weibull_copula | 106 | 6.3988 | 0.3233 | 0.8696 | 0.3084 | 3.000 | parametric prior |
+| 10 | weibull_copula | 106 | 6.7757 | 0.3294 | 0.8794 | 0.3548 | 3.000 | parametric prior |
