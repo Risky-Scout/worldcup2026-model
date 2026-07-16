@@ -1,6 +1,6 @@
 # Correct-Score Reconciliation Audit
 
-**Generated**: 2026-07-16T17:24:33Z
+**Generated**: 2026-07-16T18:01:03Z
 
 ## Method
 
@@ -45,7 +45,7 @@ IPF approach: `P_new(h,a) = α * P_mkt(h,a) + (1-α) * P_prior(h,a)`, then renor
 | 2-3 | 0.0336 | 0.0307 | 0.0028 |
 | 4-1 | 0.0297 | 0.0279 | 0.0018 |
 | 3-3 | 0.0276 | 0.0259 | 0.0017 |
-| 0-2 | 0.0276 | 0.0278 | 0.0002 |
+| 0-2 | 0.0276 | 0.0277 | 0.0002 |
 | **Sum (top 15)** | **0.7898** | **0.7740** | — |
 - High-score mass (total ≥9 goals): 1.39e-04
 - Impossible-score check (any cell ≥9 goals > 1e-3): ✅ PASS
