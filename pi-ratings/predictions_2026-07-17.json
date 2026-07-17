@@ -1,6 +1,6 @@
 {
   "schema": "pi_ratings_predictions_v1",
-  "generated_at": "2026-07-17T09:50:41.861956+00:00",
+  "generated_at": "2026-07-17T10:54:56.158288+00:00",
   "date": "2026-07-17",
   "n_matches": 2,
   "matches": [
@@ -10,7 +10,7 @@
       "away_team": "England",
       "stage": "Match for 3rd place",
       "match_datetime": "2026-07-18 21:00",
-      "generated_at": "2026-07-17T09:50:41.853947+00:00",
+      "generated_at": "2026-07-17T10:54:56.150345+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.1689,
@@ -485,7 +485,7 @@
       "away_team": "Argentina",
       "stage": "Final",
       "match_datetime": "2026-07-19 19:00",
-      "generated_at": "2026-07-17T09:50:41.861893+00:00",
+      "generated_at": "2026-07-17T10:54:56.158194+00:00",
       "audit_trail": {
         "step1_pi_ratings": {
           "home_pi_home": 1.2925,
