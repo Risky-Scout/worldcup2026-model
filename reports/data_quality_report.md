@@ -1,6 +1,6 @@
 # Data Quality Report (Real BDL Data)
 
-**Generated**: 2026-07-17T18:44:18Z
+**Generated**: 2026-07-17T19:20:40Z
 **Data version**: v1
 
 ## Overview
