@@ -1,1 +1,1 @@
-{"last_pipeline_run": "2026-07-18T22:16:41Z", "n_matches": 2, "status": "ok", "market_weight": 0.2, "calib_rho": -0.0493, "calib_temperature": 1.386, "clv_rolling_avg_pct": 3.1444, "clv_rolling_avg_1x2_pct": -1.7558, "clv_positive_market_count": 9, "n_closing_odds_captured": 74}
+{"last_pipeline_run": "2026-07-18T22:52:40Z", "n_matches": 2, "status": "ok", "market_weight": 0.2, "calib_rho": -0.0493, "calib_temperature": 1.386, "clv_rolling_avg_pct": 3.1444, "clv_rolling_avg_1x2_pct": -1.7558, "clv_positive_market_count": 9, "n_closing_odds_captured": 74}
