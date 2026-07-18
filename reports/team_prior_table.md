@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-18T09:18:17Z
+**Generated**: 2026-07-18T10:24:05Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -11,12 +11,12 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Argentina | ✅ | ✅ | CONMEBOL | 18 | 1400 | 0.788 | 2.461 | 0.862 | 8 | **2.793** | **1.013** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Brazil | ✅ | ✅ | CONMEBOL | 15 | 1433 | 0.536 | 1.956 | 0.665 | 5 | **2.710** | **0.898** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Germany | ✅ | ✅ | UEFA | 10 | 1494 | 0.072 | 1.763 | 1.133 | 4 | **2.662** | **1.213** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| France | ✅ | ✅ | UEFA | 21 | 1366 | 1.066 | 2.599 | 0.708 | 8 | **2.594** | **0.743** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| France | ✅ | ✅ | UEFA | 21 | 1366 | 1.066 | 2.600 | 0.708 | 8 | **2.594** | **0.743** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Spain | ✅ | ✅ | UEFA | 15 | 1429 | 0.635 | 2.472 | 0.325 | 8 | **2.551** | **0.638** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Belgium | ✅ | ✅ | UEFA | 16 | 1441 | 0.496 | 1.631 | 0.807 | 6 | **2.347** | **1.159** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Netherlands | ❌ | ✅ | UEFA | 9 | 1442 | 0.431 | 2.591 | 0.448 | 4 | **2.331** | **1.147** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Senegal | ✅ | ✅ | CAF | 11 | 1528 | -0.103 | 1.085 | 1.698 | 4 | **2.317** | **1.789** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| England | ✅ | ✅ | UEFA | 19 | 1440 | 0.544 | 1.884 | 1.053 | 8 | **2.193** | **1.139** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| England | ✅ | ✅ | UEFA | 19 | 1440 | 0.544 | 1.885 | 1.054 | 8 | **2.193** | **1.139** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Norway | ❌ | ❌ | UEFA | 6 | 1476 | 0.179 | 2.010 | 1.107 | 6 | **2.181** | **1.623** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Canada | ❌ | ✅ | CONCACAF | 8 | 1525 | -0.159 | 1.554 | 1.345 | 5 | **2.066** | **1.167** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Switzerland | ✅ | ✅ | UEFA | 14 | 1484 | 0.105 | 1.599 | 0.326 | 6 | **2.004** | **1.020** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
