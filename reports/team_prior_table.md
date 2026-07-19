@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-19T20:51:26Z
+**Generated**: 2026-07-19T21:37:06Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -8,11 +8,11 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 
 | Team | 2018 | 2022 | Conf | WC Games | Elo | Pi | Market Att | Market Def | n Mkt | Final Att λ | Final Def λ | Uncertainty | Sources |
 |------|------|------|------|----------|-----|-----|----------|----------|-------|------------|------------|-------------|---------|
-| Argentina | ✅ | ✅ | CONMEBOL | 18 | 1400 | 0.788 | 2.460 | 0.859 | 8 | **2.857** | **1.037** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Argentina | ✅ | ✅ | CONMEBOL | 18 | 1400 | 0.788 | 2.343 | 0.714 | 8 | **2.818** | **1.029** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Brazil | ✅ | ✅ | CONMEBOL | 15 | 1433 | 0.536 | 1.956 | 0.665 | 5 | **2.772** | **0.919** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | France | ✅ | ✅ | UEFA | 22 | 1376 | 0.955 | 2.417 | 0.851 | 8 | **2.756** | **1.234** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Germany | ✅ | ✅ | UEFA | 10 | 1494 | 0.072 | 1.763 | 1.133 | 4 | **2.721** | **1.242** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Spain | ✅ | ✅ | UEFA | 15 | 1429 | 0.635 | 2.470 | 0.324 | 8 | **2.609** | **0.653** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Spain | ✅ | ✅ | UEFA | 15 | 1429 | 0.635 | 2.325 | 0.206 | 8 | **2.600** | **0.637** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | England | ✅ | ✅ | UEFA | 20 | 1431 | 0.655 | 2.028 | 0.872 | 8 | **2.471** | **1.418** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Belgium | ✅ | ✅ | UEFA | 16 | 1441 | 0.496 | 1.631 | 0.807 | 6 | **2.401** | **1.186** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Netherlands | ❌ | ✅ | UEFA | 9 | 1442 | 0.431 | 2.591 | 0.448 | 4 | **2.385** | **1.174** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
