@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-19T04:22:38Z
+**Generated**: 2026-07-19T04:58:29Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -14,7 +14,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Germany | ✅ | ✅ | UEFA | 10 | 1494 | 0.072 | 1.763 | 1.133 | 4 | **2.721** | **1.242** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Spain | ✅ | ✅ | UEFA | 15 | 1429 | 0.635 | 2.473 | 0.325 | 8 | **2.609** | **0.653** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | England | ✅ | ✅ | UEFA | 20 | 1431 | 0.655 | 2.028 | 0.872 | 8 | **2.471** | **1.418** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Belgium | ✅ | ✅ | UEFA | 16 | 1441 | 0.496 | 1.631 | 0.807 | 6 | **2.401** | **1.186** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Belgium | ✅ | ✅ | UEFA | 16 | 1441 | 0.496 | 1.631 | 0.807 | 6 | **2.401** | **1.185** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Netherlands | ❌ | ✅ | UEFA | 9 | 1442 | 0.431 | 2.591 | 0.448 | 4 | **2.385** | **1.174** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Senegal | ✅ | ✅ | CAF | 11 | 1528 | -0.103 | 1.085 | 1.698 | 4 | **2.369** | **1.831** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Norway | ❌ | ❌ | UEFA | 6 | 1476 | 0.179 | 2.010 | 1.107 | 6 | **2.230** | **1.661** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
