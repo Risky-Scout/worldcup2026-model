@@ -1,6 +1,6 @@
 # Composite Team Prior Table (2026 World Cup)
 
-**Generated**: 2026-07-21T07:35:42Z
+**Generated**: 2026-07-21T10:15:44Z
 
 **Source priority**: market_implied (70%) > penaltyblog_pi (15%) > penaltyblog_elo (10%) > massey (5%)
 Plain Elo=1500 is NOT used as a default for new teams.
@@ -31,7 +31,7 @@ All 48 teams have market-implied lambdas from BDL group-stage match odds.
 | Côte d'Ivoire | ❌ | ❌ | CAF | 4 | 1501 | 0.031 | 1.546 | 1.004 | 4 | **1.675** | **1.120** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Türkiye | ❌ | ❌ | UEFA | 3 | 1507 | -0.093 | 0.089 | 1.740 | 3 | **1.656** | **1.725** | MEDIUM | market_implied+xg_wc2026+big_chances_wc2026 |
 | Egypt | ✅ | ❌ | CAF | 8 | 1535 | -0.100 | 1.162 | 0.868 | 5 | **1.632** | **1.355** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
-| Uruguay | ✅ | ✅ | CONMEBOL | 11 | 1478 | 0.054 | 0.211 | 1.053 | 3 | **1.572** | **1.245** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
+| Uruguay | ✅ | ✅ | CONMEBOL | 11 | 1478 | 0.054 | 0.211 | 1.053 | 3 | **1.580** | **1.245** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Algeria | ❌ | ❌ | CAF | 4 | 1514 | -0.134 | 0.937 | 1.288 | 4 | **1.567** | **1.757** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Austria | ❌ | ❌ | UEFA | 4 | 1514 | -0.104 | 0.892 | 1.392 | 4 | **1.539** | **1.837** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
 | Ecuador | ❌ | ✅ | CONMEBOL | 7 | 1511 | -0.078 | 0.907 | 1.456 | 4 | **1.533** | **1.127** | LOW | market_implied+xg_wc2026+big_chances_wc2026 |
