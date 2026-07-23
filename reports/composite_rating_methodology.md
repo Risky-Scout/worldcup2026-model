@@ -1,6 +1,6 @@
 # Composite Rating Methodology
 
-**Generated**: 2026-07-23T07:36:32Z
+**Generated**: 2026-07-23T10:13:39Z
 
 ## Why plain Elo is NOT the fallback
 
