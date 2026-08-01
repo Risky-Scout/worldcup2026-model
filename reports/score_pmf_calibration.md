@@ -1,6 +1,6 @@
 # Score PMF Calibration Report
 
-**Generated**: 2026-08-01T17:17:00Z
+**Generated**: 2026-08-01T17:53:06Z
 
 ## Temperature calibration methodology
 
@@ -30,7 +30,7 @@ log-loss over out-of-fold predictions only (never training data).
 | bivariate_poisson | 106 | 4.9404 | **3.000** | overconfident — calibration spreads probability mass |
 | poisson | 106 | 5.1621 | **3.000** | overconfident — calibration spreads probability mass |
 | zero_inflated_poisson | 106 | 5.1658 | **3.000** | overconfident — calibration spreads probability mass |
-| weibull_copula | 106 | 6.7670 | **3.000** | overconfident — calibration spreads probability mass |
+| weibull_copula | 106 | 6.6707 | **3.000** | overconfident — calibration spreads probability mass |
 
 ## Interpretation
 
