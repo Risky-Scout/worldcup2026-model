@@ -1,6 +1,6 @@
 # Market Calibration Report (Real BDL Data)
 
-**Generated**: 2026-08-07T13:15:24Z
+**Generated**: 2026-08-07T14:58:09Z
 
 ## Publish mode distribution
 
