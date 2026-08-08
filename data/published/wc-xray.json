@@ -1,7 +1,7 @@
 {
   "schema_version": "wo_market_xray_v1",
-  "generated_at": "2026-08-08T03:43:08.116597+00:00",
-  "date": "2026-08-07",
+  "generated_at": "2026-08-08T04:15:39.073772+00:00",
+  "date": "2026-08-08",
   "clv_rolling_avg_pct": 3.8312,
   "clv_rolling_avg_1x2_pct": -1.8106,
   "clv_markets_beat_close": 10,
