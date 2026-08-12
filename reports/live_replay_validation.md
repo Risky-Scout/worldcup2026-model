@@ -1,6 +1,6 @@
 # Live Model Replay Validation — 2022 World Cup
 
-**Generated**: 2026-08-12T18:12:52Z
+**Generated**: 2026-08-12T18:49:19Z
 **Matches replayed**: 64
 **Checkpoints per match**: 10
 
