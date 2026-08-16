@@ -1,6 +1,6 @@
 # Model Benchmark Table (Real BDL Data)
 
-**Generated**: 2026-08-16T20:11:52Z
+**Generated**: 2026-08-16T20:53:27Z
 **Parametric champion**: negative_binomial (NLL=4.4369)
 **Publish champion**: market_reconciled (market_implied as prior)
 
@@ -15,4 +15,4 @@
 | 7 | bivariate_poisson | 106 | 4.9404 | +0.5034 | 0.3122 | 0.8554 | 0.3180 | 3.000 |
 | 8 | poisson | 106 | 5.1621 | +0.7252 | 0.3089 | 0.8441 | 0.2991 | 3.000 |
 | 9 | zero_inflated_poisson | 106 | 5.1658 | +0.7288 | 0.3081 | 0.8397 | 0.2702 | 3.000 |
-| 10 | weibull_copula | 106 | 6.7261 | +2.2891 | 0.3246 | 0.8830 | 0.3363 | 3.000 |
+| 10 | weibull_copula | 106 | 6.7063 | +2.2693 | 0.3342 | 0.8968 | 0.3549 | 3.000 |
