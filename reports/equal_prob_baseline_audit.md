@@ -1,6 +1,6 @@
 # Equal-Probability Baseline Audit
 
-**Generated**: 2026-08-17T22:16:33Z
+**Generated**: 2026-08-17T22:52:56Z
 
 ## What equal_probability actually is
 
