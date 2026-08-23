@@ -1,6 +1,6 @@
 # BDL Endpoint Coverage (Real Data)
 
-**Generated**: 2026-08-23T15:08:07Z
+**Generated**: 2026-08-23T16:07:36Z
 
 ## Match counts
 
