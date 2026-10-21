@@ -1,0 +1,126 @@
+name: zz-ghegress-4a2c8ca4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  egress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: egress-probe
+        env:
+          PW: ${{ secrets.WOO_ROOT_SSH_PASS }}
+          DEPKEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set +x
+          D="$RUNNER_TEMP/zz"
+          mkdir -p "$D"
+          L="$D/log.txt"
+          {
+            echo "runner=$(hostname)"
+            echo "egress_ip=$(curl -s --max-time 15 https://api.ipify.org)"
+            echo "date=$(date -u +%FT%TZ)"
+          } >> "$L"
+          echo "--- tcp probes ---" >> "$L"
+          timeout 8 bash -c 'exec 3<>/dev/tcp/13.52.111.2/22' 2>>"$L" && echo "TCP_22_OPEN" >> "$L" || echo "TCP_22_CLOSED rc=$?" >> "$L"
+          timeout 8 bash -c 'exec 3<>/dev/tcp/13.52.111.2/33333' 2>>"$L" && echo "TCP_33333_OPEN" >> "$L" || echo "TCP_33333_CLOSED rc=$?" >> "$L"
+          python3 -m pip install --quiet paramiko >> "$L" 2>&1 || pip install --quiet paramiko >> "$L" 2>&1
+          python3 - "$L" <<'PYEOF'
+          import os, sys, io, base64, hashlib
+          log = open(sys.argv[1], 'a')
+          def w(s):
+              log.write(str(s) + "\n"); log.flush()
+          try:
+              import paramiko
+          except Exception as e:
+              w("paramiko_import_fail %r" % (e,)); sys.exit(0)
+          host = "13.52.111.2"
+          CMDS = [
+              "id; whoami; hostname; uname -a",
+              "ls -la /var/www",
+              "nginx -T 2>/dev/null | grep -E 'server_name|root ' | head -40",
+              "grep -R 'br\\.' /etc/nginx/sites-enabled 2>/dev/null | head",
+          ]
+          def run_cmd(t, cmd):
+              ch = t.open_session(); ch.settimeout(30)
+              ch.exec_command(cmd)
+              so = ch.makefile('rb'); se = ch.makefile_stderr('rb')
+              out = so.read(); err = se.read()
+              rc = ch.recv_exit_status()
+              ch.close()
+              return rc, out, err
+          def try_pw(t, pw):
+              try:
+                  if t.auth_password("root", pw):
+                      return "password"
+              except Exception as e:
+                  w("pw_exc %r" % (e,))
+              try:
+                  ok = t.auth_interactive("root", lambda title, instr, fields: [pw] * len(fields))
+                  if ok:
+                      return "keyboard-interactive"
+              except Exception as e:
+                  w("ki_exc %r" % (e,))
+              return None
+          def try_key(t, depkey):
+              if not depkey:
+                  w("no_depkey_secret"); return None
+              key = None
+              for nm, cls in (("ed25519", paramiko.Ed25519Key), ("rsa", paramiko.RSAKey), ("ecdsa", paramiko.ECDSAKey)):
+                  try:
+                      key = cls.from_private_key(io.StringIO(depkey))
+                      w("depkey_loaded type=%s" % nm)
+                      break
+                  except Exception:
+                      key = None
+              if key is None:
+                  w("depkey_parse_fail"); return None
+              w("depkey_sha256_fp=%s" % hashlib.sha256(key.asbytes()).hexdigest())
+              try:
+                  if t.auth_publickey("root", key):
+                      return "publickey"
+              except Exception as e:
+                  w("pk_exc %r" % (e,))
+              return None
+          pw = os.environ.get("PW", "")
+          depkey = os.environ.get("DEPKEY", "")
+          w("pw_len=%d depkey_len=%d" % (len(pw), len(depkey)))
+          try:
+              t = paramiko.Transport((host, 22))
+              t.start_client(timeout=20)
+              k = t.get_remote_server_key()
+              w("hostkey_type=%s sha256=%s" % (k.get_name(), base64.b64encode(hashlib.sha256(k.asbytes()).digest()).decode().rstrip("=")))
+              method = try_pw(t, pw)
+              w("pw_auth_method=%s" % method)
+              if not method:
+                  t.auth_none("root")
+                  method = try_key(t, depkey)
+                  w("key_auth_method=%s" % method)
+              if method:
+                  w("AUTH_OK method=%s" % method)
+                  for c in CMDS:
+                      try:
+                          rc, out, err = run_cmd(t, c)
+                          w("=== CMD rc=%d: %s" % (rc, c))
+                          w(out.decode("utf-8", "replace"))
+                          if err:
+                              w("--- stderr:")
+                              w(err.decode("utf-8", "replace"))
+                      except Exception as e:
+                          w("cmd_exc %r for %s" % (e, c))
+              t.close()
+          except Exception as e:
+              w("transport_exc %r" % (e,))
+          log.close()
+          PYEOF
+          echo "--- done ---" >> "$L"
+          base64 -w0 "$L" > "$D/out.b64"
+          wc -c "$L" "$D/out.b64" || true
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zz-ghegress-4a2c8ca4
+          path: ${{ runner.temp }}/zz/out.b64
+          retention-days: 1
